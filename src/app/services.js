@@ -49,7 +49,6 @@ export default function ServicesScreen() {
     outputRange: [90, 0],
   });
 
-
   const opacity = slide.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 1],
