@@ -1,8 +1,5 @@
 "use client";
 
-
-
-
 import React from "react";
 import {
   View,
@@ -19,7 +16,7 @@ export default function ServicesScreen() {
   const [selectedSlug, setSelectedSlug] = React.useState(null);
 
 
-  const slide = React.useRef(new Animated.Value(0)).current; // 0 hidden, 1 shown
+  const slide = React.useRef(new Animated.Value(0)).current;
 
 
   React.useEffect(() => {
@@ -27,7 +24,7 @@ export default function ServicesScreen() {
       toValue: selectedSlug ? 1 : 0,
       duration: 220,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false, // RN Web
+      useNativeDriver: false,
     }).start();
   }, [selectedSlug, slide]);
 
