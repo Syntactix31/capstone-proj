@@ -131,11 +131,19 @@ body {
   animation: fadeIn 0.3s ease forwards;
 }
 
+
+
 /* Transparency for Homepage Gallery Images  */
 .transparent-gradient {
   -webkit-mask-image: linear-gradient(black, transparent);
   mask-image: linear-gradient(black, transparent);
 }
+
+/* Button shadow on hover */
+.button-shadow:hover {
+  box-shadow:0 8px 16px 0 rgba(0,0,0,0.6)
+}
+
 
 /* Annoying ass gallery images that wont format */
 
