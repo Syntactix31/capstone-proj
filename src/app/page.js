@@ -20,7 +20,7 @@ export default function Home() {
 
   return (
     
-    <div className="overflow-hidden">
+    <div className="overflow-hidden bg-white">
         <header className="flex w-full bg-white">
           <NavBar />         
         </header>
