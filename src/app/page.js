@@ -81,18 +81,18 @@ export default function Home() {
 
 
             {/* Bottom Middle */}
-            <div className="item relative rounded-xl overflow-hidden shadow-lg w-110 h-90">
-              <Image src={images[2]} alt="Project 3" fill sizes="500px" className="object-cover hover:brightness-110 transition-all" />
+            <div className="item relative rounded-xl overflow-hidden w-110 h-90">
+              <Image src={images[2]} alt="Project 3" fill sizes="500px" className="object-cover hover:brightness-110 transition-all transparent-gradient" />
             </div>
 
             {/* Bottom right */}
-            <div className="item relative rounded-xl overflow-hidden shadow-lg w-70 h-90">
-              <Image src={images[5]} alt="Project 6" fill sizes="300px" className="object-cover hover:brightness-110 transition-all" />
+            <div className="item relative rounded-xl overflow-hidden w-70 h-90">
+              <Image src={images[5]} alt="Project 6" fill sizes="300px" className="object-cover hover:brightness-110 transition-all transparent-gradient" />
             </div>  
 
             {/* Bottom left */}
-            <div className="item relative rounded-xl overflow-hidden shadow-lg w-70 h-70">
-              <Image src={images[3]} alt="Project 4" fill sizes="200px" className="object-cover hover:brightness-110 transition-all" />
+            <div className="item relative rounded-xl overflow-hidden w-70 h-70">
+              <Image src={images[3]} alt="Project 4" fill sizes="200px" className="object-cover hover:brightness-110 transition-all transparent-gradient" />
             </div>
 
           </div>                         

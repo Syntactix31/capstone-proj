@@ -131,7 +131,11 @@ body {
   animation: fadeIn 0.3s ease forwards;
 }
 
-
+/* Transparency for Homepage Gallery Images  */
+.transparent-gradient {
+  -webkit-mask-image: linear-gradient(black, transparent);
+  mask-image: linear-gradient(black, transparent);
+}
 
 /* Annoying ass gallery images that wont format */
 
@@ -144,3 +148,6 @@ body {
 .item {
   flex: 0 0 calc(33.333% - 16px); 
 }
+
+
+
