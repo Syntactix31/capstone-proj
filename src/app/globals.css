@@ -52,11 +52,20 @@ body {
   margin-top: 80px;
 }
 
-.projectsSection h2 {
-  font-size: 40px;
-  font-weight: 700;
-  margin-bottom: 60px;
+
+.card {
+ background: white;
+ border-radius: 10px;
+ transition: border-radius 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
+.shadow {
+ box-shadow:
+             0 0  0 2px rgb(190, 190, 190),
+             0.3em 0.3em 1em rgba(0,0,0,0.3);
+}
+
+
 
 /* Collage grid */
 .collage {
