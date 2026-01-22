@@ -12,11 +12,11 @@ export default function Home() {
           <NavBar />         
         </header>
 
-      <main className="flex min-h-screen w-full bg-white">
+      <main className="flex flex-col min-h-screen w-full bg-white gap-20">
 
 
-        <div className="mx-auto w-full max-w-6xl px-4">
-          <section className="relative mt-10 overflow-hidden rounded-3xl border border-[#477a40]/20 bg-gradient-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12">
+        <div className="w-full mx-auto max-w-6xl px-4">
+          <section className="w-200 relative mt-10 overflow-hidden rounded-xl border border-[#477a40]/20 bg-gradient-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#477a40]/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded- bg-[#477a40]/10 blur-3xl" />
  
@@ -25,7 +25,7 @@ export default function Home() {
                 Licensed • Insured • Free Estimates
               </p>
  
-              <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
+              <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-gray-900  w-160 sm:text-5xl">
                 The Contracting Company You Can Trust
               </h1>
  
@@ -35,11 +35,17 @@ export default function Home() {
               </h2>
  
               <p className="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600">
-                Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+                Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.
               </p>
+            </div>  
 
-            </div>
+            <Link href="/about" className="font-bold ml-138">Learn More &rarr;</Link>
           </section>
+
+        </div>
+
+        <div>
+          <h2 className="mx-auto w-85 text-center p-2 text-3xl font-extrabold border-b-2 border-[#477a40]">Our Projects</h2>
         </div>
 
 

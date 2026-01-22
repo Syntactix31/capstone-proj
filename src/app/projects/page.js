@@ -70,7 +70,6 @@ export default function ProjectsPage() {
       </section>
 
       <section className="projectsSection">
-        <h2>Our Projects</h2>
 
         <div className="collage">
           {images.slice(0, 13).map((src, i) => (
