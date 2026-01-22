@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import Image from "next/image";
 
 const images = [
@@ -38,14 +39,15 @@ const layout = [
   { c: 12, r: 4 }  // optional wide “final hero tile” at bottom
 ];
 
-function Tile({ src, span }) {
+function Tile({ src, span, onClick }) {
   return (
     <div
-      className="tile"
+      className="tile relative overflow-hidden cursor-pointer transition-transform duration-500 hover:scale-105"
       style={{
         gridColumn: `span ${span.c}`,
         gridRow: `span ${span.r}`
       }}
+      onClick={onClick}
     >
       <Image
         src={src}
@@ -59,6 +61,23 @@ function Tile({ src, span }) {
 }
 
 export default function ProjectsPage() {
+
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const openModal = (src) => {
+    setSelectedImage(src);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setTimeout(() => setSelectedImage(null), 300);
+  }; 
+
+
+
+
   return (
     <div className="projectsPage">
       <section className="heroWrap">
@@ -73,10 +92,37 @@ export default function ProjectsPage() {
 
         <div className="collage">
           {images.slice(0, 13).map((src, i) => (
-            <Tile key={i} src={src} span={layout[i] || { c: 4, r: 3 }} />
+            <Tile key={i} src={src} span={layout[i] || { c: 4, r: 3 }} onClick={() => openModal(src)}/>
           ))}
         </div>
       </section>
+
+      {showModal && selectedImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 transition-opacity animate-fadeIn" onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}>
+          <div className="relative animate-zoomIn">
+            <span
+              className="absolute top-2 right-5 text-white text-4xl font-bold cursor-pointer hover:scale-110 transition-transform"
+              onClick={closeModal}
+            >
+              &times;
+            </span>
+            <Image
+              src={selectedImage}
+              alt="Preview"
+              width={0}
+              height={0}
+              sizes="100vw"
+              className="h-auto w-auto max-w-[95vw] max-h-[95vh] rounded-md object-contain"
+            />
+          </div>
+        </div>
+      )}      
+
+
+
+
     </div>
   );
 }

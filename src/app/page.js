@@ -20,12 +20,12 @@ export default function Home() {
 
   return (
     
-    <div className="overflow-hidden">
+    <div className="overflow-hidden bg-white">
         <header className="flex w-full bg-white">
           <NavBar />         
         </header>
 
-      <main className="flex flex-col min-h-screen w-full bg-white gap-20">
+      <main className="flex flex-col min-h-screen w-full bg-white gap-15">
 
 
         <div className="w-full mx-auto max-w-6xl px-4">
@@ -63,49 +63,49 @@ export default function Home() {
 
 
         <div className="w-full mx-auto max-w-6xl px-4 relative">
-          <div className="flex flex-col justify-self-auto gap-3 h-[500px] md:h-[600px] relative">
+          <div className="flex-container gap-3 h-[600px] md:h-250 relative">
             {/* Top middle */}
-            <div className="relative col-span-2 row-span-2 rounded-xl overflow-hidden shadow-lg w-120 h-80">
+            <div className="item relative rounded-xl overflow-hidden shadow-lg w-120 h-80">
               <Image src={images[0]} alt="Project 1" fill sizes="550px" className="object-cover hover:brightness-110 transition-all" />
             </div>
             
             {/* Top right */}
-            <div className="relative row-span-1 rounded-xl overflow-hidden shadow-lg w-40 h-80">
+            <div className="item relative rounded-xl overflow-hidden shadow-lg w-40 h-80">
               <Image src={images[1]} alt="Project 2" fill sizes="350px" className="object-cover hover:brightness-110 transition-all" />
             </div>
 
             {/* Top left tall */}
-            <div className="relative col-span-2 row-span-3 rounded-xl overflow-hidden shadow-lg w-80 h-100">
+            <div className="item relative rounded-xl overflow-hidden shadow-lg w-80 h-100">
               <Image src={images[4]} alt="Project 5" fill sizes="400px" className="object-cover hover:brightness-110 transition-all" />
             </div>       
 
 
             {/* Bottom Middle */}
-            <div className="relative row-span-2 rounded-xl overflow-hidden shadow-lg w-110 h-90">
+            <div className="item relative rounded-xl overflow-hidden shadow-lg w-110 h-90">
               <Image src={images[2]} alt="Project 3" fill sizes="500px" className="object-cover hover:brightness-110 transition-all" />
             </div>
 
             {/* Bottom right */}
-            <div className="relative rounded-xl overflow-hidden shadow-lg w-70 h-90">
+            <div className="item relative rounded-xl overflow-hidden shadow-lg w-70 h-90">
               <Image src={images[5]} alt="Project 6" fill sizes="300px" className="object-cover hover:brightness-110 transition-all" />
             </div>  
 
             {/* Bottom left */}
-            <div className="relative col-span-1 row-span-1 rounded-xl overflow-hidden shadow-lg w-70 h-70">
+            <div className="item relative rounded-xl overflow-hidden shadow-lg w-70 h-70">
               <Image src={images[3]} alt="Project 4" fill sizes="200px" className="object-cover hover:brightness-110 transition-all" />
             </div>
 
-                        
+          </div>                         
 
             
 
 
             <div className=" inset-0 flex items-center justify-center">
-              <div className="p-4 mx-auto text-white rounded-2xl bg-[#477a40] text-2xl font-normal w-70 text-center hover:cursor-pointer border-2 border-transparent hover:bg-[#f3fff3] hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 ">
+              <div className="p-4 mx-auto text-white rounded-2xl bg-[#477a40] text-2xl font-normal w-70 text-center hover:cursor-pointer border-2 border-transparent hover:bg-[#f3fff3] hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 shadow-2xl backdrop-blur-sm">
                 Request a Quote
               </div>
-            </div>
-          </div> 
+            </div> 
+
 
 
         </div>
