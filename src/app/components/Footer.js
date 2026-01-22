@@ -4,7 +4,7 @@ import Image from "next/image";
 export default function Footer() {
 
   return (
-      <footer className="bg-[#31270C] w-full h-56 text-white items-center text-center justify-center flex">
+      <footer className="bg-[#31270C] w-full h-56 text-white items-center text-center justify-center flex mt-20">
 
         <a href="https://www.facebook.com/p/Landscape-Craftsmen-61575247719417/">
           <Image src="/icons/facebook.png" alt="Facebook icon" height={15} width={15} className="mr-10 scale-200"></Image>        
@@ -22,7 +22,7 @@ export default function Footer() {
         </a>
 
       </footer>
-
+  
   );
 }
 
