@@ -21,7 +21,7 @@ export default function NavBar () {
 
             </div>
 
-            <div className="flex justify-center items-center lg:gap-20 lg:mr-10">
+            <div className="flex justify-center items-center lg:gap-20 md:mr-10 lg:mr-10">
               <ul className="hidden lg:flex gap-10 ml-20 ">
                 <li><Link href="/about" className="hover:opacity-60">About</Link></li>
                 <li><Link href="/services" className="hover:opacity-60">Services</Link></li>
