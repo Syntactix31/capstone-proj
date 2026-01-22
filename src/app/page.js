@@ -81,30 +81,29 @@ export default function Home() {
 
 
             {/* Bottom Middle */}
-            <div className="item relative rounded-xl overflow-hidden shadow-lg w-110 h-90">
-              <Image src={images[2]} alt="Project 3" fill sizes="500px" className="object-cover hover:brightness-110 transition-all" />
+            <div className="item relative rounded-xl overflow-hidden w-110 h-90">
+              <Image src={images[2]} alt="Project 3" fill sizes="500px" className="object-cover hover:brightness-110 transition-all transparent-gradient" />
             </div>
 
             {/* Bottom right */}
-            <div className="item relative rounded-xl overflow-hidden shadow-lg w-70 h-90">
-              <Image src={images[5]} alt="Project 6" fill sizes="300px" className="object-cover hover:brightness-110 transition-all" />
+            <div className="item relative rounded-xl overflow-hidden w-70 h-90">
+              <Image src={images[5]} alt="Project 6" fill sizes="300px" className="object-cover hover:brightness-110 transition-all transparent-gradient" />
             </div>  
 
             {/* Bottom left */}
-            <div className="item relative rounded-xl overflow-hidden shadow-lg w-70 h-70">
-              <Image src={images[3]} alt="Project 4" fill sizes="200px" className="object-cover hover:brightness-110 transition-all" />
+            <div className="item relative rounded-xl overflow-hidden w-70 h-70">
+              <Image src={images[3]} alt="Project 4" fill sizes="200px" className="object-cover hover:brightness-110 transition-all transparent-gradient" />
             </div>
 
           </div>                         
 
             
 
-
             <div className=" inset-0 flex items-center justify-center">
               <div className="p-4 mx-auto text-white rounded-2xl bg-[#477a40] text-2xl font-normal w-70 text-center hover:cursor-pointer border-2 border-transparent hover:bg-[#f3fff3] hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 shadow-2xl backdrop-blur-sm">
                 Request a Quote
               </div>
-            </div> 
+            </div>     
 
 
 
@@ -120,3 +119,5 @@ export default function Home() {
 }
 
 
+
+// TODO:  Adjust button position from z-index to flex boundaries
