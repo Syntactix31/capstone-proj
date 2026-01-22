@@ -45,7 +45,7 @@ export default function Home() {
         </div>
 
         <div>
-          <h2 className="mx-auto w-85 text-center p-2 text-3xl font-extrabold border-b-2 border-[#477a40]">Our Projects</h2>
+          <h2 className="mx-auto w-85 text-center p-2 text-3xl font-extrabold border-b-2 border-[#477a40] text-black">Our Projects</h2>
         </div>
 
 
