@@ -6,6 +6,7 @@ import Footer from "./components/Footer.js";
 
 export default function Home() {
   return (
+    
     <div className="overflow-hidden">
         <header className="flex w-full bg-white">
           <NavBar />         
@@ -26,7 +27,5 @@ export default function Home() {
     </div>
   );
 }
-
-
 
 
