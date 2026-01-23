@@ -7,7 +7,7 @@ export default function Footer() {
       <footer className="bg-[#31270C] w-full h-56 text-white items-center text-center justify-center flex mt-20">
 
         <a href="https://www.facebook.com/p/Landscape-Craftsmen-61575247719417/" target="_blank">
-          <Image src="/icons/facebook.png" alt="Facebook icon" height={15} width={15} className="mr-10 scale-200"></Image>        
+          <Image src="/icons/facebook.png" alt="Facebook icon" height={15} width={15} className="mr-5 lg:mr-10  scale-200"></Image>        
         </a>
 
 
@@ -18,7 +18,7 @@ export default function Footer() {
         </div>
 
         <a href="https://www.instagram.com/landscape.craftsmen" target="_blank">
-          <Image src="/icons/instagram.png" alt="Instagram icon" height={15} width={15} className="ml-10 scale-250"></Image>
+          <Image src="/icons/instagram.png" alt="Instagram icon" height={15} width={15} className="ml-5 lg:ml-10 scale-250"></Image>
         </a>
 
       </footer>
