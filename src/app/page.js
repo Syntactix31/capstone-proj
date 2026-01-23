@@ -29,7 +29,7 @@ export default function Home() {
 
 
         <div className="w-full mx-auto max-w-6xl px-4">
-          <section className="w-200 relative mt-10 overflow-hidden rounded-xl border border-[#477a40]/20 bg-gradient-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
+          <section className="w-200 relative mt-10 overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#477a40]/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded- bg-[#477a40]/10 blur-3xl" />
  
@@ -63,51 +63,55 @@ export default function Home() {
 
 
         <div className="w-full mx-auto max-w-6xl px-4 relative">
-          <div className="flex-container gap-3 h-[600px] md:h-250 relative">
-            {/* Top middle */}
-            <div className="item relative rounded-xl overflow-hidden shadow-lg w-120 h-80">
+          <div className="flex flex-wrap justify-center items-center gap-4 relative w-full">
+
+            {/* Top Left */}
+            <div className="relative rounded-xl overflow-hidden shadow-lg shrink-0 w-80 h-80">
+              <Image src={images[4]} alt="Project 5" fill sizes="400px" className="object-cover hover:brightness-110 transition-all" />
+            </div>
+
+            {/* Top Center */}
+            <div className="relative rounded-xl overflow-hidden shadow-lg shrink-0 w-80 h-60">
               <Image src={images[0]} alt="Project 1" fill sizes="550px" className="object-cover hover:brightness-110 transition-all" />
             </div>
-            
-            {/* Top right */}
-            <div className="item relative rounded-xl overflow-hidden shadow-lg w-40 h-80">
+
+            {/* Top Right */}
+            <div className="relative rounded-xl overflow-hidden shadow-lg shrink-0 lg:w-48 w-80 h-72">
               <Image src={images[1]} alt="Project 2" fill sizes="350px" className="object-cover hover:brightness-110 transition-all" />
             </div>
 
-            {/* Top left tall */}
-            <div className="item relative rounded-xl overflow-hidden shadow-lg w-80 h-100">
-              <Image src={images[4]} alt="Project 5" fill sizes="400px" className="object-cover hover:brightness-110 transition-all" />
-            </div>       
+            {/* Center Button */}
+            <div className="flex justify-center items-center w-full my-4">
+              <div className="p-4 mx-auto text-white rounded-2xl bg-[#477a40] text-2xl font-normal w-72 text-center hover:cursor-pointer border-2 border-transparent hover:bg-[#f3fff3] hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 shadow-2xl backdrop-blur-sm">
+                Request a Quote
+              </div>
+            </div>
 
+            {/* Bottom Left */}
+            <div className="relative rounded-xl overflow-hidden shrink-0 lg:w-56 w-80 h-72 transparent-gradient">
+              <Image src={images[3]} alt="Project 4" fill sizes="200px" className="object-cover hover:brightness-110 transition-all " />
+            </div>
 
             {/* Bottom Middle */}
-            <div className="item relative rounded-xl overflow-hidden w-110 h-90">
+            <div className="relative rounded-xl overflow-hidden shrink-0 w-80 h-64">
               <Image src={images[2]} alt="Project 3" fill sizes="500px" className="object-cover hover:brightness-110 transition-all transparent-gradient" />
             </div>
 
-            {/* Bottom right */}
-            <div className="item relative rounded-xl overflow-hidden w-70 h-90">
-              <Image src={images[5]} alt="Project 6" fill sizes="300px" className="object-cover hover:brightness-110 transition-all transparent-gradient" />
-            </div>  
-
-            {/* Bottom left */}
-            <div className="item relative rounded-xl overflow-hidden w-70 h-70">
-              <Image src={images[3]} alt="Project 4" fill sizes="200px" className="object-cover hover:brightness-110 transition-all transparent-gradient" />
+            {/* Bottom Right */}
+            <div className="relative rounded-xl overflow-hidden shrink-0 lg:w-64 w-80 h-72">
+              <Image src={images[5]} alt="Project 6" fill sizes="300px" className="object-cover hover:brightness-110 transition-all transparent-gradient-special-needs" />
             </div>
+          </div>
 
-          </div>                         
-
-            
-
-            <div className=" inset-0 flex items-center justify-center">
-              <div className="p-4 mx-auto text-white rounded-2xl bg-[#477a40] text-2xl font-normal w-70 text-center hover:cursor-pointer border-2 border-transparent hover:bg-[#f3fff3] hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 shadow-2xl backdrop-blur-sm">
-                Request a Quote
-              </div>
-            </div>     
-
+          <div className="mt-4 border-t-4 border-[#477a40] w-sm md:w-full max-w-md sm:max-w-lg md:max-w-2xl mx-auto p-4 text-xl md:text-2xl text-center">
+            <Link href="/projects" className="font-bold text-black">
+              <span className="hover:underline hover:underline-offset-4">See More Projects</span> →
+            </Link>
+          </div>
 
 
         </div>
+
 
 
       </main>
