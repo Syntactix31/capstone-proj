@@ -12,7 +12,7 @@ export default function Footer() {
 
 
         <div className="justify-center flex flex-col gap-2">
-          <p>LandscapeCraftsmen@gmail.com</p>
+          <p>landscapecraftsmen@yahoo.com</p>
           <p>(587)-438-6672</p>
           <p>Calgary, AB, Canada</p>          
         </div>

@@ -4,6 +4,8 @@ import Image from "next/image";
 import NavBar from "./components/Navbar.js";
 import Footer from "./components/Footer.js";
 
+import CommentCarousel from "./components/CommentsCarousel.js";
+
 export default function Home() {
 
   const images = [
@@ -81,8 +83,10 @@ export default function Home() {
             </div>
 
             {/* Center Button */}
+
+            {/* hover:bg-[#f3fff3] */}
             <div className="flex justify-center items-center w-full my-4">
-              <div className="p-4 mx-auto text-white rounded-2xl bg-[#477a40] text-2xl font-normal w-72 text-center hover:cursor-pointer border-2 border-transparent hover:bg-[#f3fff3] hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 shadow-2xl backdrop-blur-sm">
+              <div className="p-4 mx-auto text-white rounded-2xl bg-[#477a40] text-2xl font-normal w-72 text-center hover:cursor-pointer border-2 border-transparent hover:bg-white hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 shadow-2xl backdrop-blur-sm">
                 Request a Quote
               </div>
             </div>
@@ -112,6 +116,8 @@ export default function Home() {
 
         </div>
 
+        <CommentCarousel />
+
 
 
       </main>
@@ -125,3 +131,14 @@ export default function Home() {
 
 
 // TODO:  Adjust button position from z-index to flex boundaries
+// text masking on services bubbles on main page when hover they expand and reverse the mask
+
+
+// write a review button under client reviews for users logged in
+
+// text or full bubble shimmer effect on delay each time and arrow is pressed
+
+// clicking on the comment in focus shows a pop up modal of full customer review
+
+
+
