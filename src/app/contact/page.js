@@ -12,7 +12,7 @@ export default function Contact() {
         
         {/* Intro Section */}
         <section className="max-w-5xl mx-auto text-center space-y-6 py-10">
-          <div className="border-8 border-[#477A40] rounded-3xl p-8">
+          <div className="border-4 border-[#477A40] rounded-3xl p-8">
             <p className="text-xl md:text-[22px] text-black font-light"><i>
               Thinking about the next big step in achieving your remodeling needs?
               Get in touch today and allow licensed experts to get the job done
@@ -80,7 +80,7 @@ export default function Contact() {
         </section>
 
         {/* Social Links */}
-        <section className="flex justify-center gap-10 text-xl font-semibold text-black">
+        <section className="flex justify-center gap-10 text-xl font-semibold text-black pb-4">
           <Link
             href="https://www.instagram.com/landscape.craftsmen"
             target="_blank"
