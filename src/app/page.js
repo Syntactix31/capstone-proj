@@ -103,9 +103,9 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-4 border-t-4 border-[#477a40] w-sm md:w-full max-w-md sm:max-w-lg md:max-w-2xl mx-auto p-4 text-xl md:text-2xl text-center">
+          <div className="mt-4 border-t-4 border-[#477a40] md:w-full max-w-md md:max-w-2xl mx-auto p-4 text-xl md:text-2xl text-center flex justify-center">
             <Link href="/projects" className="font-bold text-black">
-              <span className="hover:underline hover:underline-offset-4">See More Projects</span> →
+              <span className="hover:underline hover:underline-offset-4 active:underline active:underline-offset-4  active:text-[19px] lg:active:text-[23px]">See More Projects</span> →
             </Link>
           </div>
 
