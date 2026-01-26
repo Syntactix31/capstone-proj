@@ -1,8 +1,31 @@
+"use client"
+
 import Link from "next/link";
+import { useState } from "react";
+
+import DropDownMenu from "./DropDownMenu.js";
 
 export default function NavBar () {
 
+  const [navClicked, setNavClicked] = useState(false);
+
+  if (setNavClicked === true) {
+    // show drop down menu
+
+  }
+
+  const handleNavClick = () => {
+    setNavClicked(!navClicked);
+  }
+
+  const closeMenu = () => {
+    setNavClicked(false);
+  };
+
+
+
   return (
+      <>
           <nav className="bg-[#477a40] h-30 w-full p-4 flex text-white items-center justify-between">
 
             <div className="flex gap-5 items-center">
@@ -28,7 +51,7 @@ export default function NavBar () {
                 <li><Link href="/contact" className="hover:opacity-60">Contact</Link></li>
               </ul>
 
-              <div className="p-2 hover:opacity-50 flex flex-col gap-2">
+              <div className="p-2 hover:opacity-50 flex flex-col gap-2" onClick={handleNavClick}>
                 <hr className="w-10 "/>
                 <hr className="w-10 "/>
                 <hr className="w-10 "/>
@@ -36,9 +59,12 @@ export default function NavBar () {
             </div>
 
 
-          </nav> 
+          </nav>
+          
+          {/* NOTE: Cant render here! */}
+          {/* {navClicked && ( <DropDownMenu /> )} */}
+      </>
 
   );
 }
-
 
