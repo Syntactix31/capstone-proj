@@ -211,3 +211,19 @@ html {
   }
 }
 
+/* For drop down menu border */
+.top-outline {
+  position: relative;
+}
+
+.top-outline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -5;
+  height: 10px;
+  background-color: #31270c;
+  transform: translateY(-50%);
+  z-index: 10;
+}

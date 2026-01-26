@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import NavBar from "./components/Navbar.js";
 import Footer from "./components/Footer.js";
+import DropDownMenu from "./components/DropDownMenu.js";
 
 import CommentCarousel from "./components/CommentsCarousel.js";
 
@@ -25,7 +26,13 @@ export default function Home() {
     <div className="overflow-hidden bg-white">
         <header className="flex w-full bg-white">
           <NavBar />         
-        </header>
+        </header> 
+
+         {/* HERE */}
+        <DropDownMenu />
+
+
+
 
       <main className="flex flex-col min-h-screen w-full bg-white gap-15">
 
@@ -120,6 +127,7 @@ export default function Home() {
 
 
 
+
       </main>
 
       <Footer />
@@ -136,9 +144,10 @@ export default function Home() {
 
 // write a review button under client reviews for users logged in
 
-// text or full bubble shimmer effect on delay each time and arrow is pressed
+// ✅ text or full bubble shimmer effect on delay each time and arrow is pressed
 
 // clicking on the comment in focus shows a pop up modal of full customer review
 
+// add animation to hamburger menu click
 
-
+// FIX DROPDOWN NOT WORKING  IT SHOULD DISPLAY INFTONT OF EVERYTHING
