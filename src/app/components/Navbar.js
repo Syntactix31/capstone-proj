@@ -61,7 +61,8 @@ export default function NavBar () {
 
           </nav>
           
-          {navClicked && ( <DropDownMenu /> )}
+          {/* NOTE: Cant render here! */}
+          {/* {navClicked && ( <DropDownMenu /> )} */}
       </>
 
   );
