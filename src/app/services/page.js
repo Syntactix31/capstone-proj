@@ -58,7 +58,7 @@ export default function Services() {
       </header>
 
       <main className="flex min-h-screen w-full flex-col bg-white">
-        {/* HERO (different from navbar color) */}
+        {/* HERO */}
         <div className="w-full mx-auto max-w-6xl px-4">
           <section className="relative mt-10 overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#2f5a29]/15 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#2f5a29]/20 blur-3xl" />
@@ -66,28 +66,13 @@ export default function Services() {
 
             <div className="relative">
               <p className="inline-flex items-center gap-2 rounded-full bg-[#477a40]/10 px-3 py-1 text-sm font-semibold text-[#2f5a29]">
-                Select a service • One at a time
+                • Select a service
               </p>
 
               <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
                 Our Services
               </h1>
-
-              <p className="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600">
-                Tap a service card to select it. When selected, a bar will slide
-                up with your next steps.
-              </p>
             </div>
-
-            <Link
-              href="/about"
-              className="font-bold mt-6 inline-block active:text-[15px]"
-            >
-              <span className="hover:underline hover:underline-offset-4">
-                Learn More
-              </span>{" "}
-              &rarr;
-            </Link>
           </section>
         </div>
 
