@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+#placeholder project media
+public/projects/test*.*
+public/projects/vid*.mp4
