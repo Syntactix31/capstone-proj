@@ -65,13 +65,12 @@ body {
              0.3em 0.3em 1em rgba(0,0,0,0.3);
 }
 
-
-
 /* Collage grid */
 .collage {
   width: min(1100px, 92%);
   margin: 0 auto;
   display: grid;
+  grid-auto-flow: dense;
   grid-template-columns: repeat(12, 1fr);
   grid-auto-rows: 80px;           /* controls "unit" height */
   gap: 22px;
@@ -107,16 +106,16 @@ body {
 
 @keyframes zoomIn {
   from {
-  transform: scale(0.6);
+    transform: scale(0.6);
   }
   to {
-  transform: scale(1);
+    transform: scale(1);
   }
 }
 
 .animate-zoomIn {
   animation: zoomIn 0.4s ease forwards;
-  }
+}
 
 @keyframes fadeIn {
   from {
@@ -130,8 +129,6 @@ body {
 .animate-fadeIn {
   animation: fadeIn 0.3s ease forwards;
 }
-
-
 
 /* Transparency for Homepage Gallery Images  */
 .transparent-gradient {
@@ -152,51 +149,27 @@ body {
   mask-image: linear-gradient(black, transparent);
 }
 
-
 /* Button shadow on hover */
 .button-shadow:hover {
-  box-shadow:0 8px 16px 0 rgba(0,0,0,0.6)
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.6);
 }
 
-
 /* Annoying ass gallery images that wont format */
-
 .flex-container {
   display: flex;
-  flex-wrap: wrap;              
-  gap: 16px;                    
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .item {
-  flex: 0 0 calc(33.333% - 16px); 
+  flex: 0 0 calc(33.333% - 16px);
 }
-
 
 html {
   scroll-behavior: smooth;
 }
 
-
-/* Experimenting with Shimmer effect for reviews */
-
-/* .more-shimmer {
-  mask: linear-gradient(-60deg, #000 30%, #0005, #000 70%) right/350% 100%;
-  animation: shimmer 2.5s infinite;
-} */
-
-/* .more-shimmer {
-  mask: linear-gradient(-60deg, #000 30%, #0005, #000 70%) right/300% 100%;
-  animation: shimmer 1.2s ease-in-out;
-}
-
-
-@keyframes shimmer {
-  100% {
-    mask-position: left
-  }
-}
- */
-
+/* Shimmer effect for reviews */
 .more-shimmer {
   mask: linear-gradient(-60deg, #000 30%, #0005, #000 70%) right/300% 100%;
   animation: shimmer 1.2s ease-in-out 1.1s backwards;
@@ -217,13 +190,86 @@ html {
 }
 
 .top-outline::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
-  top: -5;
+  top: -5px;
   height: 10px;
   background-color: #31270c;
   transform: translateY(-50%);
   z-index: 10;
+}
+
+/* ===== Lightbox (click to expand) ===== */
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 9999;
+}
+
+.lightboxInner {
+  position: relative;
+  width: min(1100px, 95vw);
+  height: min(700px, 85vh);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(20, 20, 20, 0.6);
+  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.45);
+}
+
+.lightboxImageWrap {
+  position: absolute;
+  inset: 0;
+}
+
+.lightboxClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.lightboxNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  border: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  font-size: 34px;
+  line-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+.lightboxLeft {
+  left: 12px;
+}
+
+.lightboxRight {
+  right: 12px;
+}
+
+.lightboxClose:hover,
+.lightboxNav:hover {
+  background: rgba(255, 255, 255, 0.18);
 }

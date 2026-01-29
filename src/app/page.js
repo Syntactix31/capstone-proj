@@ -1,10 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-
-import NavBar from "./components/Navbar.js";
-import Footer from "./components/Footer.js";
 import DropDownMenu from "./components/DropDownMenu.js";
-
 import CommentCarousel from "./components/CommentsCarousel.js";
 
 export default function Home() {
@@ -24,10 +20,6 @@ export default function Home() {
   return (
     
     <div className="overflow-hidden bg-white">
-        <header className="flex w-full bg-white">
-          <NavBar />         
-        </header> 
-
          {/* HERE */}
         <DropDownMenu />
 
@@ -129,9 +121,6 @@ export default function Home() {
 
 
       </main>
-
-      <Footer />
-
     </div>
   );
 }
