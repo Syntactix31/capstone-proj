@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import NavBar from "../components/Navbar.js";
+import Footer from "../components/Footer.js";
 
 
 
@@ -119,6 +121,8 @@ export default function ProjectsPage() {
   
   return (
     <div className="projectsPage">
+      <NavBar />
+
       <section className="w-full mx-auto max-w-6xl px-4 mt-10">
         <div className="relative overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12">
 
@@ -209,6 +213,7 @@ export default function ProjectsPage() {
           </div>
         </div>
       )}
+      <Footer />
     </div>
   );
 }
