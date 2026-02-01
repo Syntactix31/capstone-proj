@@ -49,7 +49,7 @@ export default function About() {
         {/* Team Section*/}
         <section className="py-10 px-6 max-w-6xl mx-auto">
           {/* Maybe change this to black text with green underline for consistency */}
-          <h2 className="text-5xl md:text-6xl font-extrabold text-center mb-16 border-b-2 p-2 text-[#477A40] border-black w-150 mx-auto">
+          <h2 className="text-5xl md:text-6xl font-extrabold text-center mb-16 border-b-2 p-2 text- border-[#477A40] w-150 mx-auto">
             Meet the Team
           </h2>
 

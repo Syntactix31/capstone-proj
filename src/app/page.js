@@ -156,6 +156,13 @@ export default function Home() {
 
 // ADD wood grain background to team members page and ccomments section
 
+// NAVBAR TURNS INTO x on menu click if page shadow doesnt work
+
+// IMPORTANT: Drop down menu should show about services and contact on medium n small viewports
+
+
+
+
 
 
 
