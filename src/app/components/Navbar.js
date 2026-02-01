@@ -9,11 +9,6 @@ export default function NavBar () {
 
   const [navClicked, setNavClicked] = useState(false);
 
-  if (setNavClicked === true) {
-    // show drop down menu
-
-  }
-
   const handleNavClick = () => {
     setNavClicked(!navClicked);
   }
@@ -51,7 +46,7 @@ export default function NavBar () {
                 <li><Link href="/contact" className="hover:opacity-60">Contact</Link></li>
               </ul>
 
-              <div className="p-2 hover:opacity-50 hover:cursor-pointer flex flex-col gap-2" onClick={handleNavClick}>
+              <div className="relative z-10 p-2 hover:opacity-50 hover:cursor-pointer flex flex-col gap-2" onClick={handleNavClick}>
                 <hr className="w-10 "/>
                 <hr className="w-10 "/>
                 <hr className="w-10 "/>
@@ -62,7 +57,7 @@ export default function NavBar () {
           </nav>
           
           {/* NOTE: Cant render here! */}
-          {/* {navClicked && ( <DropDownMenu /> )} */}
+          {navClicked && <DropDownMenu onClose={closeMenu} /> }
       </>
 
   );
