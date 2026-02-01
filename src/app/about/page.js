@@ -7,16 +7,16 @@ export default function About() {
     <main className="bg-white flex flex-col min-h-screen">
       <NavBar />
 
-      <div className="flex-grow">
+      <div className="grow">
         
         {/* Top Team Image Placeholder */}
-        <section className="w-full h-64 md:h-[400px] bg-[#D3D3D3] border-b-8 border-[#477A40] flex items-center justify-center">
+        <section className="w-full h-64 md:h-100 bg-[#D3D3D3] border-b-8 border-[#477A40] flex items-center justify-center">
            <p className="text-gray-500 font-bold text-xl">Main Team Image</p>
         </section>
 
         {/* Mission Section */}
         <section className="max-w-6xl mx-auto py-16 px-4">
-          <div className="relative overflow-hidden rounded-xl border border-[#477a40]/20 bg-gradient-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
+          <div className="relative overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
             
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#477a40]/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-[#477a40]/10 blur-3xl" />
@@ -58,7 +58,7 @@ export default function About() {
               <div key={member} className="flex flex-col items-center group">
                 
                 {/* Photo Frame */}
-                <div className="w-full aspect-[3/4] bg-white border-4 border-[#477A40] rounded-3xl shadow-xl overflow-hidden flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                <div className="w-full aspect-3/4 bg-white border-4 border-[#477A40] rounded-3xl shadow-xl overflow-hidden flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
                    <span className="text-gray-400 font-bold italic">Team Member Photo</span>
                 </div>
                 

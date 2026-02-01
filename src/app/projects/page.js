@@ -84,7 +84,7 @@ export default function ProjectsPage() {
     <>
     <NavBar />
     
-    <div className="projectsPage bg-white dark:bg-white">
+    <div className="bg-white dark:bg-white text-black dark:text-black">
       <section className="heroWrap">
         <div className="heroBox">
           <h1>
