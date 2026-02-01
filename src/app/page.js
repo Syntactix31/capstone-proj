@@ -29,7 +29,7 @@ export default function Home() {
         </header> 
 
          {/* HERE */}
-        <DropDownMenu />
+        {/* <DropDownMenu /> */}
 
 
 
@@ -94,7 +94,7 @@ export default function Home() {
             {/* hover:bg-[#f3fff3] */}
             <div className="flex justify-center items-center w-full my-4">
               <div className="p-4 mx-auto text-white rounded-2xl bg-[#477a40] text-2xl font-normal w-72 text-center hover:cursor-pointer border-2 border-transparent hover:bg-white hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 shadow-2xl backdrop-blur-sm">
-                Request a Quote
+                <Link href="/quote">Request a Quote</Link>
               </div>
             </div>
 
@@ -151,3 +151,5 @@ export default function Home() {
 // add animation to hamburger menu click
 
 // FIX DROPDOWN NOT WORKING  IT SHOULD DISPLAY INFTONT OF EVERYTHING
+
+// ADD easy slide to comments

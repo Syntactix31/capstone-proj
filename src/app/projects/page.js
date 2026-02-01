@@ -2,6 +2,8 @@
 import { useState } from "react";
 import Image from "next/image";
 
+import NavBar from "../components/Navbar";
+
 const images = [
   "/projects/0ca9cee4-984b-4379-9e97-339140fcc257.JPG",
   "/projects/2e084da0-0d96-44f0-a943-3f9080bd1191.JPG",
@@ -79,7 +81,10 @@ export default function ProjectsPage() {
 
 
   return (
-    <div className="projectsPage">
+    <>
+    <NavBar />
+    
+    <div className="projectsPage bg-white dark:bg-white">
       <section className="heroWrap">
         <div className="heroBox">
           <h1>
@@ -124,5 +129,7 @@ export default function ProjectsPage() {
 
 
     </div>
+    
+    </>
   );
 }
