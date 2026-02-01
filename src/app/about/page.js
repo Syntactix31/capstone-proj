@@ -36,6 +36,10 @@ export default function About() {
               </h2>
 
               <p className="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600">
+                Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.<br/><br/>
+
+                Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.<br/><br/>
+
                 Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.
               </p>
             </div>
@@ -44,7 +48,8 @@ export default function About() {
 
         {/* Team Section*/}
         <section className="py-10 px-6 max-w-6xl mx-auto">
-          <h2 className="text-5xl md:text-6xl font-extrabold text-[#477A40] text-center mb-16">
+          {/* Maybe change this to black text with green underline for consistency */}
+          <h2 className="text-5xl md:text-6xl font-extrabold text-center mb-16 border-b-2 p-2 text-[#477A40] border-black w-150 mx-auto">
             Meet the Team
           </h2>
 

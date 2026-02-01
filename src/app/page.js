@@ -153,3 +153,11 @@ export default function Home() {
 // FIX DROPDOWN NOT WORKING  IT SHOULD DISPLAY INFTONT OF EVERYTHING
 
 // ADD easy slide to comments
+
+// ADD wood grain background to team members page and ccomments section
+
+
+
+
+
+// About page: Maybe have text and paragraphing centered for clarity
