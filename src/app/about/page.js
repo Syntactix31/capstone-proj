@@ -7,16 +7,16 @@ export default function About() {
     <main className="bg-white flex flex-col min-h-screen">
       <NavBar />
 
-      <div className="flex-grow">
+      <div className="grow">
         
         {/* Top Team Image Placeholder */}
-        <section className="w-full h-64 md:h-[400px] bg-[#D3D3D3] border-b-8 border-[#477A40] flex items-center justify-center">
+        <section className="w-full h-64 md:h-100 bg-[#D3D3D3] border-b-8 border-[#477A40] flex items-center justify-center">
            <p className="text-gray-500 font-bold text-xl">Main Team Image</p>
         </section>
 
         {/* Mission Section */}
         <section className="max-w-6xl mx-auto py-16 px-4">
-          <div className="relative overflow-hidden rounded-xl border border-[#477a40]/20 bg-gradient-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
+          <div className="relative overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
             
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#477a40]/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-[#477a40]/10 blur-3xl" />
@@ -36,6 +36,10 @@ export default function About() {
               </h2>
 
               <p className="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600">
+                Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.<br/><br/>
+
+                Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.<br/><br/>
+
                 Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.
               </p>
             </div>
@@ -44,7 +48,8 @@ export default function About() {
 
         {/* Team Section*/}
         <section className="py-10 px-6 max-w-6xl mx-auto">
-          <h2 className="text-5xl md:text-6xl font-extrabold text-[#477A40] text-center mb-16">
+          {/* Maybe change this to black text with green underline for consistency */}
+          <h2 className="text-5xl md:text-6xl font-extrabold text-center mb-16 border-b-2 p-2 text-[#477A40] border-black w-150 mx-auto">
             Meet the Team
           </h2>
 
@@ -53,7 +58,7 @@ export default function About() {
               <div key={member} className="flex flex-col items-center group">
                 
                 {/* Photo Frame */}
-                <div className="w-full aspect-[3/4] bg-white border-4 border-[#477A40] rounded-3xl shadow-xl overflow-hidden flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                <div className="w-full aspect-3/4 bg-white border-4 border-[#477A40] rounded-3xl shadow-xl overflow-hidden flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
                    <span className="text-gray-400 font-bold italic">Team Member Photo</span>
                 </div>
                 
