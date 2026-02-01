@@ -51,7 +51,7 @@ export default function NavBar () {
                 <li><Link href="/contact" className="hover:opacity-60">Contact</Link></li>
               </ul>
 
-              <div className="p-2 hover:opacity-50 flex flex-col gap-2" onClick={handleNavClick}>
+              <div className="p-2 hover:opacity-50 hover:cursor-pointer flex flex-col gap-2" onClick={handleNavClick}>
                 <hr className="w-10 "/>
                 <hr className="w-10 "/>
                 <hr className="w-10 "/>
