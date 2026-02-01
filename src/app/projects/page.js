@@ -3,6 +3,7 @@ import { useState } from "react";
 import Image from "next/image";
 
 import NavBar from "../components/Navbar";
+import Footer from "../components/Footer.js";
 
 const images = [
   "/projects/0ca9cee4-984b-4379-9e97-339140fcc257.JPG",
@@ -129,6 +130,8 @@ export default function ProjectsPage() {
 
 
     </div>
+
+    <Footer />
     
     </>
   );
