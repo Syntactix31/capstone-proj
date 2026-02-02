@@ -271,6 +271,24 @@ html {
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out;
 }
+/* End of drop down styles */
+
+/* Comments carousel animations for the sliding tests */
+@keyframes slide-in-left {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.5s ease-out forwards;
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.5s ease-out forwards;
+}
 
 
 
