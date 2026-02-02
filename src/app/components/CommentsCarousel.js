@@ -46,18 +46,18 @@ export default function CommentCarousel() {
 
   return (
     <div className="relative flex flex-wrap justify-center w-full max-w-5xl mx-auto mt-16 px-4">
-      <h2 className="text-3xl font-extrabold text-center mb-12 border-b-2 p-2 border-[#477a40] inline-block mx-auto">
+      <h2 className="text-3xl font-extrabold text-center border-b-2 p-2 border-[#477a40] inline-block mx-auto">
         What Our Clients Say
       </h2>
 
-      <div className="flex items-center justify-center gap-6">
+      <div className="relative flex items-center justify-center gap-6 h-63">
         <Bubble data={getItem(-1)} faded />
         <Bubble data={getItem(0)} key={`focused-${shimmerKey}`} focused />
         <Bubble data={getItem(1)} faded />
       </div>
 
       {/* Controls */}
-      <div className="flex justify-center gap-6 mt-8">
+      <div className="flex justify-center gap-6">
         <button
           onClick={prev}
           className="px-4 py-2 rounded-full border border-[#477a40] text-[#477a40] hover:bg-[#477a40] hover:text-white transition active:scale-95 hover:cursor-pointer"
@@ -91,16 +91,17 @@ function Bubble({ data, focused, faded }) {
   );
 }
 
+// h-35
+//  mt-2
+// Add slide animation from comments out of focused to middle comment in focus
+
 // ${focused ? "more-shimmer" : ""}
 
 
 
+// IMPORTANT NOTE: WITH GOOGLE REVIEW API HAVE THE COMMENTS BE LIMITED TO 3-4 LINES SO IT WILL NOT DEFORM THE FLEX-BOX HEIGHT
 
 
-
-
-
-// Moving elements from review bubble size potential fix
 
 
 /**
