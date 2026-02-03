@@ -22,7 +22,9 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
 
 // Check to see why shadow on drop down is not working it has a weird bevel on the left, right, and bottom sides
 
+// DROP DOWN FOR MOBILE SHOULD FIT FULLSCREEN AND ANIMATE FROM TOP DOWN
 
+// DROP DOWN FOR MEDIUM VIEWPORTS AND SMALLER SHOULD INCLUDE THE ABOUT SERVICES AND CONTACT PAGES
 
 
 
