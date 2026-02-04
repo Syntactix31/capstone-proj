@@ -86,13 +86,18 @@ export default function ProjectsPage() {
     <NavBar />
     
     <div className="bg-white dark:bg-white text-black dark:text-black">
-      <section className="heroWrap">
-        <div className="heroBox">
-          <h1>
-            A Collection Of Our <br /> Finest Work.
-          </h1>
+        <div className="w-full mx-auto max-w-7xl px-4">
+          <section className="relative mt-10 overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#2f5a29]/15 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
+            <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#2f5a29]/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-[#477a40]/10 blur-3xl" />
+
+            <div className="relative">
+              <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-center text-gray-900 sm:text-5xl">
+                A Collection Of Our <br /> Finest Work.
+              </h1>
+            </div>
+          </section>
         </div>
-      </section>
 
       <section className="projectsSection">
 
