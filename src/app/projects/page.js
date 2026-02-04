@@ -4,38 +4,59 @@ import Image from "next/image";
 import NavBar from "../components/Navbar.js";
 import Footer from "../components/Footer.js";
 
-
-
+// Media items: type = "image" | "video", src = file path, poster = video poster image
 const media = [
-  { type: "image", src: "/projects/0ca9cee4-984b-4379-9e97-339140fcc257.JPG" },
-  { type: "image", src: "/projects/2e084da0-0d96-44f0-a943-3f9080bd1191.JPG" },
-  { type: "image", src: "/projects/9a8bb317-ee87-4071-bcd1-9d7ac9690ccc.JPG" },
-  { type: "image", src: "/projects/9e2d7e4d-d537-4324-8291-a7169bd60fe9.JPG" },
-  { type: "video", src: "/projects/test2.mp4", poster: "/projects/test2.webp" },
-  { type: "video", src: "/projects/test.mp4", poster: "/projects/test.jpg" },
-  { type: "image", src: "/projects/84c75c6b-235f-4ed9-811f-9e8b2c601b90.JPG" },
-  { type: "image", src: "/projects/129d5c82-ea89-4650-b3a6-a40563e53dda.JPG" },
-  { type: "image", src: "/projects/287a6cb6-1d45-4f5b-8a47-d50d2f87a58b.JPG" },
-  { type: "image", src: "/projects/590baa48-c0b6-43b4-8f03-1abf3a710295.JPG" },
-  { type: "image", src: "/projects/881a60f4-b7f6-4fea-a8ad-667abcead1e0.JPG" },
-  { type: "image", src: "/projects/6124ded5-f2e1-49de-b1dd-8c593cd53aaf.JPG" },
+  { type: "video", src: "/projects/Vid1.mp4", poster: "/projects/Post1.JPG" },
+  { type: "video", src: "/projects/Vid2.mp4", poster: "/projects/Post2.JPG" },
+  { type: "video", src: "/projects/Vid3.mp4", poster: "/projects/Post3.JPG" },
+  { type: "video", src: "/projects/Vid4.mp4", poster: "/projects/Post4.JPG" },
+  { type: "image", src: "/projects/Img18.JPG" },
+  { type: "image", src: "/projects/Img2.JPG" },
+  { type: "image", src: "/projects/Img3.JPG" },
+  { type: "image", src: "/projects/Img4.JPG" },
+  { type: "image", src: "/projects/Img11.JPG" },
+  { type: "image", src: "/projects/Img6.JPG" },
+  { type: "image", src: "/projects/Img7.JPG" },
+  { type: "image", src: "/projects/Img8.JPG" },
+  { type: "image", src: "/projects/Img12.JPG" },
+  { type: "image", src: "/projects/Img10.JPG" },
+  { type: "image", src: "/projects/Img5.JPG" },
+  { type: "image", src: "/projects/Img9.JPG" },
+  { type: "image", src: "/projects/Img13.JPG" },
+  { type: "image", src: "/projects/Img14.JPG" },
+  { type: "image", src: "/projects/Img15.JPG" },
+  { type: "image", src: "/projects/Img19.JPG" },
+  { type: "image", src: "/projects/Img17.JPG" },
+  { type: "image", src: "/projects/Img1.JPG" },
+  { type: "image", src: "/projects/Img16.JPG" }
 ];
 
-// 12 “Figma slots” using 12-col grid.
+// 23 “Figma slots” using 12-col grid.
 // Each item = { c: columnSpan, r: rowSpan }
 const layout = [
-  { c: 3, r: 7 }, // tall left
-  { c: 6, r: 4 }, // big top center
-  { c: 3, r: 7 }, // tall right
-  { c: 6, r: 3 }, // mid center
-  { c: 6, r: 3 }, // bottom center
+  { c: 4, r: 6 }, 
+  { c: 4, r: 3 }, 
+  { c: 4, r: 6 }, 
+  { c: 4, r: 3 }, 
+  { c: 6, r: 3 }, 
   { c: 6, r: 3 },
   { c: 4, r: 3 },
   { c: 4, r: 3 },
   { c: 4, r: 3 },
   { c: 6, r: 3 },
   { c: 6, r: 3 },
-  { c: 12, r: 3 }
+  { c: 4, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 },
+  { c: 6, r: 3 },
+  { c: 6, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 },
+  { c: 12, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 }
 ];
 
 function Tile({ src, type, poster, span, onClick, priority }) {
@@ -58,29 +79,36 @@ function Tile({ src, type, poster, span, onClick, priority }) {
         priority={priority}
         quality={75}
         style={{ objectFit: "cover" }}
-        sizes="(max-width: 900px) 100vw, 33vw"
+        sizes="(max-width: 520px) 100vw, (max-width: 900px) 50vw, 33vw"
       />
       ) : (
-      <video
-        muted
-          loop
-          playsInline
-          preload="metadata"
-          poster={poster}
-          className="w-full h-full object-cover"
-          onMouseEnter={(e) => {
-            const v = e.currentTarget;
-            if (v.paused) v.play().catch(() => {});
-          }}
-          onMouseLeave={(e) => {
-            const v = e.currentTarget;
-            v.pause();
-            v.currentTime = 0;
-            v.load();
-          }}
-        >
-          <source src={src} type="video/mp4" />
-        </video>
+        <div className="videoTile">
+          <video
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster={poster}
+            className="absolute inset-0 w-full h-full object-cover"
+            onMouseEnter={(e) => {
+              const v = e.currentTarget;
+              if (v.paused) v.play().catch(() => {});
+            }}
+            onMouseLeave={(e) => {
+              const v = e.currentTarget;
+              v.pause();
+              v.currentTime = 0;
+              v.load();
+            }}
+          >
+            <source src={src} type="video/mp4" />
+          </video>
+
+          <div className="videoOverlay" aria-hidden="true">
+            <div className="playBadge">▶</div>
+            <div className="videoLabel">Video</div>
+          </div>
+        </div>
       )}
     </button>
   );
@@ -88,7 +116,7 @@ function Tile({ src, type, poster, span, onClick, priority }) {
 
 export default function ProjectsPage() {
   const [activeIndex, setActiveIndex] = useState(null);
-  const visibleMedia = media.slice(0, 12);
+  const visibleMedia = media.slice(0, 23);
   const closeModal = () => setActiveIndex(null);
 
   const showPrev = () => {
@@ -137,18 +165,20 @@ export default function ProjectsPage() {
         </div>
       </section>
       <section className="projectsSection">
-        <div className="collage">
-          {visibleMedia.slice(0, 12).map((item, i) => (
-            <Tile
-              key={i}
-              src={item.src}
-              type={item.type}
-              poster={item.poster}
-              span={layout[i] || { c: 4, r: 3 }}
-              onClick={() => setActiveIndex(i)}
-              priority={i < 2} // helps the Next.js LCP warning 
-            />
-          ))}
+        <div className="collageWrap">
+          <div className="collage">
+            {visibleMedia.slice(0, 23).map((item, i) => (
+              <Tile
+                key={i}
+                src={item.src}
+                type={item.type}
+                poster={item.poster}
+                span={layout[i] || { c: 4, r: 3 }}
+                onClick={() => setActiveIndex(i)}
+                priority={i < 2} // helps the Next.js LCP warning 
+              />
+            ))}
+          </div>
         </div>
       </section>
             {/* ===== Modal / Lightbox ===== */}
@@ -178,24 +208,24 @@ export default function ProjectsPage() {
               ‹
             </button>
 
-            <div className="lightboxImageWrap" key={visibleMedia[activeIndex].src}>
+            <div className="lightboxMedia" key={visibleMedia[activeIndex].src}>
               {visibleMedia[activeIndex].type === "image" ? (
                 <Image
                   src={visibleMedia[activeIndex].src}
                   alt={`Project ${activeIndex + 1}`}
                   fill
                   quality={90}
-                  style={{ objectFit: "contain" }}
                   sizes="100vw"
                   priority
+                  style={{ objectFit: "cover" }}
                 />
               ) : (
                 <video
                   controls
                   autoPlay
                   playsInline
-                  className="w-full h-full object-contain bg-black"
                   poster={visibleMedia[activeIndex].poster}
+                  className="lightboxVideo"
                 >
                   <source src={visibleMedia[activeIndex].src} type="video/mp4" />
                 </video>
