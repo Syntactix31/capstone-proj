@@ -1,143 +1,254 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-
-import NavBar from "../components/Navbar";
+import NavBar from "../components/Navbar.js";
 import Footer from "../components/Footer.js";
 
-const images = [
-  "/projects/0ca9cee4-984b-4379-9e97-339140fcc257.JPG",
-  "/projects/2e084da0-0d96-44f0-a943-3f9080bd1191.JPG",
-  "/projects/9a8bb317-ee87-4071-bcd1-9d7ac9690ccc.JPG",
-  "/projects/9e2d7e4d-d537-4324-8291-a7169bd60fe9.JPG",
-  "/projects/43a2614c-3692-429f-bf0a-bcd1c4ee4ce6.JPG",
-  "/projects/53a7773d-92c1-47ee-a7cd-573065ba01eb.JPG",
-  "/projects/58ea80d9-b8e9-4949-b6ac-d91b39814301.JPG",
-  "/projects/84c75c6b-235f-4ed9-811f-9e8b2c601b90.JPG",
-  "/projects/129d5c82-ea89-4650-b3a6-a40563e53dda.JPG",
-  "/projects/287a6cb6-1d45-4f5b-8a47-d50d2f87a58b.JPG",
-  "/projects/590baa48-c0b6-43b4-8f03-1abf3a710295.JPG",
-  "/projects/881a60f4-b7f6-4fea-a8ad-667abcead1e0.JPG",
-  "/projects/6124ded5-f2e1-49de-b1dd-8c593cd53aaf.JPG"
+// Media items: type = "image" | "video", src = file path, poster = video poster image
+const media = [
+  { type: "video", src: "/projects/Vid1.mp4", poster: "/projects/Post1.JPG" },
+  { type: "video", src: "/projects/Vid2.mp4", poster: "/projects/Post2.JPG" },
+  { type: "video", src: "/projects/Vid3.mp4", poster: "/projects/Post3.JPG" },
+  { type: "video", src: "/projects/Vid4.mp4", poster: "/projects/Post4.JPG" },
+  { type: "image", src: "/projects/Img18.JPG" },
+  { type: "image", src: "/projects/Img2.JPG" },
+  { type: "image", src: "/projects/Img3.JPG" },
+  { type: "image", src: "/projects/Img4.JPG" },
+  { type: "image", src: "/projects/Img11.JPG" },
+  { type: "image", src: "/projects/Img6.JPG" },
+  { type: "image", src: "/projects/Img7.JPG" },
+  { type: "image", src: "/projects/Img8.JPG" },
+  { type: "image", src: "/projects/Img12.JPG" },
+  { type: "image", src: "/projects/Img10.JPG" },
+  { type: "image", src: "/projects/Img5.JPG" },
+  { type: "image", src: "/projects/Img9.JPG" },
+  { type: "image", src: "/projects/Img13.JPG" },
+  { type: "image", src: "/projects/Img14.JPG" },
+  { type: "image", src: "/projects/Img15.JPG" },
+  { type: "image", src: "/projects/Img19.JPG" },
+  { type: "image", src: "/projects/Img17.JPG" },
+  { type: "image", src: "/projects/Img1.JPG" },
+  { type: "image", src: "/projects/Img16.JPG" }
 ];
 
-// 13 “Figma slots” using 12-col grid.
+// 23 “Figma slots” using 12-col grid.
 // Each item = { c: columnSpan, r: rowSpan }
 const layout = [
-  { c: 3, r: 7 },  // tall left
-  { c: 6, r: 4 },  // big top center
-  { c: 3, r: 7 },  // tall right
-  { c: 6, r: 3 },  // mid center
-  { c: 6, r: 3 },  // bottom center
-
-  { c: 3, r: 3 },  // extra tiles (fill out like Figma’s extra slots)
-  { c: 3, r: 3 },
-  { c: 3, r: 3 },
-  { c: 3, r: 3 },
-
+  { c: 4, r: 6 }, 
+  { c: 4, r: 3 }, 
+  { c: 4, r: 6 }, 
+  { c: 4, r: 3 }, 
+  { c: 6, r: 3 }, 
+  { c: 6, r: 3 },
   { c: 4, r: 3 },
   { c: 4, r: 3 },
   { c: 4, r: 3 },
-
-  { c: 12, r: 4 }  // optional wide “final hero tile” at bottom
+  { c: 6, r: 3 },
+  { c: 6, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 },
+  { c: 6, r: 3 },
+  { c: 6, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 },
+  { c: 12, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 },
+  { c: 4, r: 3 }
 ];
 
-function Tile({ src, span, onClick }) {
+function Tile({ src, type, poster, span, onClick, priority }) {
   return (
-    <div
+    <button
+      type="button"
       className="tile relative overflow-hidden cursor-pointer transition-transform duration-500 hover:scale-105"
+      onClick={onClick}
       style={{
         gridColumn: `span ${span.c}`,
         gridRow: `span ${span.r}`
       }}
-      onClick={onClick}
+      aria-label="View project media"
     >
+      {type === "image" ? (
       <Image
         src={src}
         alt="Project image"
         fill
+        priority={priority}
+        quality={75}
         style={{ objectFit: "cover" }}
-        sizes="(max-width: 900px) 100vw, 33vw"
+        sizes="(max-width: 520px) 100vw, (max-width: 900px) 50vw, 33vw"
       />
-    </div>
+      ) : (
+        <div className="videoTile">
+          <video
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster={poster}
+            className="absolute inset-0 w-full h-full object-cover"
+            onMouseEnter={(e) => {
+              const v = e.currentTarget;
+              if (v.paused) v.play().catch(() => {});
+            }}
+            onMouseLeave={(e) => {
+              const v = e.currentTarget;
+              v.pause();
+              v.currentTime = 0;
+              v.load();
+            }}
+          >
+            <source src={src} type="video/mp4" />
+          </video>
+
+          <div className="videoOverlay" aria-hidden="true">
+            <div className="playBadge">▶</div>
+            <div className="videoLabel">Video</div>
+          </div>
+        </div>
+      )}
+    </button>
   );
 }
 
 export default function ProjectsPage() {
+  const [activeIndex, setActiveIndex] = useState(null);
+  const visibleMedia = media.slice(0, 23);
+  const closeModal = () => setActiveIndex(null);
 
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-
-  const openModal = (src) => {
-    setSelectedImage(src);
-    setShowModal(true);
+  const showPrev = () => {
+    setActiveIndex((prev) => {
+      if (prev === null) return prev;
+      return (prev - 1 + visibleMedia.length) % visibleMedia.length;
+    });
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setTimeout(() => setSelectedImage(null), 300);
-  }; 
+  const showNext = () => {
+    setActiveIndex((prev) => {
+      if (prev === null) return prev;
+      return (prev + 1) % visibleMedia.length;
+    });
+  };
 
+  // Keyboard controls while modal is open
+  useEffect(() => {
+    if (activeIndex === null) return;
 
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") closeModal();
+      if (e.key === "ArrowLeft") showPrev();
+      if (e.key === "ArrowRight") showNext();
+    };
 
-
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeIndex]);
+  
   return (
-    <>
-    <NavBar />
-    
-    <div className="bg-white dark:bg-white text-black dark:text-black">
-        <div className="w-full mx-auto max-w-7xl px-4">
-          <section className="relative mt-10 overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#2f5a29]/15 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
-            <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#2f5a29]/20 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-[#477a40]/10 blur-3xl" />
+    <div className="projectsPage">
+      <NavBar />
 
-            <div className="relative">
-              <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-center text-gray-900 sm:text-5xl">
-                A Collection Of Our <br /> Finest Work.
-              </h1>
-            </div>
-          </section>
-        </div>
+      <section className="w-full mx-auto max-w-6xl px-4 mt-10">
+        <div className="relative overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12">
 
-      <section className="projectsSection">
+          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#477a40]/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-[#477a40]/10 blur-3xl" />
 
-        <div className="collage">
-          {images.slice(0, 13).map((src, i) => (
-            <Tile key={i} src={src} span={layout[i] || { c: 4, r: 3 }} onClick={() => openModal(src)}/>
-          ))}
-        </div>
-      </section>
-
-      {showModal && selectedImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 transition-opacity animate-fadeIn" onClick={(e) => {
-            if (e.target === e.currentTarget) closeModal();
-          }}>
-          <div className="relative animate-zoomIn">
-            <span
-              className="absolute top-2 right-5 text-white text-4xl font-bold cursor-pointer hover:scale-110 transition-transform"
-              onClick={closeModal}
-            >
-              &times;
-            </span>
-            <Image
-              src={selectedImage}
-              alt="Preview"
-              width={0}
-              height={0}
-              sizes="100vw"
-              className="h-auto w-auto max-w-[95vw] max-h-[95vh] rounded-md object-contain"
-            />
+          <div className="relative text-center">
+            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
+              A Collection Of Our <br /> Finest Work.
+            </h1>
           </div>
         </div>
-      )}      
+      </section>
+      <section className="projectsSection">
+        <div className="collageWrap">
+          <div className="collage">
+            {visibleMedia.slice(0, 23).map((item, i) => (
+              <Tile
+                key={i}
+                src={item.src}
+                type={item.type}
+                poster={item.poster}
+                span={layout[i] || { c: 4, r: 3 }}
+                onClick={() => setActiveIndex(i)}
+                priority={i < 2} // helps the Next.js LCP warning 
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+            {/* ===== Modal / Lightbox ===== */}
+      {activeIndex !== null && (
+        <div
+          className="lightboxOverlay"
+          role="dialog"
+          aria-modal="true"
+          onClick={closeModal}
+        >
+          <div className="lightboxInner" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="lightboxClose"
+              onClick={closeModal}
+              aria-label="Close"
+            >
+              ✕
+            </button>
 
+            <button
+              type="button"
+              className="lightboxNav lightboxLeft"
+              onClick={showPrev}
+              aria-label="Previous"
+            >
+              ‹
+            </button>
 
+            <div className="lightboxMedia" key={visibleMedia[activeIndex].src}>
+              {visibleMedia[activeIndex].type === "image" ? (
+                <Image
+                  src={visibleMedia[activeIndex].src}
+                  alt={`Project ${activeIndex + 1}`}
+                  fill
+                  quality={90}
+                  sizes="100vw"
+                  priority
+                  style={{ objectFit: "cover" }}
+                />
+              ) : (
+                <video
+                  controls
+                  autoPlay
+                  playsInline
+                  poster={visibleMedia[activeIndex].poster}
+                  className="lightboxVideo"
+                >
+                  <source src={visibleMedia[activeIndex].src} type="video/mp4" />
+                </video>
+              )}
+            </div>
 
-
+            <button
+              type="button"
+              className="lightboxNav lightboxRight"
+              onClick={showNext}
+              aria-label="Next"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      )}
+      <Footer />
     </div>
-
-    <Footer />
-    
-    </>
   );
 }
+
+
+
+
+// test comment

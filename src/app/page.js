@@ -1,21 +1,17 @@
 import Link from "next/link";
 import Image from "next/image";
-
-import NavBar from "./components/Navbar.js";
-import Footer from "./components/Footer.js";
 import DropDownMenu from "./components/DropDownMenu.js";
-
 import CommentCarousel from "./components/CommentsCarousel.js";
 
 export default function Home() {
 
   const images = [
-  "/projects/0ca9cee4-984b-4379-9e97-339140fcc257.JPG",
-  "/projects/2e084da0-0d96-44f0-a943-3f9080bd1191.JPG",
-  "/projects/9a8bb317-ee87-4071-bcd1-9d7ac9690ccc.JPG",
-  "/projects/9e2d7e4d-d537-4324-8291-a7169bd60fe9.JPG",
-  "/projects/43a2614c-3692-429f-bf0a-bcd1c4ee4ce6.JPG",
-  "/projects/53a7773d-92c1-47ee-a7cd-573065ba01eb.JPG"
+  "/projects/Img5.JPG",
+  "/projects/Img1.JPG",
+  "/projects/Img2.JPG",
+  "/projects/Img4.JPG",
+  "/projects/Img3.JPG",
+  "/projects/Img6.JPG"
 ];
 
 
@@ -24,10 +20,6 @@ export default function Home() {
   return (
     
     <div className="overflow-hidden bg-white">
-        <header className="flex w-full bg-white">
-          <NavBar />         
-        </header> 
-
          {/* HERE */}
         {/* <DropDownMenu /> */}
 
@@ -159,9 +151,6 @@ export default function Home() {
 
 
       </main>
-
-      <Footer />
-
     </div>
   );
 }

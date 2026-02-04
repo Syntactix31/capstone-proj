@@ -65,13 +65,12 @@ body {
              0.3em 0.3em 1em rgba(0,0,0,0.3);
 }
 
-
-
 /* Collage grid */
 .collage {
   width: min(1100px, 92%);
   margin: 0 auto;
   display: grid;
+  grid-auto-flow: dense;
   grid-template-columns: repeat(12, 1fr);
   grid-auto-rows: 80px;           /* controls "unit" height */
   gap: 22px;
@@ -87,36 +86,93 @@ body {
   border-radius: 10px;
 }
 
+.videoTile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.videoTile video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  object-fit: cover; /* ✅ stops the “zoomed in” crop */
+}
+
+.videoOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.55));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.playBadge {
+  font-size: 46px;
+  color: white;
+  margin-bottom: 8px;
+  opacity: 0.95;
+}
+
+.videoLabel {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: white;
+  font-weight: 600;
+}
+
+.tile:hover .videoOverlay {
+  opacity: 0;
+}
+
 /* Responsive: collapse to 6 columns */
 @media (max-width: 900px) {
   .collage {
-    grid-template-columns: repeat(6, 1fr);
-    grid-auto-rows: 80px;
-    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    grid-auto-rows: 220px;
+    gap: 14px;
+  }
+
+  .collage .tile {
+  grid-column: span 1 !important;
+  grid-row: span 1 !important;
   }
 }
 
 /* Responsive: collapse to 2 columns */
 @media (max-width: 520px) {
   .collage {
-    grid-template-columns: repeat(2, 1fr);
-    grid-auto-rows: 90px;
+    grid-template-columns: 1fr;
+    grid-auto-rows: 240px;
     gap: 12px;
+  }
+
+  .collage .tile {
+    grid-column: span 1 !important;
+    grid-row: span 1 !important;
   }
 }
 
 @keyframes zoomIn {
   from {
-  transform: scale(0.6);
+    transform: scale(0.6);
   }
   to {
-  transform: scale(1);
+    transform: scale(1);
   }
 }
 
 .animate-zoomIn {
   animation: zoomIn 0.4s ease forwards;
-  }
+}
 
 @keyframes fadeIn {
   from {
@@ -130,8 +186,6 @@ body {
 .animate-fadeIn {
   animation: fadeIn 0.3s ease forwards;
 }
-
-
 
 /* Transparency for Homepage Gallery Images  */
 .transparent-gradient {
@@ -152,52 +206,28 @@ body {
   mask-image: linear-gradient(black, transparent);
 }
 
-
 /* Button shadow on hover */
 .button-shadow:hover {
-  box-shadow:0 8px 16px 0 rgba(0,0,0,0.6)
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.6);
 }
 
-
 /* Annoying ass gallery images that wont format */
-
 .flex-container {
   display: flex;
-  flex-wrap: wrap;              
-  gap: 16px;                    
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .item {
-  flex: 0 0 calc(33.333% - 16px); 
+  flex: 0 0 calc(33.333% - 16px);
 }
-
 
 html {
   scroll-behavior: smooth;
   color-scheme: light-only;
 }
 
-
-/* Experimenting with Shimmer effect for reviews */
-
-/* .more-shimmer {
-  mask: linear-gradient(-60deg, #000 30%, #0005, #000 70%) right/350% 100%;
-  animation: shimmer 2.5s infinite;
-} */
-
-/* .more-shimmer {
-  mask: linear-gradient(-60deg, #000 30%, #0005, #000 70%) right/300% 100%;
-  animation: shimmer 1.2s ease-in-out;
-}
-
-
-@keyframes shimmer {
-  100% {
-    mask-position: left
-  }
-}
- */
-
+/* Shimmer effect for reviews */
 .more-shimmer {
   mask: linear-gradient(-60deg, #000 30%, #0005, #000 70%) right/300% 100%;
   animation: shimmer 1.2s ease-in-out 1.1s backwards;
@@ -218,18 +248,106 @@ html {
 }
 
 .top-outline::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
-  top: -5;
+  top: -5px;
   height: 10px;
   background-color: #31270c;
   transform: translateY(-50%);
   z-index: 10;
 }
 
+/* ===== Lightbox (click to expand) ===== */
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 9999;
+}
 
+.lightboxInner {
+  position: relative;
+  width: min(1100px, 95vw);
+  max-height: 85vh;
+  height: 85vh;             /* ✅ give the box a real height */
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(20, 20, 20, 0.6);
+  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.45);
+}
+
+.lightboxMedia {
+  position: absolute;
+  inset: 0;
+}
+
+.lightboxMedia :is(img, video) {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;        /* ✅ fills (cropping is expected for portrait) */
+}
+
+.lightboxVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: black;
+}
+
+
+.lightboxClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.lightboxNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  border: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  font-size: 34px;
+  line-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+.lightboxLeft {
+  left: 12px;
+}
+
+.lightboxRight {
+  right: 12px;
+}
+
+.lightboxClose:hover,
+.lightboxNav:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+  
 
 /* Drop down menu slide in animation and background dim */
 @keyframes slideIn {
@@ -369,4 +487,4 @@ html {
 }
 
 
-
+/*  Accepted both merge changes */
