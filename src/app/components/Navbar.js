@@ -1,31 +1,65 @@
 "use client"
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import DropDownMenu from "./DropDownMenu.js";
 
 export default function NavBar () {
 
   const [navClicked, setNavClicked] = useState(false);
-
-  if (setNavClicked === true) {
-    // show drop down menu
-
-  }
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
   const handleNavClick = () => {
-    setNavClicked(!navClicked);
+    if (!navClicked) {
+      setNavClicked(true);
+      setIsAnimatingOut(false);
+
+    } else {
+      setIsAnimatingOut(true);
+
+    }
   }
 
   const closeMenu = () => {
-    setNavClicked(false);
+    setIsAnimatingOut(true);
   };
 
+  // timeout delay should be 300 to match animation duration but ti glitches due to rendering issues n browser limitations used 280
+  useEffect(() => {
+    if (isAnimatingOut) {
+      const timer = setTimeout(() => {
+        setNavClicked(false);
+        setIsAnimatingOut(false);
+      },280);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isAnimatingOut]);
+
+  useEffect(() => {
+    if (navClicked && !isAnimatingOut) {
+      document.body.style.overflow = 'hidden';
+
+    } else {
+      document.body.style.overflow = 'unset';
+
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [navClicked, isAnimatingOut]);
 
 
   return (
       <>
+        {/* Find a good bg-black/# thats not too dark or light for background dim */}
+        {(navClicked || isAnimatingOut) && (
+          <div 
+            className="fixed inset-0 bg-black/35 z-998 animate-fadeIn pointer-events-auto"
+            onClick={closeMenu}
+          />
+        )}
           <nav className="bg-[#477a40] h-30 w-full p-4 flex text-white items-center justify-between">
 
             <div className="flex gap-5 items-center">
@@ -51,7 +85,7 @@ export default function NavBar () {
                 <li><Link href="/contact" className="hover:opacity-60">Contact</Link></li>
               </ul>
 
-              <div className="p-2 hover:opacity-50 flex flex-col gap-2" onClick={handleNavClick}>
+              <div className="relative z-10 p-2 hover:opacity-50 hover:cursor-pointer flex flex-col gap-2" onClick={handleNavClick}>
                 <hr className="w-10 "/>
                 <hr className="w-10 "/>
                 <hr className="w-10 "/>
@@ -62,9 +96,13 @@ export default function NavBar () {
           </nav>
           
           {/* NOTE: Cant render here! */}
-          {/* {navClicked && ( <DropDownMenu /> )} */}
+          {(navClicked || isAnimatingOut) && (<DropDownMenu onClose={closeMenu} isAnimatingOut={isAnimatingOut} />) }
       </>
 
   );
 }
+
+
+
+
 
