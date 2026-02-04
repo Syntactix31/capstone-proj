@@ -22,6 +22,7 @@ body {
 
 .projectsPage {
   width: 100%;
+  /* removed bottom padding 80px */
 }
 
 /* Hero section */
