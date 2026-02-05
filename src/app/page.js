@@ -38,7 +38,7 @@ export default function Home() {
 
 
         <div className="w-full mx-auto max-w-8xl px-4">
-          <section className="max-w-350 relative mt-10 overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12 mx-auto flex gap-x-25 gap-y-0 scale-85 md:scale-100">
+          <section className="max-w-350 relative mt-10 overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12 mx-auto flex gap-x-25 gap-y-0">
             <div className="flex  flex-col">
               <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#477a40]/20 blur-3xl" />
               <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded- bg-[#477a40]/10 blur-3xl" />
@@ -57,7 +57,7 @@ export default function Home() {
                   communication, and results that last.
                 </h2>
   
-                <p className="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600">
+                <p className="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600 hidden md:block">
                   Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.
                 </p>
               </div>  
@@ -109,7 +109,7 @@ export default function Home() {
 
             {/* Top Left */}
             <div className="relative rounded-xl overflow-hidden shadow-lg shrink-0 w-80 h-80">
-              <Image src={images[4]} alt="Project 5" fill sizes="400px" className="object-cover hover:brightness-110 transition-all" />
+              <Image src={images[4]} alt="Project 5" fill sizes="400px" className="object-cover hover:brightness-110 transition-all" loading="eager" />
             </div>
 
             {/* Top Center */}
