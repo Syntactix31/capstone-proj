@@ -78,8 +78,9 @@ export default function NavBar () {
 
             </div>
 
+            {/* Prefer the thinner font on static nav items (semibold should be used) */}
             <div className="flex justify-center items-center lg:gap-20 md:mr-10 lg:mr-10">
-              <ul className="hidden lg:flex gap-10 ml-20 ">
+              <ul className="hidden lg:flex gap-10 ml-20 font-medium">
                 <li><Link href="/about" className="hover:opacity-60">About</Link></li>
                 <li><Link href="/services" className="hover:opacity-60">Services</Link></li>
                 <li><Link href="/contact" className="hover:opacity-60">Contact</Link></li>

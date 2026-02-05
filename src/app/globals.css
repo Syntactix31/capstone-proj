@@ -411,7 +411,7 @@ html {
 
 /* Main page hero card primary services image masks */
 .fence-mask {
-  background-image: url(/projects/53a7773d-92c1-47ee-a7cd-573065ba01eb.JPG);
+  background-image: url(/projects/Img6.JPG);
   background-size: cover;
   background-position: center;
   -webkit-background-clip: text;
@@ -420,7 +420,7 @@ html {
 }
 
 .deck-mask {
-  background-image: url(/projects/0ca9cee4-984b-4379-9e97-339140fcc257.JPG);
+  background-image: url(/projects/Img1.JPG);
   background-size: cover;
   background-position: center;
   -webkit-background-clip: text;
@@ -428,8 +428,9 @@ html {
   -webkit-text-fill-color: transparent;
 }
 
+
 .pergola-mask {
-  background-image: url(/projects/887998b6-a7a1-4d38-891a-99980e54076c.JPG);
+  background-image: url(/projects/Img8.JPG);
   background-size: cover;
   background-position: center;
   -webkit-background-clip: text;
@@ -438,7 +439,7 @@ html {
 }
 
 .sod-mask {
-  background-image: url(/projects/e7512cd2-3bee-4635-b146-b76684d9c021.JPG);
+  background-image: url(/projects/Img19.JPG);
   background-size: cover;
   background-position: 50% 100%;
   -webkit-background-clip: text;
@@ -447,7 +448,7 @@ html {
 }
 
 .trees-mask {
-  background-image: url(/projects/887998b6-a7a1-4d38-891a-99980e54076c.JPG);
+  background-image: url(/projects/Img16.JPG);
   background-size: cover;
   -webkit-background-clip: text;
   background-position: top;
@@ -457,34 +458,95 @@ html {
 
 /* Parent div backgrounds for transition thing */
 .fence-bg {
-  background-image: url(/projects/53a7773d-92c1-47ee-a7cd-573065ba01eb.JPG);
+  background-image: url(/projects/Img6.JPG);
   background-size: cover;
   background-position: center;
 }
 
 .deck-bg {
-  background-image: url(/projects/0ca9cee4-984b-4379-9e97-339140fcc257.JPG);
+  background-image: url(/projects/Img1.JPG);
   background-size: cover;
   background-position: center;
 }
 
 .pergola-bg {
-  background-image: url(/projects/887998b6-a7a1-4d38-891a-99980e54076c.JPG);
+  background-image: url(/projects/Img8.JPG);
   background-size: cover;
   background-position: center;
 }
 
 .sod-bg {
-  background-image: url(/projects/e7512cd2-3bee-4635-b146-b76684d9c021.JPG);
+  background-image: url(/projects/Img19.JPG);
   background-size: cover;
   background-position: 50% 100%;
 }
 
 .trees-bg {
-  background-image: url(/projects/887998b6-a7a1-4d38-891a-99980e54076c.JPG);
+  background-image: url(/projects/Img16.JPG);
   background-size: cover;
   background-position: top;
 }
 
 
 /*  Accepted both merge changes */
+
+
+
+/* Shared styles for all cards */
+.fence-bg, .deck-bg, .pergola-bg, .sod-bg, .trees-bg {
+  position: relative;
+  background-size: cover;
+  background-position: center; /* Adjust per image as needed */
+  transition: transform 0.3s ease; /* Optional scale */
+  overflow: hidden;
+}
+
+.sod-bg { background-position: 50% 100%; }
+.trees-bg { background-position: top; }
+
+/* White overlay pseudo-element - starts visible, fades out on hover */
+.fence-bg::before, .deck-bg::before, .pergola-bg::before,
+.sod-bg::before, .trees-bg::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: white;
+  z-index: 1;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.fence-bg:hover::before, .deck-bg:hover::before, .pergola-bg:hover::before,
+.sod-bg:hover::before, .trees-bg:hover::before {
+  opacity: 0;
+}
+
+/* Text masks - transparent initially, activate on hover */
+.fence-mask, .deck-mask, .pergola-mask, .sod-mask, .trees-mask {
+  position: relative;
+  z-index: 2;
+  color: black; /* Solid black initially over white */
+  transition: all 0.6s ease;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.fence-bg:hover .fence-mask,
+.deck-bg:hover .deck-mask,
+.pergola-bg:hover .pergola-mask,
+.sod-bg:hover .sod-mask,
+.trees-bg:hover .trees-mask {
+  background-image: inherit; /* Inherit parent's image */
+  -webkit-text-fill-color: white;
+  color: white; /* Fallback */
+}
+
+/* Hover scale */
+.fence-bg:hover, .deck-bg:hover, .pergola-bg:hover,
+.sod-bg:hover, .trees-bg:hover {
+  transform: scale(1.02);
+}
+
+/* FML TS TOOK TOO LONG */
+
+

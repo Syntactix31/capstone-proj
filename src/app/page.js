@@ -67,31 +67,34 @@ export default function Home() {
           
             </div>
 
-            <div className="justify-center gap-x-10 items-center w-130 z-200 hidden lg:flex lg:flex-wrap *:hover:scale-102 *:text-center *:items-center *:align-center *:flex *:justify-center *:text-4xl *:font-black *:cursor-default *:transition-all">
-              <div className="h-25 w-60 bg- rounded-2xl shadow-xl fence-bg">
-                <p className="fence-mask">Fence</p>
+            <div className="flex flex-col gap-10 items-center">
+              <h3 className="w-85 text-center p-2 text-3xl font-extrabold border-b-2 border-[#477a40] text-black">What We Offer</h3>
+              <div className="justify-center gap-y-5 gap-x-10 items-center w-130 z-200 hidden lg:flex lg:flex-wrap *:hover:scale-102 *:text-center *:items-center *:align-center *:flex *:justify-center *:text-4xl *:font-black *:cursor-pointer *:transition-all">
+                <div className="h-25 w-60 rounded-2xl shadow-xl fence-bg">
+                  <p className="fence-mask">Fence</p>
+
+                </div>
+                <div className="h-25 w-60 rounded-2xl shadow-xl deck-bg">
+                  <p className="deck-mask">Deck & Railing</p>
+
+                </div>     
+                <div className="h-25 w-60 rounded-2xl shadow-xl pergola-bg">
+                  <p className="pergola-mask ">Pergola</p>
+
+                </div>
+                <div className="h-25 w-60 rounded-2xl shadow-xl sod-bg">
+                  <p className="sod-mask text-transparent">Sod</p>
+
+                </div> 
+
+                <div className="h-25 w-60 rounded-2xl shadow-xl trees-bg">
+                  <p className="trees-mask text-transparent">Trees & Shrubs</p>
+
+                </div>           
+                
+
 
               </div>
-              <div className="h-25 w-60 bg-white rounded-2xl shadow-xl">
-                <p className="deck-mask text-transparent">Deck & Railing</p>
-
-              </div>     
-              <div className="h-25 w-60 bg-white rounded-2xl shadow-xl">
-                <p className="pergola-mask text-transparent">Pergola</p>
-
-              </div>
-              <div className="h-25 w-60 bg-white rounded-2xl shadow-xl ">
-                <p className="sod-mask text-transparent">Sod</p>
-
-              </div> 
-
-              <div className="h-25 w-60 bg-white rounded-2xl shadow-xl">
-                <p className="trees-mask text-transparent">Trees & Shrubs</p>
-
-              </div>           
-              
-
-
             </div>
           </section>
         </div>
