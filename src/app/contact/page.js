@@ -69,7 +69,7 @@ export default function Contact() {
           <p className="text-3xl">(587) 438-6672</p>
 
           <div className="bg-white border rounded-3xl p-6">
-            <p className="text-lg sm:text-2xl">
+            <p className="text-sm sm:text-2xl">
               landscapecraftsmen@yahoo.com
             </p>
           </div>

@@ -49,9 +49,10 @@ export default function About() {
         {/* Team Section*/}
         <section className="py-10 px-6 max-w-6xl mx-auto">
           {/* Maybe change this to black text with green underline for consistency */}
-          <h2 className="text-5xl md:text-6xl font-extrabold text-center mb-16 border-b-2 p-2 text- border-[#477A40] w-150 mx-auto">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-center mb-16 border-b-2 p-2 border-[#477A40] w-full max-w-2xl mx-auto">
             Meet the Team
           </h2>
+
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
             {[1, 2, 3, 4].map((member) => (
