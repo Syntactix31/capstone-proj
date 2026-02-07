@@ -51,13 +51,20 @@ export default function About() {
           </div>
         </section>
 
-        {/* Team Section */}
-        <section className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
-          <h2 className="mx-auto mb-12 max-w-fit border-b-2 border-[#477A40] pb-4 text-center text-3xl font-extrabold sm:text-4xl md:text-6xl">
+
+        {/* Team Section*/}
+        <section className="py-10 px-6 max-w-6xl mx-auto">
+          {/* Maybe change this to black text with green underline for consistency */}
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-center mb-16 border-b-2 p-2 border-[#477A40] w-full max-w-2xl mx-auto">
             Meet the Team
           </h2>
 
+
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12"> */}
+
+
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 md:gap-12">
+
             {[1, 2, 3, 4].map((member) => (
               <div key={member} className="flex flex-col items-center">
                 {/* Photo Frame*/}

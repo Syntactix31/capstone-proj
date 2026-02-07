@@ -210,3 +210,4 @@ export default function Home() {
 
 
 // About page: Maybe have text and paragraphing centered for clarity
+//fixing merge
