@@ -58,24 +58,6 @@ export default function Services() {
       </header>
 
       <main className="flex min-h-screen w-full flex-col bg-white">
-        {/* HERO */}
-        <div className="w-full mx-auto max-w-6xl px-4">
-          <section className="relative mt-10 overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#2f5a29]/15 via-white to-white p-8 shadow-lg md:p-12 mx-auto">
-            <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#2f5a29]/20 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-[#477a40]/10 blur-3xl" />
-
-            <div className="relative">
-              <p className="inline-flex items-center gap-2 rounded-full bg-[#477a40]/10 px-3 py-1 text-sm font-semibold text-[#2f5a29]">
-                • Select a service
-              </p>
-
-              <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
-                Our Services
-              </h1>
-            </div>
-          </section>
-        </div>
-
         {/* SERVICES GRID */}
         <div className="w-full mx-auto max-w-6xl px-4 mt-12">
           <h2 className="mx-auto w-fit text-center p-2 text-3xl font-extrabold border-b-2 border-[#477a40] text-black">
@@ -159,7 +141,7 @@ export default function Services() {
 
           <div className="flex gap-3">
             <Link
-              href={selectedSlug ? `/book?service=${selectedSlug}` : "/book"}
+              href={selectedSlug ? `/book/time?service=${selectedSlug}` : "/book"}
               className="rounded-2xl bg-[#477a40] px-5 py-3 text-sm font-bold text-white hover:cursor-pointer border-2 border-transparent hover:bg-[#f3fff3] hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl"
             >
               Book Now
