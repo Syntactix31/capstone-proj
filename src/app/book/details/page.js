@@ -30,6 +30,7 @@ export default function DetailsPage() {
     firstName: "",
     lastName: "",
     email: "",
+    address: "",
     notes: "",
   });
 
@@ -132,6 +133,15 @@ export default function DetailsPage() {
                 send updates.
               </p>
             </div>
+
+            <div className="step-card">
+              <div className="step-card-header">
+                <h2 className="step-card-title">Note:</h2>
+            </div>
+              <p className="step-card-text">
+                We are Calgary based only, any other provided address will void the appointment.
+              </p>
+            </div>
           </section>
 
           {/* RIGHT COLUMN – contact form */}
@@ -180,6 +190,21 @@ export default function DetailsPage() {
                   className="details-input"
                   value={form.email}
                   onChange={update("email")}
+                  required
+                />
+              </div>
+
+              {/* Address */}
+              <div className="details-field">
+                <label className="details-label" htmlFor="address">
+                  Address
+                </label>
+                <input
+                  id="address"
+                  type="address"
+                  className="details-input"
+                  value={form.address}
+                  onChange={update("address")}
                   required
                 />
               </div>

@@ -1111,6 +1111,14 @@ body {
   cursor: default;
 }
 
+.details-text {
+  font-size: 15px;
+}
+
+.details-title {
+  font-size: 20px;
+}
+
 @media (max-width: 900px) {
   .details-row {
     flex-direction: column;
