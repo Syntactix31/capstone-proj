@@ -140,3 +140,10 @@ export default function BookPage() {
     </div>
   );
 }
+
+
+
+// TODO:
+// Resizing issues on appointments page (rendering issues in inspect console as well)
+
+
