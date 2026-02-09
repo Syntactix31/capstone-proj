@@ -65,10 +65,11 @@ export default function NavBar () {
           <nav className="bg-[#477a40] h-30 w-full p-4 flex text-white items-center justify-between">
 
             <div className="flex gap-5 items-center">
-
-              {/* Theo replace this with logo */}
-              <Link href="/">              
-                <div className="w-20 bg-white h-20 text-black font-bold text-2xl text-center pt-5">Logo</div>
+              <Link href="/">
+                <Image src="/icons/Landscapecraftsmen_logo.jpg" alt="Company Logo" height="400" width="400" className="h-20 w-20" priority/>  
+                
+                {/* PLacehodler image logo */}
+                {/* <div className="w-20 bg-white h-20 text-black font-bold text-2xl text-center pt-5">Logo</div> */}
               </Link>
 
               <Link href="/">
