@@ -16,7 +16,7 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
 
         <Link href="/projects" onClick={onClose}>Projects</Link>
         <Link href="/quote" onClick={onClose}>Get A Quote</Link>
-        <Link href="/appointments" onClick={onClose}>Book An Appointment</Link>
+        <Link href="/book" onClick={onClose}>Book An Appointment</Link>
         <Link href="/admin" onClick={onClose}>Admin</Link>
         <Link href="/login" onClick={onClose}>Login</Link>
 
