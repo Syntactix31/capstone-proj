@@ -1125,7 +1125,7 @@ body {
 /* --------- Confirmation page --------- */
 
 .confirm-page {
-  min-height: calc(100vh - 80px); /* rough nav height */
+  min-height: calc(70vh - 80px); /* rough nav height */
   display: flex;
   flex-direction: column;
   align-items: center;
