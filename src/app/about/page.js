@@ -7,7 +7,7 @@ export default function About() {
     <main className="flex min-h-screen flex-col bg-white">
       <NavBar />
 
-      <div className="flex-grow">
+      <div className="grow">
         {/* Top Image Placeholder*/}
         <section className="flex h-48 w-full items-center justify-center bg-[#D3D3D3] border-b-8 border-[#477A40] sm:h-64 md:h-96">
           <p className="text-lg font-bold text-gray-500">
@@ -17,7 +17,7 @@ export default function About() {
 
         {/* Mission Section */}
         <section className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
-          <div className="relative overflow-hidden rounded-2xl border border-[#477a40]/20 bg-gradient-to-br from-[#477a40]/10 via-white to-white p-6 shadow-lg sm:p-10">
+          <div className="relative overflow-hidden rounded-2xl border border-[#477a40]/20 bg-linear-to-br from-[#477a40]/10 via-white to-white p-6 shadow-lg sm:p-10">
             <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-[#477a40]/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-[#477a40]/10 blur-3xl" />
 
@@ -37,7 +37,7 @@ export default function About() {
 
               <p className="mt-4 max-w-3xl text-base leading-relaxed text-gray-600 sm:text-lg">
                 Lorem Ipsum is simply dummy text of the printing and typesetting
-                industry. Lorem Ipsum has been the industry's standard dummy text
+                industry. Lorem Ipsum has been the industry&apos;s standard dummy text
                 ever since the 1500s, when an unknown printer took a galley of
                 type and scrambled it to make a type specimen book.
                 <br /><br />
@@ -68,7 +68,7 @@ export default function About() {
             {[1, 2, 3, 4].map((member) => (
               <div key={member} className="flex flex-col items-center">
                 {/* Photo Frame*/}
-                <div className="flex aspect-[3/4] w-full items-center justify-center rounded-3xl border-4 border-[#477A40] bg-white shadow-xl transition-transform duration-300 md:hover:scale-105">
+                <div className="flex aspect-3/4 w-full items-center justify-center rounded-3xl border-4 border-[#477A40] bg-white shadow-xl transition-transform duration-300 md:hover:scale-105">
                   <span className="text-sm font-bold italic text-gray-400">
                     Team Member Photo
                   </span>
