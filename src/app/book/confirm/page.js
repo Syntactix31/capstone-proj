@@ -1,7 +1,4 @@
-"use client";
-
-import { useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import NavBar from "../../components/Navbar";
 
 const SERVICE_OPTIONS = [
@@ -12,23 +9,22 @@ const SERVICE_OPTIONS = [
   { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2–6 hrs" },
 ];
 
-export default function ConfirmPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+export default function ConfirmPage({ searchParams }) {
+  const serviceId = searchParams?.service ?? "";
+  const day = searchParams?.day ?? "";
+  const time = searchParams?.time ?? "";
+  const firstName = searchParams?.firstName ?? "";
 
-  const serviceId = searchParams.get("service");
-  const day = searchParams.get("day");
-  const time = searchParams.get("time");
-  const firstName = searchParams.get("firstName") || "";
+  const service =
+    SERVICE_OPTIONS.find((s) => s.id === serviceId) || null;
 
-  const service = useMemo(
-    () => SERVICE_OPTIONS.find((s) => s.id === serviceId) || null,
-    [serviceId]
-  );
-
-  //*TEMPORARY UNTIL WE GET BACKEND CALENDAR*//
+  // *TEMPORARY UNTIL WE GET BACKEND CALENDAR*
   const formattedDay = day ? `Oct ${day}, 2026` : "Date not set";
   const formattedTime = time || "Time not set";
+
+  const rescheduleHref = serviceId
+    ? `/book/time?service=${encodeURIComponent(serviceId)}`
+    : "/book";
 
   return (
     <div>
@@ -39,11 +35,12 @@ export default function ConfirmPage() {
       <main className="confirm-page">
         <h1 className="confirm-title">Thank you for booking with us</h1>
         <p className="confirm-subtitle">
-          {firstName ? `${firstName}, your appointment request has been sent.` : "Your appointment request has been sent."}
+          {firstName
+            ? `${firstName}, your appointment request has been sent.`
+            : "Your appointment request has been sent."}
         </p>
 
         <section className="confirm-card">
-
           <div className="confirm-with">
             <div className="confirm-with-label">Scheduled with</div>
             <div className="confirm-with-name">Landscape Craftsmen</div>
@@ -61,22 +58,17 @@ export default function ConfirmPage() {
           </div>
 
           <div className="confirm-actions">
-            <button
-              type="button"
-              className="confirm-primary"
-              onClick={() =>
-                router.push(
-                  `/book/time?service=${encodeURIComponent(serviceId || "")}`
-                )
-              }
-            >
+            {/* Reschedule but not really a functional rescheduler until we have active database*/}
+            <Link href={rescheduleHref} className="confirm-primary">
               Reschedule booking
-            </button>
+            </Link>
 
+            {/* Placeholder cancel button for now */}
             <button
               type="button"
               className="confirm-secondary"
-              onClick={() => alert("Cancellation flow not implemented yet.")}
+              disabled
+              title="Cancellation flow coming soon"
             >
               Cancel booking
             </button>

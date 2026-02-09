@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import NavBar from "../../components/Navbar";
 
@@ -49,172 +49,184 @@ const TIME_SLOTS = [
   "3:30 pm",
 ];
 
-export default function BookPage() {
+function BookPageInner() {
   const searchParams = useSearchParams();
   const serviceId = searchParams.get("service");
   const router = useRouter();
+
   const selectedService = useMemo(
     () => SERVICE_OPTIONS.find((s) => s.id === serviceId) || null,
     [serviceId]
   );
 
-    const days = Array.from({ length: 30 }, (_, i) => i + 1);
-    const [selectedDay, setSelectedDay] = useState(null);
-    const [selectedTime, setSelectedTime] = useState(null);
+  const days = Array.from({ length: 30 }, (_, i) => i + 1);
 
-    const canSelectTime = !!selectedDay;
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [selectedTime, setSelectedTime] = useState(null);
 
-    const onConfirm = () => {
+  const onConfirm = () => {
     if (!selectedDay || !selectedTime) {
-        alert("Please choose a date and time first.");
-        return;
+      alert("Please choose a date and time first.");
+      return;
     }
 
     router.push(
-        `/book/details?service=${encodeURIComponent(
+      `/book/details?service=${encodeURIComponent(
         serviceId || ""
-        )}&day=${encodeURIComponent(selectedDay)}&time=${encodeURIComponent(
+      )}&day=${encodeURIComponent(String(selectedDay))}&time=${encodeURIComponent(
         selectedTime
-        )}`
+      )}`
     );
-    };
+  };
 
   return (
     <div>
-    <header>
+      <header>
         <NavBar />
-    </header>
-            <div className="booking-page">
-            <main className="booking-layout">
-                
-                {/* LEFT COLUMN – steps */}
-                <section className="booking-left">
-                    <button
-                        type="button"
-                        className="back-button"
-                        onClick={() => router.back("/book")}
-                    >
-                        ← Back to services
-                    </button>
-                <div className="step-card">
-                    <h2 className="step-card-title">Selected service</h2>
-                    <p className="step-card-text">
-                    {selectedService ? selectedService.name : "No service selected"}
-                    {selectedService && (
-                        <>
-                        <br />
-                        <span className="step-card-sub">
-                            Duration: {selectedService.duration}
-                        </span>
-                        </>
-                    )}
-                    </p>
-                </div>
+      </header>
+      <div className="booking-page">
+        <main className="booking-layout">
+          {/* LEFT COLUMN – steps */}
+          <section className="booking-left">
+            <button
+              type="button"
+              className="back-button"
+              onClick={() => router.push("/book")}
+            >
+              ← Back to services
+            </button>
 
-          <div className="step-card step-card--active">
-            <div className="step-card-header">
-              <h2 className="step-card-title">Appointment time</h2>
-              <span className="step-card-status">Current step</span>
+            <div className="step-card">
+              <h2 className="step-card-title">Selected service</h2>
+              <p className="step-card-text">
+                {selectedService ? selectedService.name : "No service selected"}
+                {selectedService && (
+                  <>
+                    <br />
+                    <span className="step-card-sub">
+                      Duration: {selectedService.duration}
+                    </span>
+                  </>
+                )}
+              </p>
             </div>
-            <p className="step-card-text">
-              Pick a date and an available time slot.
-            </p>
-          </div>
 
-          <div className="step-card">
-            <h2 className="step-card-title">Enter your details</h2>
-            <p className="step-card-text">
-              Next, you’ll add your contact info and project address.
-            </p>
-          </div>
-        </section>
+            <div className="step-card step-card--active">
+              <div className="step-card-header">
+                <h2 className="step-card-title">Appointment time</h2>
+                <span className="step-card-status">Current step</span>
+              </div>
+              <p className="step-card-text">
+                Pick a date and an available time slot.
+              </p>
+            </div>
 
-        {/* RIGHT COLUMN – day of month and time slots */}
-        <section className="booking-right">
-          {/* Calendar */}
-          <div className="calendar-card">
-            <div className="calendar-header">
-              <div>
-                <div className="calendar-month">October 2026</div>
-                <div className="calendar-sub">
-                  Choose any day in the next month.
+            <div className="step-card">
+              <h2 className="step-card-title">Enter your details</h2>
+              <p className="step-card-text">
+                Next, you’ll add your contact info and project address.
+              </p>
+            </div>
+          </section>
+
+          {/* RIGHT COLUMN – calendar + times */}
+          <section className="booking-right">
+            {/* Calendar */}
+            <div className="calendar-card">
+              <div className="calendar-header">
+                <div>
+                  <div className="calendar-month">October 2026</div>
+                  <div className="calendar-sub">
+                    Choose any day in the next month.
+                  </div>
                 </div>
+              </div>
+
+              <div className="calendar-grid">
+                {/* weekday labels */}
+                <div className="calendar-weekday">Su</div>
+                <div className="calendar-weekday">Mo</div>
+                <div className="calendar-weekday">Tu</div>
+                <div className="calendar-weekday">We</div>
+                <div className="calendar-weekday">Th</div>
+                <div className="calendar-weekday">Fr</div>
+                <div className="calendar-weekday">Sa</div>
+
+                {days.map((day) => {
+                  const isSelected = selectedDay === day;
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      className={
+                        "calendar-day" +
+                        (isSelected ? " calendar-day--selected" : "")
+                      }
+                      onClick={() => setSelectedDay(day)}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="calendar-grid">
-              {/* weekday */}
-              <div className="calendar-weekday">Su</div>
-              <div className="calendar-weekday">Mo</div>
-              <div className="calendar-weekday">Tu</div>
-              <div className="calendar-weekday">We</div>
-              <div className="calendar-weekday">Th</div>
-              <div className="calendar-weekday">Fr</div>
-              <div className="calendar-weekday">Sa</div>
+            {/* Time slots */}
+            <div className="times-card">
+              <h2 className="times-title">Available Times</h2>
+              <p className="times-sub">
+                You can schedule an appointment between 4 hours and 30 days
+                ahead of time.
+              </p>
 
-              {days.map((day) => {
-                const isSelected = selectedDay === day;
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    className={
-                      "calendar-day" + (isSelected ? " calendar-day--selected" : "")
-                    }
-                    onClick={() => setSelectedDay(day)}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Time slots */}
-          <div className="times-card">
-            <h2 className="times-title">Available Times</h2>
-            <p className="times-sub">
-                You can schedule an appointment between 4 hours and 30 days ahead
-                of time.
-            </p>
-
-            {/* must select date */}
-            {!selectedDay ? (
+              {!selectedDay ? (
                 <p className="times-hint">
-                Select a date on the calendar to see available time slots.
+                  Select a date on the calendar to see available time slots.
                 </p>
-            ) : (
+              ) : (
                 <>
-                <div className="times-grid">
+                  <div className="times-grid">
                     {TIME_SLOTS.map((slot) => {
-                    const isSelected = selectedTime === slot;
-                    return (
+                      const isSelected = selectedTime === slot;
+                      return (
                         <button
-                        key={slot}
-                        type="button"
-                        className={
-                            "time-slot" + (isSelected ? " time-slot--selected" : "")
-                        }
-                        onClick={() => setSelectedTime(slot)}
+                          key={slot}
+                          type="button"
+                          className={
+                            "time-slot" +
+                            (isSelected ? " time-slot--selected" : "")
+                          }
+                          onClick={() => setSelectedTime(slot)}
                         >
-                        {slot}
+                          {slot}
                         </button>
-                    );
+                      );
                     })}
-                </div>
+                  </div>
 
-                <div className="times-footer">
-                    <button className="times-confirm" type="button" onClick={onConfirm}>
-                    Continue
+                  <div className="times-footer">
+                    <button
+                      className="times-confirm"
+                      type="button"
+                      onClick={onConfirm}
+                    >
+                      Continue
                     </button>
-                </div>
+                  </div>
                 </>
-            )}
+              )}
             </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  );
+}
 
-        </section>
-      </main>
-    </div>
-    </div>
+export default function BookPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <BookPageInner />
+    </Suspense>
   );
 }

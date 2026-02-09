@@ -1,7 +1,4 @@
-"use client";
-
-import { useState, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import NavBar from "../../components/Navbar.js";
 
 const SERVICE_OPTIONS = [
@@ -12,49 +9,19 @@ const SERVICE_OPTIONS = [
   { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2–6 hrs" },
 ];
 
-export default function DetailsPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export default function DetailsPage({ searchParams }) {
+  const serviceId = searchParams?.service ?? "";
+  const day = searchParams?.day ?? "";
+  const time = searchParams?.time ?? "";
 
-  const serviceId = searchParams.get("service") || "";
-  const day = searchParams.get("day") || "";
-  const time = searchParams.get("time") || "";
+  const selectedService =
+    SERVICE_OPTIONS.find((s) => s.id === serviceId) || null;
 
-  // ✅ selectedService is defined ONCE, at the top of the component
-  const selectedService = useMemo(
-    () => SERVICE_OPTIONS.find((s) => s.id === serviceId) || null,
-    [serviceId]
-  );
+  const backHref = `/book/time?service=${encodeURIComponent(serviceId || "")}`;
 
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    address: "",
-    notes: "",
-  });
 
-  const update = (key) => (e) =>
-    setForm((prev) => ({ ...prev, [key]: e.target.value }));
-
-  // ✅ single, clean handleSubmit – this is what redirects
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (!form.firstName || !form.email) {
-      alert("Please enter at least your first name and email.");
-      return;
-    }
-
-    // TEMPORARY: just redirect to confirmation page
-    router.push(
-      `/book/confirm?service=${encodeURIComponent(
-        serviceId
-      )}&day=${encodeURIComponent(day)}&time=${encodeURIComponent(
-        time
-      )}&firstName=${encodeURIComponent(form.firstName)}`
-    );
-  };
+  const displayTime =
+    day && time ? `Oct ${day}, at ${time}` : "No time selected";
 
   return (
     <div>
@@ -66,13 +33,9 @@ export default function DetailsPage() {
         <main className="booking-layout">
           {/* LEFT COLUMN – summary cards */}
           <section className="booking-left">
-            <button
-              type="button"
-              className="back-button"
-              onClick={() => router.back()}
-            >
+            <Link href={backHref} className="back-button">
               ← Back
-            </button>
+            </Link>
 
             {/* Service summary */}
             <div className="summary-card">
@@ -88,13 +51,9 @@ export default function DetailsPage() {
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  className="summary-card-edit"
-                  onClick={() => router.push("/book")}
-                >
+                <Link href="/book" className="summary-card-edit">
                   Edit
-                </button>
+                </Link>
               </div>
             </div>
 
@@ -103,22 +62,18 @@ export default function DetailsPage() {
               <div className="summary-card-header">
                 <div>
                   <div className="summary-card-label">Appointment time</div>
-                  <div className="summary-card-title">
-                    {/* TEMPORARY PLACEHOLDER: replace when you hook in real calendar */}
-                    {day && time ? `Oct ${day}, at ${time}` : "No time selected"}
-                  </div>
+                  <div className="summary-card-title">{displayTime}</div>
                 </div>
-                <button
-                  type="button"
-                  className="summary-card-edit"
-                  onClick={() =>
-                    router.push(
-                      `/book/time?service=${encodeURIComponent(serviceId)}`
-                    )
+                <Link
+                  href={
+                    serviceId
+                      ? `/book/time?service=${encodeURIComponent(serviceId)}`
+                      : "/book/time"
                   }
+                  className="summary-card-edit"
                 >
                   Edit
-                </button>
+                </Link>
               </div>
             </div>
 
@@ -137,9 +92,10 @@ export default function DetailsPage() {
             <div className="step-card">
               <div className="step-card-header">
                 <h2 className="step-card-title">Note:</h2>
-            </div>
+              </div>
               <p className="step-card-text">
-                We are Calgary based only, any other provided address will void the appointment.
+                We are Calgary based only, any other provided address will void
+                the appointment.
               </p>
             </div>
           </section>
@@ -148,7 +104,17 @@ export default function DetailsPage() {
           <section className="booking-right">
             <h1 className="details-title">Enter your details</h1>
 
-            <form className="details-form" onSubmit={handleSubmit}>
+            {/* Native form submit to /book/confirm */}
+            <form
+              className="details-form"
+              action="/book/confirm"
+              method="GET"
+            >
+              {/* preserve selection in the URL */}
+              <input type="hidden" name="service" value={serviceId} />
+              <input type="hidden" name="day" value={day} />
+              <input type="hidden" name="time" value={time} />
+
               {/* Name row */}
               <div className="details-row">
                 <div className="details-field">
@@ -157,10 +123,9 @@ export default function DetailsPage() {
                   </label>
                   <input
                     id="firstName"
+                    name="firstName"
                     type="text"
                     className="details-input"
-                    value={form.firstName}
-                    onChange={update("firstName")}
                     required
                   />
                 </div>
@@ -171,10 +136,9 @@ export default function DetailsPage() {
                   </label>
                   <input
                     id="lastName"
+                    name="lastName"
                     type="text"
                     className="details-input"
-                    value={form.lastName}
-                    onChange={update("lastName")}
                   />
                 </div>
               </div>
@@ -186,10 +150,9 @@ export default function DetailsPage() {
                 </label>
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   className="details-input"
-                  value={form.email}
-                  onChange={update("email")}
                   required
                 />
               </div>
@@ -201,10 +164,9 @@ export default function DetailsPage() {
                 </label>
                 <input
                   id="address"
-                  type="address"
+                  name="address"
+                  type="text"
                   className="details-input"
-                  value={form.address}
-                  onChange={update("address")}
                   required
                 />
               </div>
@@ -216,10 +178,9 @@ export default function DetailsPage() {
                 </label>
                 <textarea
                   id="notes"
+                  name="notes"
                   className="details-textarea"
                   rows={5}
-                  value={form.notes}
-                  onChange={update("notes")}
                   placeholder="Anything we should know? Access details, project notes, measurements, etc."
                 />
               </div>
