@@ -78,27 +78,28 @@ export default function Home() {
                 min-[1024px]:max-[1149px]:flex-col 
                 min-[1150px]:flex-row 
                 min-[1024px]:flex-wrap  *:hover:scale-102 *:text-center *:items-center *:align-center *:flex *:justify-center *:sm:text-4xl *:text-2xl *:font-black *:cursor-pointer *:transition-all">
-                <div className="h-25 w-60 rounded-2xl shadow-xl fence-bg">
+               
+                <Link href="/services?service=fence" className="h-25 w-60 rounded-2xl shadow-xl fence-bg active:scale-98"> 
                   <p className="fence-mask">Fence</p>
 
-                </div>
-                <div className="h-25 w-60 rounded-2xl shadow-xl deck-bg">
+                </Link>
+                <Link href="/services?service=deck-railing" className="h-25 w-60 rounded-2xl shadow-xl deck-bg active:scale-98">
                   <p className="deck-mask">Deck & Railing</p>
 
-                </div>     
-                <div className="h-25 w-60 rounded-2xl shadow-xl pergola-bg">
+                </Link>     
+                <Link href="/services?service=pergola" className="h-25 w-60 rounded-2xl shadow-xl pergola-bg active:scale-98">
                   <p className="pergola-mask ">Pergola</p>
 
-                </div>
-                <div className="h-25 w-60 rounded-2xl shadow-xl sod-bg">
+                </Link>
+                <Link href="/services?service=sod" className="h-25 w-60 rounded-2xl shadow-xl sod-bg active:scale-98">
                   <p className="sod-mask text-transparent">Sod</p>
 
-                </div> 
+                </Link> 
 
-                <div className="h-25 w-60 rounded-2xl shadow-xl trees-bg">
+                <Link href="/services?service=trees-shrubs" className="h-25 w-60 rounded-2xl shadow-xl trees-bg active:scale-98">
                   <p className="trees-mask text-transparent">Trees & Shrubs</p>
 
-                </div>           
+                </Link>           
                 
 
 
@@ -177,22 +178,14 @@ export default function Home() {
   );
 }
 
-// Force push from Levisbranch to origin
 
+// write a review button under client reviews for users logged in (sprint 2)
 
-// TODO:  Adjust button position from z-index to flex boundaries
-// text masking on services bubbles on main page when hover they expand and reverse the mask
-
-
-// write a review button under client reviews for users logged in
-
-// ✅ text or full bubble shimmer effect on delay each time and arrow is pressed
 
 // clicking on the comment in focus shows a pop up modal of full customer review
 
-// add animation to hamburger menu click
+// add animation to hamburger menu click (might not be best for low performance devices)
 
-// FIX DROPDOWN NOT WORKING  IT SHOULD DISPLAY INFTONT OF EVERYTHING
 
 // ADD easy slide to comments
 
@@ -200,9 +193,10 @@ export default function Home() {
 
 // NAVBAR TURNS INTO x on menu click if page shadow doesnt work
 
-// IMPORTANT: Drop down menu should show about services and contact on medium n small viewports
 
-// ABOUT PAGE DOES NOT FORMAT PROPERLY ON MOBILE SCREENS
+// // // // // // // // // // // // // // // //
+// Add "Schedule an Appointment" to main page
+
 
 
 
@@ -210,4 +204,3 @@ export default function Home() {
 
 
 // About page: Maybe have text and paragraphing centered for clarity
-//fixing merge
