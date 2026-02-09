@@ -1,5 +1,6 @@
 import Link from "next/link";
 import NavBar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 
 const SERVICE_OPTIONS = [
   { id: "fence", name: "Fence Installation", duration: "1-2 days" },
@@ -75,6 +76,7 @@ export default function ConfirmPage({ searchParams }) {
           </div>
         </section>
       </main>
+      <Footer />
     </div>
   );
 }

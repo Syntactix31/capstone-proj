@@ -20,7 +20,7 @@ export default function Services() {
       slug: "deck-railing",
       title: "Deck & railing",
       description:
-        "Custom decks built for comfort and longevity, paired with sturdy railings that meet code and match your home’s style.",
+        "Custom decks built for comfort and longevity, paired with sturdy railings that meet code and match your home's style.",
     },
     {
       slug: "pergola",
@@ -52,7 +52,7 @@ export default function Services() {
   };
 
   return (
-    <div className={`overflow-hidden bg-white ${selectedSlug ? "pb-28" : ""}`}>
+    <div className={`overflow-hidden bg-white`}>
       <header className="flex w-full bg-white">
         <NavBar />
       </header>
@@ -112,6 +112,7 @@ export default function Services() {
           </div>
         </div>
 
+      
         {/* FOOTER */}
         <div className="mt-14">
           <Footer />

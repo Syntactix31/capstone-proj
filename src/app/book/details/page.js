@@ -1,5 +1,6 @@
 import Link from "next/link";
 import NavBar from "../../components/Navbar.js";
+import Footer from "../../components/Footer.js";
 
 const SERVICE_OPTIONS = [
   { id: "fence", name: "Fence Installation", duration: "1-2 days" },
@@ -192,6 +193,7 @@ export default function DetailsPage({ searchParams }) {
           </section>
         </main>
       </div>
+      <Footer />
     </div>
   );
 }

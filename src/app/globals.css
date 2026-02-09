@@ -630,8 +630,8 @@ body {
 }
 
 .booking-tab--active {
-  color: #2563eb;
-  border-bottom: 2px solid #2563eb;
+  color: #477A40;
+  border-bottom: 2px solid #477A40;
 }
 
 /* SERVICES LIST */
@@ -653,7 +653,7 @@ body {
   border: 1px solid #e5e7eb;
   background-color: #ffffff;
   padding: 18px 22px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 3px #477A40;
   transition: box-shadow 0.15s ease, transform 0.12s ease,
     background-color 0.15s ease;
 }
@@ -661,7 +661,7 @@ body {
 .service-card:hover {
   background-color: #fafafa;
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 16px #477A40;
 }
 
 /* inner flex*/
@@ -686,19 +686,19 @@ body {
 .service-card-description {
   margin: 0 0 8px 0;
   font-size: 14px;
-  color: #4b5563;
+  color: #31270C;
 }
 
 .service-card-meta {
   margin: 0;
   font-size: 13px;
-  color: #6b7280;
+  color: #31270C;
 }
 
 /* chevron arrow */
 .service-card-chevron {
   font-size: 20px;
-  color: #9ca3af;
+  color: #477A40;
 }
 
 /* smaller screens */
@@ -729,7 +729,7 @@ body {
   .select-a-service {
       border: none;
       background: none;
-      color: #2563eb;
+      color: #31270C;
       font-size: 14px;
       font-weight: 600;
       padding: 4px 0;
@@ -757,7 +757,7 @@ body {
 .back-button {
   border: none;
   background: none;
-  color: #2563eb;
+  color: #477A40;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -778,8 +778,8 @@ body {
 }
 
 .step-card--active {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.4);
+  border-color: #477A40;
+  box-shadow: 0 0 0 1px #477A40;
 }
 
 .step-card-title {
@@ -791,12 +791,12 @@ body {
 .step-card-text {
   margin: 0;
   font-size: 13px;
-  color: #4b5563;
+  color: #31270C;
 }
 
 .step-card-sub {
   font-size: 12px;
-  color: #6b7280;
+  color: #477A40;
 }
 
 .step-card-header {
@@ -808,7 +808,7 @@ body {
 .step-card-status {
   font-size: 11px;
   font-weight: 600;
-  color: #2563eb;
+  color: #477A40;
 }
 
 /* RIGHT COLUMN */
@@ -842,7 +842,7 @@ body {
 
 .calendar-sub {
   font-size: 13px;
-  color: #6b7280;
+  color: #477A40;
 }
 
 /* grid: 7 columns for days of week */
@@ -857,7 +857,7 @@ body {
   font-size: 11px;
   font-weight: bold;
   text-align: center;
-  color: #000000;
+  color: #31270C;
 }
 
 /* day buttons */
@@ -884,14 +884,14 @@ body {
 }
 
 .calendar-day--selected {
-  background-color: #2563eb;
-  border-color: #2563eb;
+  background-color: #477A40;
+  border-color: #477A40;
   color: #ffffff;
 }
 
 .calendar-day--selected:hover {
-  background-color: #2563eb;
-  border-color: #2563eb;
+  background-color: #477A40;
+  border-color: #477A40;
   color: #ffffff;
   transform: none;
 }
@@ -913,7 +913,7 @@ body {
 .times-sub {
   margin: 0 0 16px 0;
   font-size: 13px;
-  color: #6b7280;
+  color: #477A40;
 }
 
 .times-grid {
@@ -942,14 +942,14 @@ body {
 }
 
 .time-slot--selected {
-  background-color: #2563eb;
-  border-color: #2563eb;
+  background-color: #477A40;
+  border-color: #477A40;
   color: #ffffff;
 }
 
 .time-slot--selected:hover {
-  background-color: #2563eb;
-  border-color: #2563eb;
+  background-color: #477A40;
+  border-color: #477A40;
   color: #ffffff;
   transform: none;
 }
@@ -966,13 +966,13 @@ body {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  background-color: #2563eb;
+  background-color: #477A40;
   color: #ffffff;
   transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
 .times-confirm:hover {
-  background-color: #1d4ed8;
+  background-color: #477A40;
   transform: translateY(-1px);
 }
 
@@ -1018,7 +1018,7 @@ body {
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 4px;
-  color: #374151;
+  color: #31270C;
 }
 
 .details-input {
@@ -1031,8 +1031,8 @@ body {
 
 .details-input:focus,
 .details-textarea:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
+  border-color: #477A40;
+  box-shadow: 0 0 0 1px #477A40;
 }
 
 .details-textarea {
@@ -1054,13 +1054,13 @@ body {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  background-color: #2563eb;
+  background-color: #477A40;
   color: #ffffff;
   transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
 .details-submit:hover {
-  background-color: #1d4ed8;
+  background-color: #477A40;
   transform: translateY(-1px);
 }
 
@@ -1081,7 +1081,7 @@ body {
 .summary-card-label {
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: #477A40;
   margin-bottom: 2px;
 }
 
@@ -1094,7 +1094,7 @@ body {
 .summary-card-sub {
   margin-top: 2px;
   font-size: 13px;
-  color: #6b7280;
+  color: #477A40;
 }
 
 .summary-card-edit {
@@ -1102,12 +1102,12 @@ body {
   background: none;
   font-size: 12px;
   font-weight: 600;
-  color: #2563eb;
+  color: #477A40;
   cursor: pointer;
 }
 
 .summary-card-edit:disabled {
-  color: #9ca3af;
+  color: #477A40;
   cursor: default;
 }
 
@@ -1150,7 +1150,7 @@ body {
 
 .confirm-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: #477A40;
   margin: 0 0 24px 0;
 }
 
@@ -1161,7 +1161,7 @@ body {
   padding: 24px 32px 28px 32px;
   max-width: 420px;
   width: 100%;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 30px #477A40;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1178,7 +1178,7 @@ body {
   justify-content: center;
   font-weight: 700;
   font-size: 20px;
-  color: #4b5563;
+  color: #477A40;
   margin-bottom: 8px;
 }
 
@@ -1188,7 +1188,7 @@ body {
 
 .confirm-with-label {
   font-size: 12px;
-  color: #6b7280;
+  color: #477A40;
 }
 
 .confirm-with-name {
@@ -1205,7 +1205,7 @@ body {
 
 .confirm-info {
   font-size: 13px;
-  color: #111827;
+  color: #31270C;
   text-align: center;
 }
 
@@ -1215,14 +1215,14 @@ body {
 
 .confirm-time {
   margin-top: 2px;
-  color: #4b5563;
+  color: #477A40;
 }
 
 .confirm-service {
   margin-top: 10px;
   font-size: 14px;
   font-weight: 500;
-  color: #111827;
+  color: #31270C;
 }
 
 .confirm-actions {
@@ -1241,13 +1241,13 @@ body {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  background-color: #2563eb;
+  background-color: #31270C;
   color: #ffffff;
   transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
 .confirm-primary:hover {
-  background-color: #1d4ed8;
+  background-color: #31270C;
   transform: translateY(-1px);
 }
 
@@ -1260,7 +1260,7 @@ body {
   font-weight: 500;
   cursor: pointer;
   background-color: #f9fafb;
-  color: #374151;
+  color: #31270C;
   transition: background-color 0.15s ease, transform 0.1s ease;
 }
 

@@ -3,6 +3,7 @@
 import { useState, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import NavBar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 
 const SERVICE_OPTIONS = [
   {
@@ -219,6 +220,7 @@ function BookPageInner() {
           </section>
         </main>
       </div>
+      <Footer />
     </div>
   );
 }
