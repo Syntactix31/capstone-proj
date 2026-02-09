@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-// For App Router:
 import { useSearchParams, useRouter } from "next/navigation";
 import NavBar from "../../components/Navbar";
 
@@ -51,47 +50,34 @@ const TIME_SLOTS = [
 ];
 
 export default function BookPage() {
-  // For App Router:
   const searchParams = useSearchParams();
   const serviceId = searchParams.get("service");
   const router = useRouter();
-
-  // If you're using the pages router instead, use this:
-  // const router = useRouter();
-  // const serviceId = router.query.service;
-
   const selectedService = useMemo(
     () => SERVICE_OPTIONS.find((s) => s.id === serviceId) || null,
     [serviceId]
   );
 
-  // Simple "fake month": 30 days
-  const days = Array.from({ length: 30 }, (_, i) => i + 1);
+    const days = Array.from({ length: 30 }, (_, i) => i + 1);
+    const [selectedDay, setSelectedDay] = useState(null);
+    const [selectedTime, setSelectedTime] = useState(null);
 
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [selectedTime, setSelectedTime] = useState(null);
+    const canSelectTime = !!selectedDay;
 
-  const canSelectTime = !!selectedDay;
-
-  const onConfirm = () => {
+    const onConfirm = () => {
     if (!selectedDay || !selectedTime) {
-      alert("Please choose a date and time first.");
-      return;
+        alert("Please choose a date and time first.");
+        return;
     }
 
-    // Later: push to details page or send to backend
-    console.log("Booking selection:", {
-      serviceId,
-      day: selectedDay,
-      time: selectedTime,
-    });
-
-    alert(
-      `Selected:\nService: ${
-        selectedService ? selectedService.name : serviceId
-      }\nDay: ${selectedDay}\nTime: ${selectedTime}`
+    router.push(
+        `/book/details?service=${encodeURIComponent(
+        serviceId || ""
+        )}&day=${encodeURIComponent(selectedDay)}&time=${encodeURIComponent(
+        selectedTime
+        )}`
     );
-  };
+    };
 
   return (
     <div>

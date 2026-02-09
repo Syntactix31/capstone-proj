@@ -997,6 +997,139 @@ body {
   }
 }
 
+/* --------- Details / contact form page --------- */
+
+.details-title {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.details-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.details-row {
+  display: flex;
+  gap: 12px;
+}
+
+.details-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.details-label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #374151;
+}
+
+.details-input {
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.details-input:focus,
+.details-textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
+}
+
+.details-textarea {
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 120px;
+  outline: none;
+}
+
+.details-submit {
+  margin-top: 16px;
+  width: 100%;
+  border-radius: 999px;
+  border: none;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: #2563eb;
+  color: #ffffff;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.details-submit:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.summary-card {
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+}
+
+.summary-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.summary-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 2px;
+}
+
+.summary-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.summary-card-sub {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.summary-card-edit {
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.summary-card-edit:disabled {
+  color: #9ca3af;
+  cursor: default;
+}
+
+@media (max-width: 900px) {
+  .details-row {
+    flex-direction: column;
+  }
+
+  .details-submit {
+    margin-top: 12px;
+  }
+}
+
+
 
 
 /* FML TS TOOK TOO LONG */
