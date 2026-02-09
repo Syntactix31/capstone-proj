@@ -68,14 +68,14 @@ export default function BookPage() {
                 <h2 className="step-card-title">Appointment time</h2>
               </div>
               <p className="step-card-text">
-                Next, you’ll pick a date and an available time slot.
+                Next, you&apos;ll pick a date and an available time slot.
               </p>
             </div>
 
             <div className="step-card">
               <h2 className="step-card-title">Enter your details</h2>
               <p className="step-card-text">
-                Finally, you’ll add your contact info and project address.
+                Finally, you&apos;ll add your contact info and project address.
               </p>
             </div>
 
@@ -126,7 +126,7 @@ export default function BookPage() {
                         </p>
                       </div>
 
-                      <div className="service-card-chevron">›</div>
+                      <div className="service-card-chevron">&gt;</div>
                     </div>
                   </article>
                 </Link>

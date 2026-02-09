@@ -2,11 +2,11 @@ import Link from "next/link";
 import NavBar from "../../components/Navbar.js";
 
 const SERVICE_OPTIONS = [
-  { id: "fence", name: "Fence Installation", duration: "1–2 days" },
-  { id: "deck-railing", name: "Deck & Railing", duration: "3–5 days" },
-  { id: "pergola", name: "Pergola", duration: "1–3 days" },
+  { id: "fence", name: "Fence Installation", duration: "1-2 days" },
+  { id: "deck-railing", name: "Deck & Railing", duration: "3-5 days" },
+  { id: "pergola", name: "Pergola", duration: "1-3 days" },
   { id: "sod", name: "Sod Installation", duration: "1 day" },
-  { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2–6 hrs" },
+  { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2-6 hrs" },
 ];
 
 export default function DetailsPage({ searchParams }) {
