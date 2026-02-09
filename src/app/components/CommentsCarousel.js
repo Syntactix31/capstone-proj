@@ -1,34 +1,42 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-const comments = [
-  {
-    name: "Dick B.",
-    text: "Amazing work. Clean, professional, and fast. Highly recommend!",
-  },
-  {
-    name: "Edith P.",
-    text: "They transformed our yard completely. Communication was excellent.",
-  },
-  {
-    name: "Mike O.",
-    text: "On time, fair pricing, and great attention to detail.",
-  },
-  {
-    name: "Nick G.",
-    text: "Best landscaping experience we've ever had.",
-  },
-  {
-    name: "Ben D.",
-    text: "Work quality exceeded expectations. Will hire again.",
-  },
-];
+
 
 export default function CommentCarousel() {
+  const [comments, setComments] = useState([]);
   const [index, setIndex] = useState(0);
 
   const [shimmerKey, setShimmerKey] = useState(0);
 
+  useEffect(() => {
+    async function loadReviews() {
+      try {
+        const res = await fetch("/api/reviews");
+        if (res.ok) {
+          const data = await res.json();
+          const actualReviews = Array.isArray(data) ? data : [];
+          setComments(actualReviews);
+        } else {
+          setComments([
+            { name: "Dick B.", text: "Amazing work. Clean, professional, and fast. Highly recommend!", rating: 5 },
+            { name: "Edith P.", text: "They transformed our yard completely. Communication was excellent.", rating: 5 },
+          ]);
+        }
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+        setComments([
+          { name: "Nick G.", text: "Best landscaping experience we've ever had.", rating: 5 },
+        ]);
+      }
+    }
+    loadReviews();
+  }, []);
+
+  if (!comments.length) {
+    return <p className="text-center">Loading reviews...</p>;
+
+  }
 
   const prev = () => {
     setIndex((i) => (i === 0 ? comments.length - 1 : i - 1));
@@ -40,13 +48,13 @@ export default function CommentCarousel() {
     setShimmerKey((k) => k + 1);
   };
 
-
   const getItem = (offset) =>
     comments[(index + offset + comments.length) % comments.length];
 
+
   return (
     <div className="relative flex flex-wrap justify-center w-full max-w-5xl mx-auto mt-16 px-4">
-      <h2 className="text-3xl font-extrabold text-center border-b-2 p-2 border-[#477a40] inline-block mx-auto">
+      <h2 className="text-3xl font-extrabold text-center border-b-2 p-2 border-[#477a40] inline-block mx-auto mb-7">
         What Our Clients Say
       </h2>
 
@@ -56,8 +64,7 @@ export default function CommentCarousel() {
         <Bubble data={getItem(1)} faded />
       </div>
 
-      {/* Controls */}
-      <div className="flex justify-center gap-6">
+      <div className="flex justify-center gap-6 mt-5">
         <button
           onClick={prev}
           className="px-4 py-2 rounded-full border border-[#477a40] text-[#477a40] hover:bg-[#477a40] hover:text-white transition active:scale-95 hover:cursor-pointer"
@@ -76,20 +83,38 @@ export default function CommentCarousel() {
 }
 
 function Bubble({ data, focused, faded }) {
+  if (
+    !data ||
+    typeof data !== "object" ||
+    typeof data.text !== "string" ||
+    typeof data.name !== "string"
+  ) {
+    return (
+      <div className="rounded-2xl p-6 shadow-lg w-72 border border-dashed border-[#477a40] bg-gray-50">
+        <p className="text-sm leading-relaxed text-[#477a40]">Loading reviews...</p>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`
-        rounded-2xl p-6 shadow-lg transition-all duration-300
+        rounded-2xl p-6 shadow-lg transition-all duration-300 w-72
         ${focused ? "scale-110 bg-[#477a40] text-white z-10 more-shimmer" : ""}
         ${faded ? "scale-90 bg-white text-gray-700 opacity-70" : ""}
-        w-72
       `}
     >
-      <p className={`text-sm leading-relaxed ${focused ? "more-shimmer" : ""}`}>“{data.text}”</p>
-      <p className={`mt-4 font-bold text-right `}>— {data.name}</p>
+      <p className={`text-sm leading-relaxed ${focused ? "more-shimmer" : ""} line-clamp-4`}>
+        “{data.text}”
+      </p>
+      <p className={`mt-2 font-semibold ${focused ? "hidden" : ""}`}>★ {data.rating}</p>
+      <p className={`mt-2 font-semibold ${focused ? "" : "hidden"}`}>⭐ {data.rating}</p>
+      <p className="mt-4 font-bold text-right">— {data.name}</p>
     </div>
   );
 }
+
+
 
 // h-35
 //  mt-2
@@ -97,9 +122,6 @@ function Bubble({ data, focused, faded }) {
 
 // ${focused ? "more-shimmer" : ""}
 
-
-
-// IMPORTANT NOTE: WITH GOOGLE REVIEW API HAVE THE COMMENTS BE LIMITED TO 3-4 LINES SO IT WILL NOT DEFORM THE FLEX-BOX HEIGHT
 
 
 
