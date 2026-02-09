@@ -1,13 +1,19 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import NavBar from "../components/Navbar.js";
 import Footer from "../components/Footer.js";
 
+
 export default function Services() {
-  const [selectedSlug, setSelectedSlug] = useState(null);
+  const searchParams = useSearchParams();
+
+  const initialSlug = searchParams.get("service");
+  const [selectedSlug, setSelectedSlug] = useState(initialSlug || null);
 
   const services = [
     {
@@ -41,6 +47,14 @@ export default function Services() {
         "Thoughtful planting of trees and shrubs for privacy, landscaping design, and low-maintenance greenery that grows well in your yard.",
     },
   ];
+
+  // useEffect(() => {
+  //   const serviceFromUrl = searchParams.get("service");
+  //   if (serviceFromUrl && services.find(s => s.slug === serviceFromUrl)) {
+  //     setSelectedSlug(serviceFromUrl);
+  //   }
+  // }, [searchParams]);
+
 
   const selectedService = useMemo(
     () => services.find((s) => s.slug === selectedSlug) || null,
