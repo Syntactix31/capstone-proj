@@ -68,9 +68,10 @@ npm install all
 npm install axios
 ```
 
+npm install googleapis nodemailer date-fns date-fns-tz
+
 Run the Production Build:
 
 ```bash
 npm run build
 ```
-
