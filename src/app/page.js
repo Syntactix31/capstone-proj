@@ -197,6 +197,8 @@ export default function Home() {
 // // // // // // // // // // // // // // // //
 // Add "Schedule an Appointment" to main page
 
+// Google Reviews Page
+// https://www.google.com/search?client=opera-gx&q=landscape+craftsmen&sourceid=opera&ie=UTF-8&oe=UTF-8#lrd=0x537163001a82a44d:0x6501feae9dbe49fe,1,,,,
 
 
 
