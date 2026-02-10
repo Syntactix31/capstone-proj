@@ -13,7 +13,14 @@ export async function GET() {
         engine: "google_maps_reviews",
         data_id: dataId,
         api_key: serpApiKey,
-        sort_by: "qualityScore",
+
+
+        // THIS SINGLE LINE OF CODE WAS WRECKING EVERYTHING FML
+        // sort_by: "qualityScore",
+
+
+
+
       },
     });
 
@@ -67,13 +74,7 @@ export async function GET() {
       },
     ];
 
-    return new Response(
-      JSON.stringify(fallback),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    return Response.json(fallback);
   }
 
 }

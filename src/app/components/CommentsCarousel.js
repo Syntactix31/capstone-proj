@@ -33,10 +33,10 @@ export default function CommentCarousel() {
     loadReviews();
   }, []);
 
-  if (!comments.length) {
-    return <p className="text-center">Loading reviews...</p>;
-
-  }
+  // Remove for boxes with loading sign
+if (!comments.length && shimmerKey === 0) {
+  return <p className="text-center">Loading reviews...</p>;
+}
 
   const prev = () => {
     setIndex((i) => (i === 0 ? comments.length - 1 : i - 1));
