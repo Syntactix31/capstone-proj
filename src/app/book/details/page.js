@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../../components/Navbar.js";
 import Footer from "../../components/Footer.js";
 
@@ -10,19 +13,60 @@ const SERVICE_OPTIONS = [
   { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2-6 hrs" },
 ];
 
-export default function DetailsPage({ searchParams }) {
-  const serviceId = searchParams?.service ?? "";
-  const day = searchParams?.day ?? "";
-  const time = searchParams?.time ?? "";
+export default function DetailsPage() {
+  const router = useRouter();
+  const params = useSearchParams();
+
+  const serviceId = params.get("service") || "";
+  const day = params.get("day") || "";
+  const time = params.get("time") || "";
 
   const selectedService =
     SERVICE_OPTIONS.find((s) => s.id === serviceId) || null;
 
   const backHref = `/book/time?service=${encodeURIComponent(serviceId || "")}`;
 
-
   const displayTime =
     day && time ? `Oct ${day}, at ${time}` : "No time selected";
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const payload = Object.fromEntries(formData.entries());
+
+    // convert to real date format
+    payload.date = `2026-10-${String(day).padStart(2, "0")}`;
+
+    try {
+      const res = await fetch("/api/booking/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        // backend returned empty body (avoid crash)
+      }
+
+      if (!res.ok) {
+        alert(
+          data?.error ||
+            "This time slot was just booked. Please choose another time."
+        );
+        return;
+      }
+
+      const query = new URLSearchParams(payload).toString();
+      router.push(`/book/confirm?${query}`);
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong. Please try again.");
+    }
+  }
 
   return (
     <div>
@@ -105,12 +149,7 @@ export default function DetailsPage({ searchParams }) {
           <section className="booking-right">
             <h1 className="details-title">Enter your details</h1>
 
-            {/* Native form submit to /book/confirm */}
-            <form
-              className="details-form"
-              action="/book/confirm"
-              method="GET"
-            >
+            <form className="details-form" onSubmit={handleSubmit}>
               {/* preserve selection in the URL */}
               <input type="hidden" name="service" value={serviceId} />
               <input type="hidden" name="day" value={day} />
