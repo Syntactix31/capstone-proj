@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../../components/Navbar.js";
@@ -13,7 +14,7 @@ const SERVICE_OPTIONS = [
   { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2-6 hrs" },
 ];
 
-export default function DetailsPage() {
+function DetailsContent() {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -234,5 +235,13 @@ export default function DetailsPage() {
       </div>
       <Footer />
     </div>
+  );
+}
+
+export default function DetailsPage() {
+  return (
+    <Suspense fallback={<div>Loading booking details...</div>}>
+      <DetailsContent />
+    </Suspense>
   );
 }
