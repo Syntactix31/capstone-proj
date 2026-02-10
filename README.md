@@ -67,6 +67,7 @@ npm install all
 # and
 npm install axios
 ```
+npx neonctl@latest init
 
 npm install googleapis nodemailer date-fns date-fns-tz
 
