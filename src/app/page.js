@@ -164,10 +164,34 @@ export default function Home() {
 
 
         </div>
+    <div>
+      <div className="text-center mx-auto mb-10 mt-8">
+        <h2 className="text-3xl font-extrabold border-b-2 p-2 border-[#477a40] inline-block">
+          What Our Clients Say
+        </h2>
+      </div>
 
-        <CommentCarousel />
+
+      <div className="w-screen left-1/2 pt-1 -ml-[50vw] bg-[url('/backgrounds/wood-background.jpg')] bg-cover bg-no-repeat bg-center pb-10 relative z-0">
+        <div className="max-w-5xl mx-auto relative z-10">
+          <CommentCarousel />
+        </div>
+      </div>
+    </div>
 
 
+
+
+      <div className="flex justify-center items-center w-full py-12 bg-gradient-to-b from-white via-[#f8fbf8]/50 to-white">
+        <div className="relative p-4 mx-auto text-white rounded-4xl bg-[#477a40] text-2xl font-medium w-96 max-w-md text-center hover:cursor-pointer border-2 border-transparent hover:bg-white hover:border-[#477A40] hover:text-[#477A40] transition-all duration-300 hover:scale-105 active:scale-95 shadow-2xl backdrop-blur-sm md:shadow-3xl group">
+          <Link href="/book" className="block w-full h-full relative z-10">
+            Schedule an Appointment Today!
+          </Link>
+          <span className="absolute bottom-3 right-8 text-xl font-bold group-hover:translate-x-1 transition-transform duration-300 z-20">
+            →
+          </span>
+        </div>
+      </div>
 
 
       </main>
