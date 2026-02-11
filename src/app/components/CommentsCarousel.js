@@ -53,10 +53,11 @@ if (!comments.length && shimmerKey === 0) {
 
 
   return (
-    <div className="relative flex flex-wrap justify-center w-full max-w-5xl mx-auto mt-16 px-4">
-      <h2 className="text-3xl font-extrabold text-center border-b-2 p-2 border-[#477a40] inline-block mx-auto mb-7">
+      //                                                                    mt-16
+    <div className="relative flex flex-wrap justify-center w-full max-w-5xl mt-10 mx-auto px-4 bg-transparent">
+      {/* <h2 className="text-3xl font-extrabold text-center border-b-2 p-2 border-[#477a40] inline-block mx-auto mb-7">
         What Our Clients Say
-      </h2>
+      </h2> */}
 
       <div className="relative flex items-center justify-center gap-6 h-63">
         <Bubble data={getItem(-1)} faded />
@@ -67,13 +68,13 @@ if (!comments.length && shimmerKey === 0) {
       <div className="flex justify-center gap-6 mt-5">
         <button
           onClick={prev}
-          className="px-4 py-2 rounded-full border border-[#477a40] text-[#477a40] hover:bg-[#477a40] hover:text-white transition active:scale-95 hover:cursor-pointer"
+          className="px-4 py-2 rounded-full border bg-white border-[#477a40] text-[#477a40] hover:bg-[#477a40] hover:text-white transition active:scale-95 hover:cursor-pointer"
         >
           ←
         </button>
         <button
           onClick={next}
-          className="px-4 py-2 rounded-full border border-[#477a40] text-[#477a40] hover:bg-[#477a40] hover:text-white transition active:scale-95 hover:cursor-pointer"
+          className="px-4 py-2 rounded-full border bg-white border-[#477a40] text-[#477a40] hover:bg-[#477a40] hover:text-white transition active:scale-95 hover:cursor-pointer"
         >
           →
         </button>
@@ -99,17 +100,29 @@ function Bubble({ data, focused, faded }) {
   return (
     <div
       className={`
-        rounded-2xl p-6 shadow-lg transition-all duration-300 w-72
-        ${focused ? "scale-110 bg-[#477a40] text-white z-10 more-shimmer" : ""}
-        ${faded ? "scale-90 bg-white text-gray-700 opacity-70" : ""}
+        rounded-2xl p-6 shadow-2xl transition-all duration-500 w-72 relative
+        ${focused ? "scale-110 z-20" : "z-0"}
+        ${faded ? "scale-90 bg-white/80 text-gray-700" : "bg-white"}
       `}
     >
-      <p className={`text-sm leading-relaxed ${focused ? "more-shimmer" : ""} line-clamp-4`}>
-        “{data.text}”
-      </p>
-      <p className={`mt-2 font-semibold ${focused ? "hidden" : ""}`}>★ {data.rating}</p>
-      <p className={`mt-2 font-semibold ${focused ? "" : "hidden"}`}>⭐ {data.rating}</p>
-      <p className="mt-4 font-bold text-right">— {data.name}</p>
+      
+      {focused && (
+        <div className="absolute inset-0 bg-white z-10 rounded-2xl scale-[0.95]" />
+      )}
+
+      {focused && (
+        <div className="absolute inset-0 bg-[#477a40] z-30 more-shimmer rounded-2xl" />
+      )}
+
+
+      <div className={`relative z-40 ${focused ? "text-white" : "text-gray-700"}`}>
+        <p className={`text-sm leading-relaxed ${focused ? "more-shimmer" : ""} line-clamp-4`}>
+          &quot;{data.text}&quot;
+        </p>
+        <p className={`mt-2 font-semibold ${focused ? "hidden" : ""}`}>★ {data.rating}</p>
+        <p className={`mt-2 font-semibold ${focused ? "" : "hidden"}`}>⭐ {data.rating}</p>
+        <p className="mt-4 font-bold text-right">— {data.name}</p>
+      </div>
     </div>
   );
 }

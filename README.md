@@ -66,11 +66,11 @@ Dependencies _Important_
 npm install all
 # and
 npm install axios
-```
+# and
 npx neonctl@latest init
-
+# and
 npm install googleapis nodemailer date-fns date-fns-tz
-
+```
 Run the Production Build:
 
 ```bash
