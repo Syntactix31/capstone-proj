@@ -100,3 +100,13 @@ const CLIENTS = [
     lifetimeValue: "$1,600",
   },
 ];
+
+export default function DashboardPage() {
+  return (
+    <div>
+      <NavBar />
+      <main>Dashboard</main>
+      <Footer />
+    </div>
+  );
+}
