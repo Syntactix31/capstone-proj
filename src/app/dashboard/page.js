@@ -101,12 +101,105 @@ const CLIENTS = [
   },
 ];
 
+const STATUS_CLASS = {
+  Pending: "admin-badge admin-badge--pending",
+  Confirmed: "admin-badge admin-badge--active",
+  Canceled: "admin-badge admin-badge--muted",
+  Active: "admin-badge admin-badge--active",
+  Inactive: "admin-badge admin-badge--muted",
+};
+
+const MENU_ITEMS = [
+  { id: "appointments", label: "Appointments", href: "/dashboard/appointments" },
+  { id: "services", label: "Services", href: "/dashboard/services" },
+  { id: "estimates", label: "Estimates", href: "/dashboard/estimates" },
+  { id: "clients", label: "Clients", href: "/dashboard/clients" },
+  { id: "invoices", label: "Invoices", href: "/dashboard/invoices" },
+  { id: "payments", label: "Payments", href: "/dashboard/payments" },
+  { id: "reports", label: "Reports", href: "/dashboard/reports" },
+  { id: "settings", label: "Settings", href: "/dashboard/settings" },
+  { id: "gallery", label: "Gallery", href: "/dashboard/gallery" },
+];
+
 export default function DashboardPage() {
+    const router = useRouter();
+    
+    /*useEffect(() => {
+        if (typeof window === "undefined") return;
+        const role = localStorage.getItem("auth_role");
+        if (role !== "admin") {
+            router.replace("/auth");
+        }
+    }, [router]);*/
+
+    const pendingCount = APPOINTMENTS.filter(
+        (appt) => appt.status === "Pending"
+    ).length;
+    const confirmedCount = APPOINTMENTS.filter(
+        (appt) => appt.status === "Confirmed"
+    ).length;
+    const canceledCount = APPOINTMENTS.filter(
+        (appt) => appt.status === "Canceled"
+    ).length;
+    const activeServices = SERVICES.filter((service) => service.active).length;
+    const inactiveServices = SERVICES.length - activeServices;
+    const activeClients = CLIENTS.filter((client) => client.status === "Active")
+    .length;
+    const inactiveClients = CLIENTS.length - activeClients;
+    const nextAppointment = APPOINTMENTS.filter(
+        (appt) => appt.status !== "Canceled"
+    ).sort((a, b) => a.date.localeCompare(b.date))[0];
+
   return (
-    <div>
-      <NavBar />
-      <main>Dashboard</main>
-      <Footer />
+    <div className="admin-page">
+      <header className="admin-header">
+        <NavBar />
+      </header>
+
+      <div className="admin-shell">
+        <aside className="admin-sidebar">
+          <div className="admin-sidebar-brand">
+            <span className="admin-sidebar-logo">LC</span>
+            <div>
+              <div className="admin-sidebar-title">Landscape Craftsmen</div>
+              <div className="admin-sidebar-subtitle">Admin</div>
+            </div>
+          </div>
+          <div className="admin-sidebar-section">Menu</div>
+          <nav className="admin-menu">
+            {MENU_ITEMS.map((item) => (
+              <Link key={item.id} href={item.href} className="admin-menu-link">
+                <span>{item.label}</span>
+                <span className="admin-menu-arrow">›</span>
+              </Link>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="admin-main">
+            <section className="admin-hero">
+            <div>
+              <p className="admin-kicker">Admin Dashboard</p>
+              <h1 className="admin-title">
+                Your job overview
+              </h1>
+              <p className="admin-subtitle">
+                A quick overview check across appointments, services, and
+                customers.
+              </p>
+            </div>
+            <div className="admin-hero-actions">
+              <button className="admin-btn admin-btn--primary">
+                New Appointment
+              </button>
+              <button className="admin-btn admin-btn--ghost">
+                Create Estimate
+              </button>
+              <button className="admin-btn admin-btn--ghost">Add Client</button>
+            </div>
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
