@@ -3,8 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import NavBar from "../components/Navbar.js";
-import Footer from "../components/Footer.js";
+import AdminLayout from "../components/AdminLayout.js";
 
 const APPOINTMENTS = [
   {
@@ -151,32 +150,7 @@ export default function DashboardPage() {
     ).sort((a, b) => a.date.localeCompare(b.date))[0];
     
   return (
-    <div className="admin-page">
-      <header className="admin-header">
-        <NavBar />
-      </header>
-      <div className="admin-shell">
-        {/*admin sidebar*/}
-        <aside className="admin-sidebar">
-          <div className="admin-sidebar-brand">
-            <span className="admin-sidebar-logo">LC</span>
-            <div>
-              <div className="admin-sidebar-title">Landscape Craftsmen</div>
-              <div className="admin-sidebar-subtitle">Admin</div>
-            </div>
-          </div>
-          <div className="admin-sidebar-section">Menu</div>
-          <nav className="admin-menu">
-            {MENU_ITEMS.map((item) => (
-              <Link key={item.id} href={item.href} className="admin-menu-link">
-                <span>{item.label}</span>
-                <span className="admin-menu-arrow">›</span>
-              </Link>
-            ))}
-          </nav>
-        </aside>
-
-        <main className="admin-main">
+    <AdminLayout>
           {/*hero card*/}
             <section className="admin-hero">
             <div>
@@ -343,8 +317,6 @@ export default function DashboardPage() {
             </div>
           </article>
           </section>
-        </main>
-      </div>
-    </div>
+    </AdminLayout>
   );
 }
