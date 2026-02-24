@@ -294,6 +294,54 @@ export default function DashboardPage() {
               ))}
             </div>
           </article>
+          {/*Client Overiew*/}
+          <article className="admin-card admin-card--full">
+            <div className="admin-card-header">
+              <h2 className="admin-card-title">Clients</h2>
+              <Link className="admin-link" href="/dashboard/clients">
+                View clients
+              </Link>
+            </div>
+
+            <div className="admin-table">
+              <div className="admin-table-row admin-table-head">
+                <div>Client</div>
+                <div>Contact</div>
+                <div>Last Visit</div>
+                <div>Lifetime Value</div>
+                <div>Status</div>
+                <div>Actions</div>
+              </div>
+
+              {CLIENTS.map((client) => (
+                <div className="admin-table-row" key={client.id}>
+                  <div>
+                    <div className="admin-strong">{client.name}</div>
+                    <div className="admin-muted">{client.id}</div>
+                  </div>
+                  <div>
+                    <div>{client.email}</div>
+                    <div className="admin-muted">{client.phone}</div>
+                  </div>
+                  <div>{client.lastVisit}</div>
+                  <div>{client.lifetimeValue}</div>
+                  <div>
+                    <span className={STATUS_CLASS[client.status]}>
+                      {client.status}
+                    </span>
+                  </div>
+                  <div className="admin-actions">
+                    <button className="admin-btn admin-btn--small">
+                      Profile
+                    </button>
+                    <button className="admin-btn admin-btn--small admin-btn--ghost">
+                      Message
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
           </section>
         </main>
       </div>
