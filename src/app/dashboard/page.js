@@ -155,7 +155,6 @@ export default function DashboardPage() {
       <header className="admin-header">
         <NavBar />
       </header>
-
       <div className="admin-shell">
         <aside className="admin-sidebar">
           <div className="admin-sidebar-brand">
@@ -197,6 +196,31 @@ export default function DashboardPage() {
               </button>
               <button className="admin-btn admin-btn--ghost">Add Client</button>
             </div>
+          </section>
+          
+          <section className="admin-summary-grid">
+            <article className="admin-card admin-card--stat">
+              <div className="admin-stat-title">Total appointments</div>
+              <div className="admin-stat-value">{APPOINTMENTS.length}</div>
+              <span className={STATUS_CLASS.Confirmed}>
+                {confirmedCount} Confirmed
+              </span>
+            </article>
+            <article className="admin-card admin-card--stat">
+              <div className="admin-stat-title">Pending approvals</div>
+              <div className="admin-stat-value">{pendingCount}</div>
+              <span className={STATUS_CLASS.Pending}>Needs review</span>
+            </article>
+            <article className="admin-card admin-card--stat">
+              <div className="admin-stat-title">Active services</div>
+              <div className="admin-stat-value">{activeServices}</div>
+              <div className="admin-muted">{inactiveServices} inactive</div>
+            </article>
+            <article className="admin-card admin-card--stat">
+              <div className="admin-stat-title">Active clients</div>
+              <div className="admin-stat-value">{activeClients}</div>
+              <div className="admin-muted">{inactiveClients} inactive</div>
+            </article>
           </section>
         </main>
       </div>
