@@ -149,13 +149,14 @@ export default function DashboardPage() {
     const nextAppointment = APPOINTMENTS.filter(
         (appt) => appt.status !== "Canceled"
     ).sort((a, b) => a.date.localeCompare(b.date))[0];
-
+    
   return (
     <div className="admin-page">
       <header className="admin-header">
         <NavBar />
       </header>
       <div className="admin-shell">
+        {/*admin sidebar*/}
         <aside className="admin-sidebar">
           <div className="admin-sidebar-brand">
             <span className="admin-sidebar-logo">LC</span>
@@ -176,6 +177,7 @@ export default function DashboardPage() {
         </aside>
 
         <main className="admin-main">
+          {/*hero card*/}
             <section className="admin-hero">
             <div>
               <p className="admin-kicker">Admin Dashboard</p>
@@ -197,7 +199,7 @@ export default function DashboardPage() {
               <button className="admin-btn admin-btn--ghost">Add Client</button>
             </div>
           </section>
-          
+          {/*summary grid*/}
           <section className="admin-summary-grid">
             <article className="admin-card admin-card--stat">
               <div className="admin-stat-title">Total appointments</div>
@@ -221,6 +223,77 @@ export default function DashboardPage() {
               <div className="admin-stat-value">{activeClients}</div>
               <div className="admin-muted">{inactiveClients} inactive</div>
             </article>
+          </section>
+
+          <section className="admin-grid">
+            {/*next appointmet*/}
+            <article className="admin-card">
+            <div className="admin-card-header">
+              <h2 className="admin-card-title">Next Appointment</h2>
+              <Link className="admin-link" href="/dashboard/appointments">
+                Open schedule
+              </Link>
+            </div>
+            {nextAppointment ? (
+              <div className="admin-list">
+                <div className="admin-list-row">
+                  <div>
+                    <div className="admin-strong">{nextAppointment.client}</div>
+                    <div className="admin-muted">
+                      {nextAppointment.service}
+                    </div>
+                  </div>
+                  <span className={STATUS_CLASS[nextAppointment.status]}>
+                    {nextAppointment.status}
+                  </span>
+                </div>
+                <div className="admin-list-row">
+                  <div>
+                    <div className="admin-strong">{nextAppointment.date}</div>
+                    <div className="admin-muted">{nextAppointment.time}</div>
+                  </div>
+                  <button className="admin-btn admin-btn--small">
+                    View details
+                  </button>
+                </div>
+                <div className="admin-list-row">
+                  <div className="admin-muted">{nextAppointment.address}</div>
+                </div>
+              </div>
+            ) : (
+              <p className="admin-muted">No upcoming appointments.</p>
+            )}
+          </article>
+          {/*Services overivew*/}
+          <article className="admin-card">
+            <div className="admin-card-header">
+              <h2 className="admin-card-title">Services Overview</h2>
+              <Link className="admin-link" href="/dashboard/services">
+                Manage services
+              </Link>
+            </div>
+            <div className="admin-list">
+              {SERVICES.map((service) => (
+                <div className="admin-list-row" key={service.id}>
+                  <div>
+                    <div className="admin-strong">{service.name}</div>
+                    <div className="admin-muted">
+                      {service.duration} - {service.price}
+                    </div>
+                  </div>
+                  <span
+                    className={
+                      service.active
+                        ? "admin-badge admin-badge--active"
+                        : "admin-badge admin-badge--muted"
+                    }
+                  >
+                    {service.active ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </article>
           </section>
         </main>
       </div>
