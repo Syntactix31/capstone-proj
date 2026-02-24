@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import NavBar from "../../components/Navbar.js";
+import AdminLayout from "@/app/components/AdminLayout.js";
 
 const APPOINTMENTS = [
   {
@@ -44,17 +44,11 @@ const APPOINTMENTS = [
   },
 ];
 
-const MENU_ITEMS = [
-  { id: "appointments", label: "Appointments", href: "/dashboard/appointments" },
-  { id: "services", label: "Services", href: "/dashboard/services" },
-  { id: "estimates", label: "Estimates", href: "/dashboard/estimates" },
-  { id: "gallery", label: "Gallery", href: "/dashboard/gallery" },
-  { id: "clients", label: "Clientele", href: "/dashboard/clients" },
-  { id: "invoices", label: "Invoices", href: "/dashboard/invoices" },
-  { id: "payments", label: "Payments", href: "/dashboard/payments" },
-  { id: "reports", label: "Reports", href: "/dashboard/reports" },
-  { id: "settings", label: "Settings", href: "/dashboard/settings" },
-];
+const STATUS_CLASS = {
+  Pending: "admin-badge admin-badge--pending",
+  Confirmed: "admin-badge admin-badge--active",
+  Canceled: "admin-badge admin-badge--muted",
+};
 
 export default function AdminAppointmentsPage() {
     const router = useRouter();
@@ -69,33 +63,41 @@ export default function AdminAppointmentsPage() {
         }
     }, [router]);*/
 
-    return (
-    <div className="admin-page">
-        <header className="admin-header">
-            <NavBar />
-        </header>
+  const upcoming = appointments.filter((appt) => appt.status !== "Canceled").length;
+  const pending = appointments.filter((appt) => appt.status === "Pending").length;
+  const confirmed = appointments.filter((appt) => appt.status === "Confirmed").length;
 
-        <div className="admin-shell">
-            <aside className="admin-sidebar">
-          <div className="admin-sidebar-brand">
-            <span className="admin-sidebar-logo">LC</span>
-            <div>
-              <div className="admin-sidebar-title">Landscape Craftsmen</div>
-              <div className="admin-sidebar-subtitle">Admin</div>
-            </div>
-          </div>
-          <div className="admin-sidebar-section">Menu</div>
-          <nav className="admin-menu">
-            {MENU_ITEMS.map((item) => (
-              <Link key={item.id} href={item.href} className="admin-menu-link">
-                <span>{item.label}</span>
-                <span className="admin-menu-arrow">›</span>
-              </Link>
-            ))}
-          </nav>
-        </aside>
-        </div>
-    </div>
+    return (
+        <AdminLayout>
+            {/*hero card*/}
+            <section className="admin-hero">
+                <div>
+                <p className="admin-kicker">Appointments</p>
+                <h1 className="admin-title">Schedule overview</h1>
+                <p className="admin-subtitle">
+                    Manage appointments, and track upcoming visits.
+                </p>
+                </div>
+            </section>
+
+            <section className="admin-summary-grid">
+                <article className="admin-card admin-card--stat">
+                    <div className="admin-stat-title">Upcoming</div>
+                    <div className="admin-stat-value">{upcoming}</div>
+                    <div className="admin-muted">Next 14 days</div>
+                </article>
+                <article className="admin-card admin-card--stat">
+                    <div className="admin-stat-title">Pending approval</div>
+                    <div className="admin-stat-value">{pending}</div>
+                <span className={STATUS_CLASS.Pending}>Needs review</span>
+                </article>
+                <article className="admin-card admin-card--stat">
+                    <div className="admin-stat-title">Confirmed</div>
+                    <div className="admin-stat-value">{confirmed}</div>
+                <span className={STATUS_CLASS.Confirmed}>Locked in</span>
+                </article>
+            </section>
+        </AdminLayout>
     )
 }
 
