@@ -6,7 +6,8 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
   return (
     <div className={`absolute top-30 right-0 z-999 pointer-events-none animate-slideIn ${isAnimatingOut ? 'animate-slideOut' : 'animate-slideIn'
     }`}>
-      <div className="bg-[#477A40] w-80 h-fit lg:h-100  flex flex-col gap-10 text-white text-center font-semibold p-10 *:hover:scale-105 *:transition-transform *:duration-200 *:active:opacity-50 pointer-events-auto *:active:scale-100 top-outline shadow-2xl z-100">
+      {/* original width sm:w-80 and mobile w-75 */}
+      <div className="bg-[#477A40] w-74 sm:w-72 h-fit lg:h-90  flex flex-col gap-10 text-white text-center font-semibold p-10 *:hover:scale-105 *:transition-transform *:duration-200 *:active:opacity-50 pointer-events-auto *:active:scale-100 top-outline shadow-2xl z-100">
 
         
         <Link href="/about" className="hidden max-lg:inline" onClick={onClose}>About</Link>

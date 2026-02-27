@@ -158,7 +158,7 @@ export default function ProjectsPage() {
           <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-[#477a40]/10 blur-3xl" />
 
           <div className="relative text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl italic">
+            <h1 className="text-4xl font-normal tracking-tight text-gray-900 sm:text-5xl italic">
               A Collection Of Our <br /> Finest Work.
             </h1>
           </div>
