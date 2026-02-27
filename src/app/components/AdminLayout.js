@@ -23,7 +23,7 @@ export default function AdminLayout({ children }) {
       </header>
 
       <div className="admin-shell">
-        <aside className="admin-sidebar">
+        <aside className="admin-sidebar border-t-8 border-[#31270c] ">
           <div className="admin-sidebar-brand">
             <span className="admin-sidebar-logo">LC</span>
             <div>

@@ -71,7 +71,10 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col gap-10 items-center">
-              <h3 className="w-85 text-center p-2 text-3xl font-extrabold border-b-2 border-[#477a40] text-black">What We Offer</h3>
+              <h3 className="w-full max-w-xs sm:max-w-sm md:max-w-sm lg:w-85 text-center p-2 text-3xl font-extrabold border-b-2 border-[#477a40] text-black">
+                What We Offer
+              </h3>
+
               <div className="justify-center gap-y-5 gap-x-10 items-center w-130 z-200 flex flex-col 
                 min-[640px]:flex-row 
                 max-[1024px]:flex-wrap
@@ -88,16 +91,16 @@ export default function Home() {
 
                 </Link>     
                 <Link href="/services?service=pergola" className="h-25 w-60 rounded-2xl shadow-xl pergola-bg active:scale-98">
-                  <p className="pergola-mask ">Pergola</p>
+                  <p className="pergola-mask">Pergola</p>
 
                 </Link>
                 <Link href="/services?service=sod" className="h-25 w-60 rounded-2xl shadow-xl sod-bg active:scale-98">
-                  <p className="sod-mask text-transparent">Sod</p>
+                  <p className="sod-mask">Sod</p>
 
                 </Link> 
 
                 <Link href="/services?service=trees-shrubs" className="h-25 w-60 rounded-2xl shadow-xl trees-bg active:scale-98">
-                  <p className="trees-mask text-transparent">Trees & Shrubs</p>
+                  <p className="trees-mask">Trees & Shrubs</p>
 
                 </Link>           
                 
@@ -180,18 +183,18 @@ export default function Home() {
     </div>
 
 
-
-
+        {/* Fixed sizing on mobile screens */}
       <div className="flex justify-center items-center w-full py-12 bg-gradient-to-b from-white via-[#f8fbf8]/50 to-white">
-        <div className="relative p-4 mx-auto text-white rounded-4xl bg-[#477a40] text-2xl font-medium w-96 max-w-md text-center hover:cursor-pointer border-2 border-transparent hover:bg-white hover:border-[#477A40] hover:text-[#477A40] transition-all duration-300 hover:scale-105 active:scale-95 shadow-2xl backdrop-blur-sm md:shadow-3xl group">
-          <Link href="/book" className="block w-full h-full relative z-10">
+        <div className="relative p-4 mx-auto text-white rounded-2xl bg-[#477a40] text-xl sm:text-2xl font-bold w-72 sm:w-80 max-w-[90vw] text-center hover:cursor-pointer border-2 border-transparent hover:bg-white hover:border-[#477A40] hover:text-[#477A40] transition-all duration-300 hover:scale-105 active:scale-95 shadow-xl md:shadow-2xl group">
+          <Link href="/book" className="block w-full h-full py-3">
             Schedule an Appointment Today!
           </Link>
-          <span className="absolute bottom-3 right-8 text-xl font-bold group-hover:translate-x-1 transition-transform duration-300 z-20">
+          <span className="opacity-0 group-hover:opacity-100 absolute bottom-3 right-4 text-xl sm:text-2xl font-bold group-hover:translate-x-1 transition-transform duration-300 z-20">
             →
           </span>
         </div>
       </div>
+
 
 
       </main>

@@ -253,7 +253,8 @@ html {
   left: 0;
   right: 0;
   top: -5px;
-  height: 10px;
+  /* original height: 10px */
+  height: 8px;
   background-color: #31270c;
   transform: translateY(-50%);
   z-index: 10;
@@ -428,7 +429,6 @@ html {
   -webkit-text-fill-color: transparent;
 }
 
-
 .pergola-mask {
   background-image: url(/projects/Img8.JPG);
   background-size: cover;
@@ -487,10 +487,7 @@ html {
   background-position: top;
 }
 
-
 /*  Accepted both merge changes */
-
-
 
 /* Shared styles for all cards */
 .fence-bg, .deck-bg, .pergola-bg, .sod-bg, .trees-bg {
@@ -531,6 +528,26 @@ html {
   background-clip: text;
 }
 
+@media (max-width: 450px) {
+  .fence-mask, .deck-mask, .pergola-mask, .sod-mask, .trees-mask {
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    background-clip: unset !important;
+    -webkit-text-fill-color: unset !important;
+    color: white !important;
+  } 
+
+  .fence-bg::before,
+  .deck-bg::before,
+  .pergola-bg::before,
+  .sod-bg::before,
+  .trees-bg::before {
+    display: none !important;
+  }
+
+
+}
+
 .fence-bg:hover .fence-mask,
 .deck-bg:hover .deck-mask,
 .pergola-bg:hover .pergola-mask,
@@ -546,6 +563,7 @@ html {
 .sod-bg:hover, .trees-bg:hover {
   transform: scale(1.02);
 }
+
 
 /*BOOKING*/
 
@@ -862,8 +880,9 @@ body {
 
 /* day buttons */
 .calendar-day {
-  width: 60px;
-  height: 60px;
+  width: 100%; 
+  height: 44px;
+  max-width: 52px;
   border-radius: 999px;
   border: 1px solid #e5e7eb;
   background-color: #ffffff;
@@ -894,6 +913,22 @@ body {
   border-color: #477A40;
   color: #ffffff;
   transform: none;
+}
+
+@media (max-width: 600px) {
+  .calendar-grid {
+    gap: 6px; /* 🔥 Tighter gaps */
+  }
+  
+  .calendar-day {
+    height: 38px; /* 🔥 Smaller on mobile */
+    font-size: 12px;
+    max-width: 44px;
+  }
+  
+  .calendar-card {
+    padding: 16px 12px; /* 🔥 Less padding */
+  }
 }
 
 
@@ -1664,4 +1699,4 @@ body {
 
 /* FML TS TOOK TOO LONG */
 
-
+/* Fixed calender resizing on mobile viewports */
