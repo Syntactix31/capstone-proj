@@ -181,7 +181,7 @@ export default function Home() {
 
 
 
-
+                  {/* Fix sizing on mobile screens */}
       <div className="flex justify-center items-center w-full py-12 bg-gradient-to-b from-white via-[#f8fbf8]/50 to-white">
         <div className="relative p-4 mx-auto text-white rounded-4xl bg-[#477a40] text-2xl font-medium w-96 max-w-md text-center hover:cursor-pointer border-2 border-transparent hover:bg-white hover:border-[#477A40] hover:text-[#477A40] transition-all duration-300 hover:scale-105 active:scale-95 shadow-2xl backdrop-blur-sm md:shadow-3xl group">
           <Link href="/book" className="block w-full h-full relative z-10">
