@@ -184,7 +184,7 @@ export default function Home() {
 
 
         {/* Fixed sizing on mobile screens */}
-      <div className="flex justify-center items-center w-full py-12 bg-gradient-to-b from-white via-[#f8fbf8]/50 to-white">
+      <div className="flex justify-center items-center w-full py-12 bg-linear-to-b from-white via-[#f8fbf8]/50 to-white">
         <div className="relative p-4 mx-auto text-white rounded-2xl bg-[#477a40] text-xl sm:text-2xl font-bold w-72 sm:w-80 max-w-[90vw] text-center hover:cursor-pointer border-2 border-transparent hover:bg-white hover:border-[#477A40] hover:text-[#477A40] transition-all duration-300 hover:scale-105 active:scale-95 shadow-xl md:shadow-2xl group">
           <Link href="/book" className="block w-full h-full py-3">
             Schedule an Appointment Today!
@@ -208,21 +208,13 @@ export default function Home() {
 
 // write a review button under client reviews for users logged in (sprint 2)
 
-
+// ADD easy slide to comments
 // clicking on the comment in focus shows a pop up modal of full customer review
 
 // add animation to hamburger menu click (might not be best for low performance devices)
-
-
-// ADD easy slide to comments
-
-// ADD wood grain background to team members page and ccomments section
-
 // NAVBAR TURNS INTO x on menu click if page shadow doesnt work
 
 
-// // // // // // // // // // // // // // // //
-// Add "Schedule an Appointment" to main page
 
 // Google Reviews Page
 // https://www.google.com/search?client=opera-gx&q=landscape+craftsmen&sourceid=opera&ie=UTF-8&oe=UTF-8#lrd=0x537163001a82a44d:0x6501feae9dbe49fe,1,,,,
@@ -230,6 +222,3 @@ export default function Home() {
 
 
 
-
-
-// About page: Maybe have text and paragraphing centered for clarity

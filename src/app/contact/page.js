@@ -17,7 +17,7 @@ export default function Contact() {
 
             <div className="relative z-10">
               <p className="inline-flex items-center gap-2 rounded-full bg-[#477a40]/10 px-4 py-2 text-sm font-semibold text-[#2f5a29]">
-                🛠️ Get In Touch Today
+                Get In Touch Today
               </p>
               
               <h1 className="mt-6 text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900">
