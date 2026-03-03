@@ -54,7 +54,6 @@ function brand() {
     primary: "#166534",
     accent: "#16a34a",
     ownerEmail: process.env.OWNER_EMAIL || "",
-    // Email logo images need a public URL (I believe will fix later)
   };
 }
 
@@ -70,13 +69,13 @@ function escapeHtml(s) {
 function emailShell({ title, preheader, bodyHtml }) {
   const b = brand();
 
-  //LOGO PLACEHOLDER
   const logo = `
-    <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,0.18);
-      display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;
-      font-family:Arial,sans-serif; letter-spacing:0.5px;">
-      LC
-    </div>
+    <img 
+      src="cid:companylogo"
+      width="160"
+      alt="Landscape Craftsmen Logo"
+      style="display:block;"
+    />
   `;
 
   const hiddenPreheader = preheader
@@ -334,6 +333,13 @@ export async function POST(req) {
       to: email,
       subject: `Booking Confirmed – ${brand().name}`,
       html: emailTemplateCustomer({ firstName, service, startPretty, address }),
+      attachments: [
+        {
+          filename: "Landscapecraftsmen_logo.jpg",
+          path: process.cwd() + "/public/icons/Landscapecraftsmen_logo.jpg",
+          cid: "companylogo",
+        },
+      ],
     });
 
     await transporter.sendMail({
@@ -349,6 +355,13 @@ export async function POST(req) {
         address,
         notes,
       }),
+      attachments: [
+        {
+          filename: "Landscapecraftsmen_logo.jpg",
+          path: process.cwd() + "/public/icons/Landscapecraftsmen_logo.jpg",
+          cid: "companylogo",
+        },
+      ],
     });
 
     return NextResponse.json({ success: true, eventId: event.data.id });
