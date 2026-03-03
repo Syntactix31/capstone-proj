@@ -2433,6 +2433,11 @@ body {
   }
 }
 
+.time-slot--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 
 
 /* FML TS TOOK TOO LONG */

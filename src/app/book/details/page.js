@@ -14,30 +14,43 @@ const SERVICE_OPTIONS = [
   { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2-6 hrs" },
 ];
 
+function formatPrettyDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return dateStr;
+
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Edmonton",
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(d);
+}
+
 function DetailsContent() {
   const router = useRouter();
   const params = useSearchParams();
 
   const serviceId = params.get("service") || "";
-  const day = params.get("day") || "";
+  const date = params.get("date") || "";
   const time = params.get("time") || "";
 
-  const selectedService =
-    SERVICE_OPTIONS.find((s) => s.id === serviceId) || null;
+  const selectedService = SERVICE_OPTIONS.find((s) => s.id === serviceId) || null;
 
   const backHref = `/book/time?service=${encodeURIComponent(serviceId || "")}`;
 
-  const displayTime =
-    day && time ? `Oct ${day}, at ${time}` : "No time selected";
+  const displayTime = (() => {
+    if (!date || !time) return "No time selected";
+    const pretty = formatPrettyDate(date);
+    return `${pretty}, at ${time}`;
+  })();
 
   async function handleSubmit(e) {
     e.preventDefault();
 
     const formData = new FormData(e.target);
     const payload = Object.fromEntries(formData.entries());
-
-    // convert to real date format
-    payload.date = `2026-10-${String(day).padStart(2, "0")}`;
 
     try {
       const res = await fetch("/api/booking/create", {
@@ -46,12 +59,7 @@ function DetailsContent() {
         body: JSON.stringify(payload),
       });
 
-      let data = {};
-      try {
-        data = await res.json();
-      } catch (e) {
-        // backend returned empty body (avoid crash)
-      }
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         alert(
@@ -61,7 +69,12 @@ function DetailsContent() {
         return;
       }
 
-      const query = new URLSearchParams(payload).toString();
+      const queryObj = {
+        ...payload,
+        eventId: data.eventId || "",
+      };
+
+      const query = new URLSearchParams(queryObj).toString();
       router.push(`/book/confirm?${query}`);
     } catch (err) {
       console.error(err);
@@ -92,9 +105,7 @@ function DetailsContent() {
                     {selectedService ? selectedService.name : "Not selected"}
                   </div>
                   {selectedService && (
-                    <div className="summary-card-sub">
-                      {selectedService.duration}
-                    </div>
+                    <div className="summary-card-sub">{selectedService.duration}</div>
                   )}
                 </div>
                 <Link href="/book" className="summary-card-edit">
@@ -130,8 +141,7 @@ function DetailsContent() {
                 <span className="step-card-status">Current step</span>
               </div>
               <p className="step-card-text">
-                Add your contact info so we can confirm your appointment and
-                send updates.
+                Add your contact info so we can confirm your appointment and send updates.
               </p>
             </div>
 
@@ -140,8 +150,7 @@ function DetailsContent() {
                 <h2 className="step-card-title">Note:</h2>
               </div>
               <p className="step-card-text">
-                We are Calgary based only, any other provided address will void
-                the appointment.
+                We are Calgary based only, any other provided address will void the appointment.
               </p>
             </div>
           </section>
@@ -153,7 +162,7 @@ function DetailsContent() {
             <form className="details-form" onSubmit={handleSubmit}>
               {/* preserve selection in the URL */}
               <input type="hidden" name="service" value={serviceId} />
-              <input type="hidden" name="day" value={day} />
+              <input type="hidden" name="date" value={date} />
               <input type="hidden" name="time" value={time} />
 
               {/* Name row */}
@@ -180,6 +189,7 @@ function DetailsContent() {
                     name="lastName"
                     type="text"
                     className="details-input"
+                    required
                   />
                 </div>
               </div>
@@ -197,7 +207,7 @@ function DetailsContent() {
                   required
                 />
               </div>
-
+  
               {/* Address */}
               <div className="details-field">
                 <label className="details-label" htmlFor="address">

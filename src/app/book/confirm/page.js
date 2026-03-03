@@ -1,4 +1,8 @@
+"use client";
+
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 
@@ -10,22 +14,75 @@ const SERVICE_OPTIONS = [
   { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2-6 hrs" },
 ];
 
-export default function ConfirmPage({ searchParams }) {
-  const serviceId = searchParams?.service ?? "";
-  const day = searchParams?.day ?? "";
-  const time = searchParams?.time ?? "";
-  const firstName = searchParams?.firstName ?? "";
+function prettyDay(dateStr) {
+  if (!dateStr) return "Date not set";
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return dateStr;
 
-  const service =
-    SERVICE_OPTIONS.find((s) => s.id === serviceId) || null;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Edmonton",
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(d);
+}
 
-  // *TEMPORARY UNTIL WE GET BACKEND CALENDAR*
-  const formattedDay = day ? `Oct ${day}, 2026` : "Date not set";
-  const formattedTime = time || "Time not set";
+function ConfirmInner() {
+  const params = useSearchParams();
+  const router = useRouter();
 
-  const rescheduleHref = serviceId
-    ? `/book/time?service=${encodeURIComponent(serviceId)}`
-    : "/book";
+  const serviceId = params.get("service") || "";
+  const date = params.get("date") || "";
+  const time = params.get("time") || "";
+  const firstName = params.get("firstName") || "";
+  const eventId = params.get("eventId") || "";
+  const status = params.get("status") || "";
+
+  const service = useMemo(
+    () => SERVICE_OPTIONS.find((s) => s.id === serviceId) || null,
+    [serviceId]
+  );
+
+  const [busy, setBusy] = useState(false);
+
+  const onCancel = async () => {
+    if (!eventId) {
+      alert("Missing eventId.");
+      return;
+    }
+
+    const ok = window.confirm("Are you sure you want to cancel this appointment?");
+    if (!ok) return;
+
+    setBusy(true);
+    try {
+      const res = await fetch("/api/booking/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data?.error || "Could not cancel. Try again.");
+        setBusy(false);
+        return;
+      }
+
+      alert("Your appointment has been cancelled.");
+      router.push("/");
+    } catch (e) {
+      console.error(e);
+      alert("Could not cancel. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rescheduleHref = serviceId && eventId
+    ? `/book/time?service=${encodeURIComponent(serviceId)}&mode=reschedule&eventId=${encodeURIComponent(eventId)}`
+    : "/book/time";
 
   return (
     <div>
@@ -34,11 +91,14 @@ export default function ConfirmPage({ searchParams }) {
       </header>
 
       <main className="confirm-page">
-        <h1 className="confirm-title">Thank you for booking with us</h1>
+        <h1 className="confirm-title">
+          {status === "rescheduled" ? "Your appointment was rescheduled" : "Thank you for booking with us"}
+        </h1>
+
         <p className="confirm-subtitle">
           {firstName
-            ? `${firstName}, your appointment request has been sent.`
-            : "Your appointment request has been sent."}
+            ? `${firstName}, your appointment is confirmed.`
+            : "Your appointment is confirmed."}
         </p>
 
         <section className="confirm-card">
@@ -50,33 +110,39 @@ export default function ConfirmPage({ searchParams }) {
           <div className="confirm-divider" />
 
           <div className="confirm-info">
-            <div className="confirm-date">{formattedDay}</div>
-            <div className="confirm-time">{formattedTime}</div>
+            <div className="confirm-date">{prettyDay(date)}</div>
+            <div className="confirm-time">{time || "Time not set"}</div>
           </div>
 
-          <div className="confirm-service">
-            {service ? service.name : "Selected service"}
-          </div>
+          <div className="confirm-service">{service ? service.name : "Selected service"}</div>
 
           <div className="confirm-actions">
-            {/* Reschedule but not really a functional rescheduler until we have active database*/}
             <Link href={rescheduleHref} className="confirm-primary">
               Reschedule booking
             </Link>
 
-            {/* Placeholder cancel button for now */}
             <button
               type="button"
               className="confirm-secondary"
-              disabled
-              title="Cancellation flow coming soon"
+              onClick={onCancel}
+              disabled={busy || !eventId}
+              title={!eventId ? "Missing event id" : ""}
             >
-              Cancel booking
+              {busy ? "Cancelling..." : "Cancel booking"}
             </button>
           </div>
         </section>
       </main>
+
       <Footer />
     </div>
+  );
+}
+
+export default function ConfirmPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 20 }}>Loading...</div>}>
+      <ConfirmInner />
+    </Suspense>
   );
 }
