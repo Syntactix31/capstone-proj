@@ -28,7 +28,7 @@ export default function QuoteSuccessModal({ open, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-semibold text-gray-800 mb-3">
-          Quote request sent
+          Quote request sent!
         </h2>
         <p className="text-gray-600 mb-6">
           Your quote request was sent successfully. Please check your inbox.
