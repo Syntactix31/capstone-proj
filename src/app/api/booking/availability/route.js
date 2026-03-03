@@ -1,27 +1,46 @@
 import { NextResponse } from "next/server";
 import { getCalendarClient } from "../../../lib/googleCalendar";
-import { formatISO } from "date-fns";
 
 export async function POST(req) {
-  const { date } = await req.json();
+  try {
+    const { date } = await req.json();
 
-  const calendar = await getCalendarClient();
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+    }
 
-  const startOfDay = new Date(`${date}T00:00:00`);
-  const endOfDay = new Date(`${date}T23:59:59`);
+    const calendar = await getCalendarClient();
 
-  const events = await calendar.events.list({
-    calendarId: process.env.GOOGLE_CALENDAR_ID,
-    timeMin: formatISO(startOfDay),
-    timeMax: formatISO(endOfDay),
-    singleEvents: true,
-  });
+    const timeMin = `${date}T00:00:00-07:00`;
+    const timeMax = `${date}T23:59:59-07:00`;
 
-  const bookedTimes = events.data.items.map((e) =>
-    e.start?.dateTime ? new Date(e.start.dateTime).toISOString() : null
-  );
+    const events = await calendar.events.list({
+      calendarId: process.env.GOOGLE_CALENDAR_ID,
+      timeMin,
+      timeMax,
+      singleEvents: true,
+      orderBy: "startTime",
+    });
 
-  return NextResponse.json({ bookedTimes });
+    const items = events.data.items || [];
+
+    const busyIntervals = items
+      .map((e) => {
+        const start = e.start?.dateTime;
+        const end = e.end?.dateTime;
+        if (!start || !end) return null;
+        const s = new Date(start);
+        const en = new Date(end);
+        if (Number.isNaN(s.getTime()) || Number.isNaN(en.getTime())) return null;
+        return { start: s.toISOString(), end: en.toISOString(), eventId: e.id };
+      })
+      .filter(Boolean);
+
+    return NextResponse.json({ busyIntervals });
+  } catch (err) {
+    console.error("AVAILABILITY ERROR:", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
 }
 
 export const runtime = "nodejs";

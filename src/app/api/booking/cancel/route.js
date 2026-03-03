@@ -2,40 +2,6 @@ import { NextResponse } from "next/server";
 import { getCalendarClient } from "../../../lib/googleCalendar";
 import { getGmailTransporter } from "../../../lib/gmail";
 
-function parseTime12h(timeStr) {
-  const match = String(timeStr || "")
-    .trim()
-    .match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
-  if (!match) return null;
-
-  let hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  const meridiem = match[3].toLowerCase();
-
-  if (hours < 1 || hours > 12) return null;
-  if (minutes < 0 || minutes > 59) return null;
-
-  if (meridiem === "am") {
-    if (hours === 12) hours = 0;
-  } else {
-    if (hours !== 12) hours += 12;
-  }
-  return { hours, minutes };
-}
-
-function buildEdmontonDate(dateStr, timeStr) {
-  const t = parseTime12h(timeStr);
-  if (!t) return null;
-
-  const yyyyMmDd = String(dateStr || "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(yyyyMmDd)) return null;
-
-  const hh = String(t.hours).padStart(2, "0");
-  const mm = String(t.minutes).padStart(2, "0");
-
-  return new Date(`${yyyyMmDd}T${hh}:${mm}:00-07:00`);
-}
-
 function formatPrettyDate(dateObj) {
   return dateObj.toLocaleString("en-CA", {
     timeZone: "America/Edmonton",
@@ -70,7 +36,7 @@ function escapeHtml(s) {
 function emailShell({ title, preheader, bodyHtml }) {
   const b = brand();
 
-  //LOGO PLACEHOLDER
+  // LOGO PLACEHOLDER 
   const logo = `
     <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,0.18);
       display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;
@@ -141,7 +107,6 @@ function emailShell({ title, preheader, bodyHtml }) {
                         <div style="margin-bottom:4px;"><strong style="color:#111827;">${escapeHtml(
                           b.name
                         )}</strong></div>
-                        <div style="margin-bottom:4px;">This email was sent by the booking system.</div>
                         ${
                           b.ownerEmail
                             ? `<div>Contact: <a href="mailto:${escapeHtml(
@@ -179,181 +144,117 @@ function row(label, value) {
   </tr>`;
 }
 
-function pill(text, tone = "success") {
-  const b = brand();
-  const styles =
-    tone === "danger"
-      ? `background:rgba(239,68,68,0.12); color:#991b1b;`
-      : `background:rgba(22,163,74,0.10); color:${b.primary};`;
-  return `<span style="display:inline-block; padding:6px 10px; border-radius:999px; ${styles} font-weight:700; font-size:12px;">${escapeHtml(
+function pill(text) {
+  return `<span style="display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(239,68,68,0.12); color:#991b1b; font-weight:700; font-size:12px;">${escapeHtml(
     text
   )}</span>`;
 }
 
-function emailTemplateCustomer({ firstName, service, startPretty, address }) {
+function cancelEmailCustomer({ firstName, service, startPretty }) {
   const bodyHtml = `
     <div style="font-size:14px; color:#374151; margin:0 0 14px 0;">
       Hi <strong style="color:#111827;">${escapeHtml(
         firstName
-      )}</strong>, your appointment is confirmed. ${pill("Confirmed")}
+      )}</strong>, your appointment has been cancelled. ${pill("Cancelled")}
     </div>
 
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse; margin:12px 0 16px 0; border-radius:12px; overflow:hidden;">
       ${row("Service", service)}
       ${row("Date & Time", startPretty)}
-      ${row("Address", address)}
     </table>
 
     <div style="font-size:13px; color:#374151; margin:0;">
-      If you need to reschedule or cancel, you can do it from your confirmation page or just send us an email.
+      If you still need an estimate, you can book a new appointment anytime.
     </div>
   `;
 
   return emailShell({
-    title: "Booking Confirmed",
-    preheader: `Your appointment is confirmed for ${startPretty}.`,
+    title: "Booking Cancelled",
+    preheader: `Your appointment for ${startPretty} has been cancelled.`,
     bodyHtml,
   });
 }
 
-function emailTemplateOwner({
-  firstName,
-  lastName,
-  email,
-  service,
-  startPretty,
-  address,
-  notes,
-}) {
+function cancelEmailOwner({ fullName, email, service, startPretty }) {
   const bodyHtml = `
     <div style="font-size:14px; color:#374151; margin:0 0 14px 0;">
-      A new booking was created. ${pill("New Booking")}
+      A booking was cancelled. ${pill("Cancelled")}
     </div>
 
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse; margin:12px 0 16px 0; border-radius:12px; overflow:hidden;">
-      ${row("Client", `${firstName} ${lastName}`.trim())}
+      ${row("Client", fullName)}
       ${row("Client Email", email)}
       ${row("Service", service)}
       ${row("Date & Time", startPretty)}
-      ${row("Address", address)}
-      ${row("Notes", notes || "None")}
     </table>
   `;
 
   return emailShell({
-    title: "New Booking Received",
-    preheader: `New booking for ${startPretty}.`,
+    title: "Booking Cancelled",
+    preheader: `A booking for ${startPretty} was cancelled.`,
     bodyHtml,
   });
 }
 
 export async function POST(req) {
   try {
-    const body = await req.json();
+    const { eventId } = await req.json();
 
-    const {
-      service,
-      date,
-      time,
-      firstName,
-      lastName,
-      email,
-      address,
-      notes,
-    } = body;
-
-    if (!date || !time || !email || !firstName || !lastName || !service) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!eventId) {
+      return NextResponse.json({ error: "Missing eventId" }, { status: 400 });
     }
-
-    const start = buildEdmontonDate(date, time);
-    if (!start || Number.isNaN(start.getTime())) {
-      return NextResponse.json({ error: "Invalid date/time" }, { status: 400 });
-    }
-
-    if (start.getTime() < Date.now()) {
-      return NextResponse.json({ error: "Cannot book in the past." }, { status: 400 });
-    }
-
-    const end = new Date(start.getTime() + 60 * 60 * 1000);
 
     const calendar = await getCalendarClient();
 
-    const existing = await calendar.events.list({
+    const event = await calendar.events.get({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
-      timeMin: start.toISOString(),
-      timeMax: end.toISOString(),
-      singleEvents: true,
+      eventId,
     });
 
-    if ((existing.data.items || []).length > 0) {
-      return NextResponse.json({ error: "This time slot is already booked." }, { status: 409 });
-    }
+    const p = event.data.extendedProperties?.private || {};
+    const firstName = p.firstName || "there";
+    const lastName = p.lastName || "";
+    const email = p.email || "";
+    const service = p.service || event.data.summary || "Appointment";
 
-    const startPretty = formatPrettyDate(start);
+    const startIso = event.data.start?.dateTime;
+    const startDate = startIso ? new Date(startIso) : null;
+    const startPretty =
+      startDate && !Number.isNaN(startDate.getTime())
+        ? formatPrettyDate(startDate)
+        : "Scheduled time";
 
-    const event = await calendar.events.insert({
+    await calendar.events.delete({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
-      requestBody: {
-        summary: `${service} – ${firstName} ${lastName}`,
-        location: address || "Calgary, AB",
-        description: [
-          `Name: ${firstName} ${lastName}`,
-          `Email: ${email}`,
-          `Address: ${address || "N/A"}`,
-          `Notes: ${notes || "None"}`,
-        ].join("\n"),
-        extendedProperties: {
-          private: {
-            service: String(service || ""),
-            firstName: String(firstName || ""),
-            lastName: String(lastName || ""),
-            email: String(email || ""),
-            address: String(address || ""),
-            notes: String(notes || ""),
-            date: String(date || ""),
-            time: String(time || ""),
-          },
-        },
-        start: { dateTime: start.toISOString(), timeZone: "America/Edmonton" },
-        end: { dateTime: end.toISOString(), timeZone: "America/Edmonton" },
-        reminders: {
-          useDefault: false,
-          overrides: [
-            { method: "email", minutes: 60 * 24 },
-            { method: "popup", minutes: 30 },
-          ],
-        },
-      },
+      eventId,
     });
 
     const transporter = getGmailTransporter();
 
-    await transporter.sendMail({
-      from: `"${brand().name}" <${process.env.OWNER_EMAIL}>`,
-      to: email,
-      subject: `Booking Confirmed – ${brand().name}`,
-      html: emailTemplateCustomer({ firstName, service, startPretty, address }),
-    });
+    if (email) {
+      await transporter.sendMail({
+        from: `"${brand().name}" <${process.env.OWNER_EMAIL}>`,
+        to: email,
+        subject: `Booking Cancelled – ${brand().name}`,
+        html: cancelEmailCustomer({ firstName, service, startPretty }),
+      });
+    }
 
     await transporter.sendMail({
       from: `"${brand().name} Booking System" <${process.env.OWNER_EMAIL}>`,
       to: process.env.OWNER_EMAIL,
-      subject: "New Booking Received",
-      html: emailTemplateOwner({
-        firstName,
-        lastName,
-        email,
+      subject: "Booking Cancelled",
+      html: cancelEmailOwner({
+        fullName: `${firstName} ${lastName}`.trim(),
+        email: email || "Unknown",
         service,
         startPretty,
-        address,
-        notes,
       }),
     });
 
-    return NextResponse.json({ success: true, eventId: event.data.id });
+    return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("BOOKING ERROR:", err);
+    console.error("CANCEL ERROR:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

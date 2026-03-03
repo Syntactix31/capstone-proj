@@ -70,7 +70,7 @@ function escapeHtml(s) {
 function emailShell({ title, preheader, bodyHtml }) {
   const b = brand();
 
-  //LOGO PLACEHOLDER
+  // LOGO PLACEHOLDER
   const logo = `
     <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,0.18);
       display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;
@@ -141,7 +141,6 @@ function emailShell({ title, preheader, bodyHtml }) {
                         <div style="margin-bottom:4px;"><strong style="color:#111827;">${escapeHtml(
                           b.name
                         )}</strong></div>
-                        <div style="margin-bottom:4px;">This email was sent by the booking system.</div>
                         ${
                           b.ownerEmail
                             ? `<div>Contact: <a href="mailto:${escapeHtml(
@@ -179,105 +178,93 @@ function row(label, value) {
   </tr>`;
 }
 
-function pill(text, tone = "success") {
+function pill(text) {
   const b = brand();
-  const styles =
-    tone === "danger"
-      ? `background:rgba(239,68,68,0.12); color:#991b1b;`
-      : `background:rgba(22,163,74,0.10); color:${b.primary};`;
-  return `<span style="display:inline-block; padding:6px 10px; border-radius:999px; ${styles} font-weight:700; font-size:12px;">${escapeHtml(
+  return `<span style="display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(22,163,74,0.10); color:${b.primary}; font-weight:700; font-size:12px;">${escapeHtml(
     text
   )}</span>`;
 }
 
-function emailTemplateCustomer({ firstName, service, startPretty, address }) {
+function rescheduleEmailCustomer({ firstName, service, startPretty }) {
   const bodyHtml = `
     <div style="font-size:14px; color:#374151; margin:0 0 14px 0;">
       Hi <strong style="color:#111827;">${escapeHtml(
         firstName
-      )}</strong>, your appointment is confirmed. ${pill("Confirmed")}
+      )}</strong>, your appointment has been rescheduled. ${pill("Rescheduled")}
     </div>
 
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse; margin:12px 0 16px 0; border-radius:12px; overflow:hidden;">
       ${row("Service", service)}
-      ${row("Date & Time", startPretty)}
-      ${row("Address", address)}
+      ${row("New Date & Time", startPretty)}
     </table>
 
     <div style="font-size:13px; color:#374151; margin:0;">
-      If you need to reschedule or cancel, you can do it from your confirmation page or just send us an email.
+      If you have questions, reply to this email.
     </div>
   `;
 
   return emailShell({
-    title: "Booking Confirmed",
-    preheader: `Your appointment is confirmed for ${startPretty}.`,
+    title: "Booking Rescheduled",
+    preheader: `Your appointment has been rescheduled to ${startPretty}.`,
     bodyHtml,
   });
 }
 
-function emailTemplateOwner({
-  firstName,
-  lastName,
-  email,
-  service,
-  startPretty,
-  address,
-  notes,
-}) {
+function rescheduleEmailOwner({ fullName, email, service, startPretty }) {
   const bodyHtml = `
     <div style="font-size:14px; color:#374151; margin:0 0 14px 0;">
-      A new booking was created. ${pill("New Booking")}
+      A booking was rescheduled. ${pill("Rescheduled")}
     </div>
 
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse; margin:12px 0 16px 0; border-radius:12px; overflow:hidden;">
-      ${row("Client", `${firstName} ${lastName}`.trim())}
+      ${row("Client", fullName)}
       ${row("Client Email", email)}
       ${row("Service", service)}
-      ${row("Date & Time", startPretty)}
-      ${row("Address", address)}
-      ${row("Notes", notes || "None")}
+      ${row("New Date & Time", startPretty)}
     </table>
   `;
 
   return emailShell({
-    title: "New Booking Received",
-    preheader: `New booking for ${startPretty}.`,
+    title: "Booking Rescheduled",
+    preheader: `A booking has been moved to ${startPretty}.`,
     bodyHtml,
   });
 }
 
 export async function POST(req) {
   try {
-    const body = await req.json();
+    const { eventId, newDate, newTime } = await req.json();
 
-    const {
-      service,
-      date,
-      time,
-      firstName,
-      lastName,
-      email,
-      address,
-      notes,
-    } = body;
-
-    if (!date || !time || !email || !firstName || !lastName || !service) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!eventId || !newDate || !newTime) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    const start = buildEdmontonDate(date, time);
+    const start = buildEdmontonDate(newDate, newTime);
     if (!start || Number.isNaN(start.getTime())) {
       return NextResponse.json({ error: "Invalid date/time" }, { status: 400 });
     }
 
     if (start.getTime() < Date.now()) {
-      return NextResponse.json({ error: "Cannot book in the past." }, { status: 400 });
+      return NextResponse.json({ error: "Cannot reschedule into the past." }, { status: 400 });
     }
 
     const end = new Date(start.getTime() + 60 * 60 * 1000);
 
     const calendar = await getCalendarClient();
+
+    const oldEvent = await calendar.events.get({
+      calendarId: process.env.GOOGLE_CALENDAR_ID,
+      eventId,
+    });
+
+    const p = oldEvent.data.extendedProperties?.private || {};
+
+    const firstName = p.firstName || "there";
+    const lastName = p.lastName || "";
+    const email = p.email || "";
+    const service = p.service || oldEvent.data.summary || "Appointment";
+    const address = p.address || oldEvent.data.location || "Calgary, AB";
+    const notes = p.notes || "";
 
     const existing = await calendar.events.list({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
@@ -286,22 +273,30 @@ export async function POST(req) {
       singleEvents: true,
     });
 
-    if ((existing.data.items || []).length > 0) {
-      return NextResponse.json({ error: "This time slot is already booked." }, { status: 409 });
+    const items = existing.data.items || [];
+    const conflicts = items.filter((e) => e.id !== eventId);
+    if (conflicts.length > 0) {
+      return NextResponse.json({ error: "That time is already booked." }, { status: 409 });
     }
+
+    await calendar.events.delete({
+      calendarId: process.env.GOOGLE_CALENDAR_ID,
+      eventId,
+    });
 
     const startPretty = formatPrettyDate(start);
 
-    const event = await calendar.events.insert({
+    const newEvent = await calendar.events.insert({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
       requestBody: {
-        summary: `${service} – ${firstName} ${lastName}`,
-        location: address || "Calgary, AB",
+        summary: `${service} – ${firstName} ${lastName}`.trim(),
+        location: address,
         description: [
-          `Name: ${firstName} ${lastName}`,
+          `Name: ${firstName} ${lastName}`.trim(),
           `Email: ${email}`,
           `Address: ${address || "N/A"}`,
           `Notes: ${notes || "None"}`,
+          `Rescheduled: Yes`,
         ].join("\n"),
         extendedProperties: {
           private: {
@@ -311,8 +306,8 @@ export async function POST(req) {
             email: String(email || ""),
             address: String(address || ""),
             notes: String(notes || ""),
-            date: String(date || ""),
-            time: String(time || ""),
+            date: String(newDate || ""),
+            time: String(newTime || ""),
           },
         },
         start: { dateTime: start.toISOString(), timeZone: "America/Edmonton" },
@@ -329,31 +324,35 @@ export async function POST(req) {
 
     const transporter = getGmailTransporter();
 
-    await transporter.sendMail({
-      from: `"${brand().name}" <${process.env.OWNER_EMAIL}>`,
-      to: email,
-      subject: `Booking Confirmed – ${brand().name}`,
-      html: emailTemplateCustomer({ firstName, service, startPretty, address }),
-    });
+    if (email) {
+      await transporter.sendMail({
+        from: `"${brand().name}" <${process.env.OWNER_EMAIL}>`,
+        to: email,
+        subject: `Booking Rescheduled – ${brand().name}`,
+        html: rescheduleEmailCustomer({ firstName, service, startPretty }),
+      });
+    }
 
     await transporter.sendMail({
       from: `"${brand().name} Booking System" <${process.env.OWNER_EMAIL}>`,
       to: process.env.OWNER_EMAIL,
-      subject: "New Booking Received",
-      html: emailTemplateOwner({
-        firstName,
-        lastName,
-        email,
+      subject: "Booking Rescheduled",
+      html: rescheduleEmailOwner({
+        fullName: `${firstName} ${lastName}`.trim(),
+        email: email || "Unknown",
         service,
         startPretty,
-        address,
-        notes,
       }),
     });
 
-    return NextResponse.json({ success: true, eventId: event.data.id });
+    return NextResponse.json({
+      success: true,
+      newEventId: newEvent.data.id,
+      date: newDate,
+      time: newTime,
+    });
   } catch (err) {
-    console.error("BOOKING ERROR:", err);
+    console.error("RESCHEDULE ERROR:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
