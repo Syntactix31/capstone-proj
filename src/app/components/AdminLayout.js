@@ -23,7 +23,7 @@ export default function AdminLayout({ children }) {
       </header>
 
       <div className="admin-shell">
-        <aside className="admin-sidebar border-t-8 border-[#31270c] ">
+        <aside className="admin-sidebar">
           <div className="admin-sidebar-brand">
             <span className="admin-sidebar-logo">LC</span>
             <div>
@@ -31,6 +31,11 @@ export default function AdminLayout({ children }) {
               <div className="admin-sidebar-subtitle">Admin</div>
             </div>
           </div>
+          <Link href="/dashboard" className="admin-menu-link">
+            <span>Dashboard</span>
+            <span className="admin-menu-arrow">&gt;</span>
+          </Link>
+          <div className="admin-sidebar-divider" />
           <div className="admin-sidebar-section">Menu</div>
           <nav className="admin-menu">
             {MENU_ITEMS.map((item) => (
