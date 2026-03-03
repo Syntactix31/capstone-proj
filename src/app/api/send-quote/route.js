@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(req) {
   try {
+    // Initialize Resend here, safely accessing env var
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    
     const { to_email, subject, message_html } = await req.json();
 
     const { error } = await resend.emails.send({
@@ -25,5 +26,4 @@ export async function POST(req) {
     return NextResponse.json({ error: "Server crash" }, { status: 500 });
   }
 }
-
 
