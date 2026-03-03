@@ -28,7 +28,7 @@ export async function sendBookingEmail(htmlContent, toEmail) {
       {
         filename: "logo.jpg",
         path: path.join(process.cwd(), "public/icons/Landscapecraftsmen_logo.jpg"),
-        cid: "companylogo", // this is important
+        cid: "companylogo",
       },
     ],
   });
