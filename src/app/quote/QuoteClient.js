@@ -5,7 +5,8 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import emailjs from "@emailjs/browser";
+// Switching to resend.js
+// import emailjs from "@emailjs/browser";
 
 // import NavBar from "../components/Navbar.js";
 // import Footer from "../components/Footer.js";
@@ -44,9 +45,9 @@ export default function QuoteClient() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [summary, setSummary] = useState("");
 
-  useEffect(() => {
-    emailjs.init("VYdNBLKU2JIYKKcva");
-  }, []);
+  // useEffect(() => {
+  //   emailjs.init("VYdNBLKU2JIYKKcva");
+  // }, []);
 
   const validateForm = () => {
     const newErrors = {};
@@ -58,12 +59,92 @@ export default function QuoteClient() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
 
-    setIsSubmitting(true);
-    try {
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!validateForm()) return;
+
+  setIsSubmitting(true);
+
+  try {
+    const project = formData.project[selectedService.key];
+
+  const projectFieldsHTML = Object.entries(project)
+    .map(([key, value]) => {
+      // Proper formatting for each data row (replaces redundant styling)
+      const formattedKey = key
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+        .replace(/\s+/g, ' ')
+        .trim() + ':';
+
+      if (typeof value === "boolean") {
+        return `<tr><td style="text-transform: capitalize;"><b>${formattedKey}</b></td><td>${value ? "Yes" : "No"}</td></tr>`;
+      }
+      return `<tr><td><b>${formattedKey}</b></td><td>${value || "-"}</td></tr>`;
+    })
+    .join("");
+
+    const formatPhoneNumber = (phone) => {
+      if (!phone) return "-";
+      const digits = phone.replace(/\D/g, '');
+      
+      // String formatting fml
+      if (digits.length === 10) {
+        return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+      }
+      return phone;
+    };
+
+
+    const messageHTML = `
+      <div style="max-width:600px;margin:auto;background:#fff;font-family:arial,sans-serif;color:#333;">
+        <div style="border-top:6px solid #458500;padding:16px;">
+          <img src="https://..." style="height:40px;vertical-align:middle;margin-right:8px;">
+          <a href="https://landscape-craftsmen.vercel.app/" style="text-decoration:none;font-weight:bold;color:#333;">Landscape Craftsmen</a>
+          <span style="font-size:16px;vertical-align:middle;border-left:1px solid #333;padding-left:8px;"><strong>New Quote Request</strong></span>
+        </div>
+
+        <div style="padding:16px;">
+          <p>You have received a new estimate request through your website.</p>
+          <h3 style="border-bottom:2px solid #458500;padding-bottom:4px;">Client Information</h3>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td><strong>Name:</strong></td><td>${formData.client.name}</td></tr>
+            <tr><td><strong>Email:</strong></td><td>${formData.client.email}</td></tr>
+            <tr><td><strong>Address:</strong></td><td>${formData.client.address || "-"}</td></tr>
+            <tr><td><strong>Phone:</strong></td><td>$${formatPhoneNumber(formData.client.phone)}</td></tr>
+          </table>
+
+          <h3 style="border-bottom:2px solid #458500;margin-top:16px;padding-bottom:4px;">Project Details</h3>
+          <table style="width:100%;border-collapse:collapse;">${projectFieldsHTML}</table>
+        </div>
+      </div>
+    `;
+
+    const res = await fetch("/api/send-quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to_email: formData.client.email, // replace with landscapecraftsmen@yahoo.com when client approves (help him get set up with resend API)
+        subject: `New Estimate Request: ${selectedService.title}`,
+        message_html: messageHTML,
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Backend response:", errText);
+      throw new Error("Send failed");
+    }
+
+    setSummary(`Thanks ${formData.client.name}! Details sent to our team for quoting.`);
+    setShowSuccess(true);
+  } catch (err) {
+    console.error(err);
+    alert("Send failed—try again or contact us.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
 
       // ======== IMPORTANT DO NOT FORGET ===========
@@ -77,77 +158,105 @@ export default function QuoteClient() {
 
 
 
-      const project = formData.project[selectedService.key];
 
-      //NOTE: moved email.js html formatting here because of subscription limits
-      const projectFieldsHTML = Object.entries(project)
-        .map(([key, value]) => {
-          if (typeof value === "boolean") {
-            return `<tr><td><b>${key}</b></td><td>${value ? "Yes" : "No"}</td></tr>`;
-          }
-          return `<tr><td><b>${key}</b></td><td>${value || "-"}</td></tr>`;
-        })
-        .join("");
+// ***** Keeping the following for reference as previous API call using email.js *****
 
-      // format details for business email 
-      const messageHTML = `
-      <div style="max-width:600px;margin:auto;background:#fff;font-family:arial,sans-serif;color:#333;">
-        <div style="border-top:6px solid #458500;padding:16px;">
-          <img src="https://instagram.fyyc2-1.fna.fbcdn.net/v/t51.2885-19/439888727_2630358303796612_1490803132265581090_n.jpg?efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4xMDgwLmMyIn0&_nc_ht=instagram.fyyc2-1.fna.fbcdn.net&_nc_cat=104&_nc_oc=Q6cZ2QHbmTjNQN3moW6zr59MJIdJLHpe1_4mPLqRUoLWZbLhKc3yFdYI9Sjy5Elzq_tjTpXasTqqbpfNnYZIWT5bF3Vp&_nc_ohc=fm5v8pYLPAoQ7kNvwFUNekG&_nc_gid=aTA9-PZZAI4aoX12o7GEGQ&edm=APoiHPcBAAAA&ccb=7-5&oh=00_Afx8fXY4ryEFq1Prd342t7GQS5SlOC2KvZetUWhkpbJCKw&oe=69ABECF3&_nc_sid=22de04" style="height:40px;vertical-align:middle;margin-right:8px;">
-          <a href="https://landscape-craftsmen.vercel.app/" style="text-decoration:none;font-weight:bold;color:#333;">Landscape Craftsmen</a>
-          <span style="font-size:16px;vertical-align:middle;border-left:1px solid #333;padding-left:8px;"><strong>New Quote Request</strong></span>
-        </div>
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   if (!validateForm()) return;
 
-        <div style="padding:16px;">
-          <p>You have received a new estimate request through your website.</p>
-          <h3 style="border-bottom:2px solid #458500;padding-bottom:4px;">Client Information</h3>
-          <table style="width:100%;border-collapse:collapse;">
-            <tr><td><strong>Name:</strong></td><td>${formData.client.name}</td></tr>
-            <tr><td><strong>Email:</strong></td><td>${formData.client.email}</td></tr>
-            <tr><td><strong>Address:</strong></td><td>${formData.client.address || "-"}</td></tr>
-            <tr><td><strong>Phone:</strong></td><td>${formData.client.phone}</td></tr>
-          </table>
+  //   setIsSubmitting(true);
+  //   try {
 
-          <h3 style="border-bottom:2px solid #458500;margin-top:16px;padding-bottom:4px;">Project Details</h3>
-          <table style="width:100%;border-collapse:collapse;">${projectFieldsHTML}</table>
-          ${formData.files.length > 0 ? `<h4>Uploaded Files:</h4><ul>${formData.files.map(f => `<li>${f.name}</li>`).join("")}</ul>` : ""}
+  //     const project = formData.project[selectedService.key];
 
-          <p style="margin-top:20px;font-size:12px;color:#999;">This email was automatically generated from your estimate request form.</p>
-        </div>
-      </div>
-      `;
+  //     //NOTE: moved email.js html formatting here because of subscription limits
+  //     const projectFieldsHTML = Object.entries(project)
+  //       .map(([key, value]) => {
+  //         if (typeof value === "boolean") {
+  //           return `<tr><td><b>${key}</b></td><td>${value ? "Yes" : "No"}</td></tr>`;
+  //         }
+  //         return `<tr><td><b>${key}</b></td><td>${value || "-"}</td></tr>`;
+  //       })
+  //       .join("");
 
-      const templateParams = {
-        // to_email: "landscapecraftsmen@yahoo.com",
-        to_email: "L3V1medal@gmail.com", 
-        from_name: formData.client.name,
-        from_email: formData.client.email,
-        service: selectedService.title,
-        message_html: messageHTML,
-      };
+  //     // format details for business email 
+  //     const messageHTML = `
+  //     <div style="max-width:600px;margin:auto;background:#fff;font-family:arial,sans-serif;color:#333;">
+  //       <div style="border-top:6px solid #458500;padding:16px;">
+  //         <img src="https://instagram.fyyc2-1.fna.fbcdn.net/v/t51.2885-19/439888727_2630358303796612_1490803132265581090_n.jpg?efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4xMDgwLmMyIn0&_nc_ht=instagram.fyyc2-1.fna.fbcdn.net&_nc_cat=104&_nc_oc=Q6cZ2QHbmTjNQN3moW6zr59MJIdJLHpe1_4mPLqRUoLWZbLhKc3yFdYI9Sjy5Elzq_tjTpXasTqqbpfNnYZIWT5bF3Vp&_nc_ohc=fm5v8pYLPAoQ7kNvwFUNekG&_nc_gid=aTA9-PZZAI4aoX12o7GEGQ&edm=APoiHPcBAAAA&ccb=7-5&oh=00_Afx8fXY4ryEFq1Prd342t7GQS5SlOC2KvZetUWhkpbJCKw&oe=69ABECF3&_nc_sid=22de04" style="height:40px;vertical-align:middle;margin-right:8px;">
+  //         <a href="https://landscape-craftsmen.vercel.app/" style="text-decoration:none;font-weight:bold;color:#333;">Landscape Craftsmen</a>
+  //         <span style="font-size:16px;vertical-align:middle;border-left:1px solid #333;padding-left:8px;"><strong>New Quote Request</strong></span>
+  //       </div>
 
-      // const templateParams = {
-      //   // to_email: "landscapecraftsmen@yahoo.com",
-      //   to_email: "L3V1medal@gmail.com", 
-      //   service: selectedService.title,
-      //   client_name: formData.client.name,
-      //   client_address: formData.client.address,
-      //   client_email: formData.client.email,
-      //   client_phone: formData.client.phone,
-      //   project_details: JSON.stringify(formData.project[selectedService.key], null, 2),
+  //       <div style="padding:16px;">
+  //         <p>You have received a new estimate request through your website.</p>
+  //         <h3 style="border-bottom:2px solid #458500;padding-bottom:4px;">Client Information</h3>
+  //         <table style="width:100%;border-collapse:collapse;">
+  //           <tr><td><strong>Name:</strong></td><td>${formData.client.name}</td></tr>
+  //           <tr><td><strong>Email:</strong></td><td>${formData.client.email}</td></tr>
+  //           <tr><td><strong>Address:</strong></td><td>${formData.client.address || "-"}</td></tr>
+  //           <tr><td><strong>Phone:</strong></td><td>${formData.client.phone}</td></tr>
+  //         </table>
 
-      // };
+  //         <h3 style="border-bottom:2px solid #458500;margin-top:16px;padding-bottom:4px;">Project Details</h3>
+  //         <table style="width:100%;border-collapse:collapse;">${projectFieldsHTML}</table>
+  //         ${formData.files.length > 0 ? `<h4>Uploaded Files:</h4><ul>${formData.files.map(f => `<li>${f.name}</li>`).join("")}</ul>` : ""}
+
+  //         <p style="margin-top:20px;font-size:12px;color:#999;">This email was automatically generated from your estimate request form.</p>
+  //       </div>
+  //     </div>
+  //     `;
+
+  //     // const templateParams = {
+
+  //     //   to_email: "L3V1medal@gmail.com", 
+  //     //   from_name: formData.client.name,
+  //     //   from_email: formData.client.email,
+  //     //   service: selectedService.title,
+  //     //   message_html: messageHTML,
+  //     // };
 
 
-      await emailjs.send("service_my1ew5p", "template_ygvpo45", templateParams);
+  //     const templateParams = {
+  //       // to_email: "landscapecraftsmen@yahoo.com",
+  //       to_email: "L3V1medal@gmail.com",
+  //       from_name: formData.client.name,
+  //       service: selectedService.title,
+  //       client_name: formData.client.name,
+  //       client_email: formData.client.email,
+  //       client_phone: formData.client.phone,
+  //       client_address: formData.client.address || "N/A",
+  //       project_details: JSON.stringify(formData.project[selectedService.key], null, 2),
+  //       message: messageHTML  // Use 'message' field
+  //     };
 
-      setSummary(`Thanks ${formData.client.name}! Details sent to our team for quoting.`);
-      setShowSuccess(true);
-    } catch (err) {
-      alert("Send failed—try again or contact us.");
-    }
-    setIsSubmitting(false);
-  };
+  //     // const templateParams = {
+  //     //   // to_email: "landscapecraftsmen@yahoo.com",
+  //     //   to_email: "L3V1medal@gmail.com", 
+  //     //   service: selectedService.title,
+  //     //   client_name: formData.client.name,
+  //     //   client_address: formData.client.address,
+  //     //   client_email: formData.client.email,
+  //     //   client_phone: formData.client.phone,
+  //     //   project_details: JSON.stringify(formData.project[selectedService.key], null, 2),
+
+  //     // };
+
+  //     await emailjs.send("service_my1ew5p", "template_blank", {
+  //       to_email: "L3V1medal@gmail.com",
+  //       message_html: messageHTML,
+  //     });
+
+  //     // await emailjs.send("service_my1ew5p", "template_ygvpo45", templateParams);
+
+  //     setSummary(`Thanks ${formData.client.name}! Details sent to our team for quoting.`);
+  //     setShowSuccess(true);
+  //   } catch (err) {
+  //     alert("Send failed—try again or contact us.");
+  //   }
+  //   setIsSubmitting(false);
+  // };
 
   const updateProjectField = (section, field, value) => {
     setFormData(prev => ({
@@ -413,6 +522,11 @@ export default function QuoteClient() {
 /**   ******** TODO **********
  * Change the focus border on all the input fields from black to the theme colour [#477a40]
  * 
+ * 
+ * =====  For Adlin ===== 
+ * 
+ * Add file upload to email API send stream byte conversions
+ * Format measurements to email template (ln/ft, ft, sq/ft)
  * 
  */
 
