@@ -22,6 +22,7 @@ export default function AdminLayout({ children }) {
         <NavBar />
       </header>
 
+{/* resolving discrepancy issues */}
       <div className="admin-shell">
         <aside className="admin-sidebar border-t-8 border-[#31270c] ">
           <div className="admin-sidebar-brand">

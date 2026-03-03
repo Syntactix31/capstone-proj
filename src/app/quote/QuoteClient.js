@@ -112,7 +112,7 @@ const handleSubmit = async (e) => {
             <tr><td><strong>Name:</strong></td><td>${formData.client.name}</td></tr>
             <tr><td><strong>Email:</strong></td><td>${formData.client.email}</td></tr>
             <tr><td><strong>Address:</strong></td><td>${formData.client.address || "-"}</td></tr>
-            <tr><td><strong>Phone:</strong></td><td>$${formatPhoneNumber(formData.client.phone)}</td></tr>
+            <tr><td><strong>Phone:</strong></td><td>${formatPhoneNumber(formData.client.phone)}</td></tr>
           </table>
 
           <h3 style="border-bottom:2px solid #458500;margin-top:16px;padding-bottom:4px;">Project Details</h3>
