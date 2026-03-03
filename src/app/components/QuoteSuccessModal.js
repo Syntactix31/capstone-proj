@@ -31,7 +31,7 @@ export default function QuoteSuccessModal({ open, onClose }) {
           Quote request sent!
         </h2>
         <p className="text-gray-600 mb-6">
-          Your quote request was sent successfully. Please check your inbox.
+          Your quote request was sent successfully! Please wait 1-2 business days for a quote approval.
         </p>
         <button
           onClick={onClose}
