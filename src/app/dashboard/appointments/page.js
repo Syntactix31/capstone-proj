@@ -4,51 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminLayout from "../../components/AdminLayout.js";
 
-const APPOINTMENTS = [
-  {
-    id: "A-1001",
-    client: "Jordan Lee",
-    service: "Fence Installation",
-    date: "2026-03-04",
-    time: "10:00 AM",
-    address: "123 Main St, Calgary",
-    status: "Pending",
-  },
-  {
-    id: "A-1002",
-    client: "Avery Chen",
-    service: "Deck & Railing",
-    date: "2026-03-05",
-    time: "1:30 PM",
-    address: "44 5 Ave SW, Calgary",
-    status: "Pending",
-  },
-  {
-    id: "A-1003",
-    client: "Taylor Singh",
-    service: "Pergola",
-    date: "2026-03-06",
-    time: "9:00 AM",
-    address: "912 10 St NW, Calgary",
-    status: "Pending",
-  },
-  {
-    id: "A-1004",
-    client: "Morgan Park",
-    service: "Sod Installation",
-    date: "2026-03-08",
-    time: "2:00 PM",
-    address: "80 17 Ave NE, Calgary",
-    status: "Pending",
-  },
-];
-
 const SERVICES = [
-  { id: "S-01", name: "Fence Installation", active: true },
-  { id: "S-02", name: "Deck & Railing", active: true },
-  { id: "S-03", name: "Pergola", active: true },
-  { id: "S-04", name: "Sod Installation", active: false },
-  { id: "S-05", name: "Trees and Shrubs", active: true },
+  { id: "fence", name: "Fence Installation", active: true },
+  { id: "deck-railing", name: "Deck & Railing", active: true },
+  { id: "pergola", name: "Pergola", active: true },
+  { id: "sod", name: "Sod Installation", active: false },
+  { id: "trees-shrubs", name: "Trees and Shrubs", active: true },
 ];
 
 const STATUS_CLASS = {
@@ -57,28 +18,70 @@ const STATUS_CLASS = {
   Canceled: "admin-badge admin-badge--muted",
 };
 
+function prettyServiceName(serviceIdOrName) {
+  const hit =
+    SERVICES.find((s) => s.id === serviceIdOrName) ||
+    SERVICES.find((s) => s.name === serviceIdOrName);
+  return hit?.name || String(serviceIdOrName || "Appointment");
+}
+
+function to24h(time12h) {
+  // "9:30 AM" -> "09:30"
+  const m = String(time12h || "")
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return "";
+  let hh = Number(m[1]);
+  const mm = Number(m[2]);
+  const mer = m[3].toUpperCase();
+  if (hh === 12) hh = 0;
+  if (mer === "PM") hh += 12;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+function to12h(time24) {
+  // "14:30" -> "2:30 PM"
+  const [hhRaw, mmRaw] = String(time24 || "").split(":");
+  const hh = Number(hhRaw);
+  const mm = Number(mmRaw);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return "";
+  const mer = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:${String(mm).padStart(2, "0")} ${mer}`;
+}
+
 export default function AdminAppointmentsPage() {
   const router = useRouter();
-  const [appointments, setAppointments] = useState(APPOINTMENTS);
+  const [appointments, setAppointments] = useState([]); // from Google Calendar
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
   const [activeAppointment, setActiveAppointment] = useState(null);
   const [detailSource, setDetailSource] = useState(null);
+
   const [viewMode, setViewMode] = useState("week");
   const [now, setNow] = useState(() => new Date());
   const [currentDate, setCurrentDate] = useState(() => new Date());
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formState, setFormState] = useState({
-    client: "",
-    service: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    service: "fence",
     date: "",
-    time: "",
+    time: "09:00 AM",
     address: "",
-    status: "Pending",
+    notes: "",
   });
+
   const [editingId, setEditingId] = useState(null);
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [showBookedModal, setShowBookedModal] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelSource, setCancelSource] = useState(null);
+
   const calendarScrollRef = useRef(null);
 
   /*Role verification*/
@@ -91,41 +94,79 @@ export default function AdminAppointmentsPage() {
     }
   }, [router]);*/
 
+  // Pull from Google Calendar (via API in /api/admin/appointments)
+  async function refreshAppointments() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/appointments", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAppointments([]);
+        setError(data?.error || "Failed to load appointments.");
+        return;
+      }
+
+      const appts = Array.isArray(data.appointments) ? data.appointments : [];
+
+      // Map into the shape the UI expects
+      const mapped = appts.map((a) => ({
+        id: a.eventId, // use Google eventId as primary id
+        eventId: a.eventId,
+        client: a.client || "Unknown",
+        service: prettyServiceName(a.service),
+        serviceId: a.service,
+        date: a.date, 
+        time: a.time, 
+        address: a.address || "",
+        status: "Confirmed", 
+        email: a.email || "",
+        notes: a.notes || "",
+        startIso: a.startIso,
+        endIso: a.endIso,
+      }));
+
+      setAppointments(mapped);
+    } catch (e) {
+      console.error(e);
+      setAppointments([]);
+      setError("Failed to load appointments.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refreshAppointments();
+  }, []);
+
   useEffect(() => {
     const tick = () => setNow(new Date());
     const interval = setInterval(tick, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const upcoming = appointments.filter(
-    (appt) => appt.status !== "Canceled"
-  ).length;
-  const pending = appointments.filter((appt) => appt.status === "Pending")
-    .length;
-  const pendingAppointments = appointments.filter(
-    (appt) => appt.status === "Pending"
-  );
-  const bookedAppointments = appointments.filter(
-    (appt) => appt.status === "Confirmed"
-  );
-  const confirmed = appointments.filter((appt) => appt.status === "Confirmed")
-    .length;
-  const activeServices = useMemo(
-    () => SERVICES.filter((service) => service.active),
-    []
-  );
+  const upcoming = appointments.filter((appt) => appt.status !== "Canceled").length;
+
+  // Since Google events are real bookings, treat them as Confirmed
+  const pending = 0;
+  const pendingAppointments = [];
+  const bookedAppointments = appointments.filter((appt) => appt.status === "Confirmed");
+  const confirmed = bookedAppointments.length;
+
+  const activeServices = useMemo(() => SERVICES.filter((s) => s.active), []);
+
   const calendarStartHour = 0;
   const calendarEndHour = 23;
   const calendarRowHeight = 54;
   const calendarRowGap = 12;
   const calendarPadding = 12;
+
   const calendarSlots = useMemo(() => {
     const hours = [];
-    for (let hour = calendarStartHour; hour <= calendarEndHour; hour += 1) {
-      hours.push(hour);
-    }
+    for (let hour = calendarStartHour; hour <= calendarEndHour; hour += 1) hours.push(hour);
     return hours;
-  }, []);
+  }, [calendarStartHour, calendarEndHour]);
 
   const formatHourLabel = (hour) => {
     const period = hour >= 12 ? "PM" : "AM";
@@ -146,10 +187,7 @@ export default function AdminAppointmentsPage() {
     return slots;
   }, []);
 
-  const weekDays = useMemo(
-    () => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    []
-  );
+  const weekDays = useMemo(() => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], []);
 
   const formatDateKey = (date) => date.toISOString().split("T")[0];
 
@@ -198,29 +236,29 @@ export default function AdminAppointmentsPage() {
     }
     return dates;
   }, [currentDate]);
-  const todayIndex = useMemo(() => new Date().getDay(), []);
 
-  const calendarEvents = useMemo(
-    () =>
-      appointments
-        .filter((appt) => appt.status !== "Canceled")
-        .map((appt, index) => {
-          const [hourPart] = appt.time.split(" ")[0].split(":");
-          const hour = parseInt(hourPart, 10);
-          const gridRowStart = Math.max(hour - calendarStartHour + 1, 1);
-          const span = 1;
-          const dateObj = new Date(`${appt.date}T00:00:00`);
-          const dayIndex = dateObj.getDay();
-          return {
-            ...appt,
-            gridRow: gridRowStart,
-            gridCol: dayIndex + 1,
-            span,
-            timeLabel: `${appt.time}`,
-          };
-        }),
-    [appointments]
-  );
+  const calendarEvents = useMemo(() => {
+    return appointments
+      .filter((appt) => appt.status !== "Canceled")
+      .map((appt) => {
+        const time24 = to24h(appt.time); 
+        const hour = Number(time24.split(":")[0] || 0);
+        const gridRowStart = Math.max(hour - calendarStartHour + 1, 1);
+
+      
+        const span = 1;
+
+        const dateObj = new Date(`${appt.date}T00:00:00`);
+        const dayIndex = dateObj.getDay();
+        return {
+          ...appt,
+          gridRow: gridRowStart,
+          gridCol: dayIndex + 1,
+          span,
+          timeLabel: appt.time,
+        };
+      });
+  }, [appointments, calendarStartHour]);
 
   const visibleEvents = useMemo(() => {
     if (viewMode === "day") {
@@ -237,9 +275,7 @@ export default function AdminAppointmentsPage() {
   const nowIndicator = useMemo(() => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
-    if (currentHour < calendarStartHour || currentHour > calendarEndHour) {
-      return null;
-    }
+    if (currentHour < calendarStartHour || currentHour > calendarEndHour) return null;
 
     const hoursFromStart = currentHour - calendarStartHour;
     const offset =
@@ -267,29 +303,81 @@ export default function AdminAppointmentsPage() {
     container.scrollTo({ top: target, behavior: "smooth" });
   }, [nowIndicator]);
 
-  const handleApprove = (id) => {
-    setAppointments((prev) =>
-      prev.map((appt) =>
-        appt.id === id ? { ...appt, status: "Confirmed" } : appt
-      )
-    );
-  };
+  // Admin actions that actually change Google Calendar
+  async function cancelOnServer(eventId) {
+    const ok = window.confirm("Cancel this appointment? This removes it from Google Calendar and sends cancel emails.");
+    if (!ok) return false;
 
-  const handleCancel = (id) => {
-    setAppointments((prev) =>
-      prev.map((appt) =>
-        appt.id === id ? { ...appt, status: "Canceled" } : appt
-      )
-    );
-  };
+    setBusy(true);
+    try {
+      const res = await fetch("/api/booking/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data?.error || "Cancel failed.");
+        return false;
+      }
+      await refreshAppointments();
+      return true;
+    } catch (e) {
+      console.error(e);
+      alert("Cancel failed.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  const handleReschedule = (id) => {
-    setAppointments((prev) =>
-      prev.map((appt) =>
-        appt.id === id ? { ...appt, status: "Pending" } : appt
-      )
-    );
-  };
+  async function rescheduleOnServer(eventId, newDate, newTime) {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/booking/reschedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId, newDate, newTime }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data?.error || "Reschedule failed.");
+        return false;
+      }
+      await refreshAppointments();
+      return true;
+    } catch (e) {
+      console.error(e);
+      alert("Reschedule failed.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createOnServer(payload) {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/booking/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data?.error || "Create failed.");
+        return false;
+      }
+      await refreshAppointments();
+      return true;
+    } catch (e) {
+      console.error(e);
+      alert("Create failed.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const handleDetails = (appt, source = null) => {
     setActiveAppointment(appt);
@@ -298,35 +386,39 @@ export default function AdminAppointmentsPage() {
 
   const closeDetails = (returnToBooked = true) => {
     setActiveAppointment(null);
-    if (returnToBooked && detailSource === "booked") {
-      setShowBookedModal(true);
-    }
+    if (returnToBooked && detailSource === "booked") setShowBookedModal(true);
     setDetailSource(null);
   };
 
   const openAddForm = () => {
-    const defaultService = activeServices[0]?.name ?? "";
     setEditingId(null);
     setFormState({
-      client: "",
-      service: defaultService,
+      firstName: "",
+      lastName: "",
+      email: "",
+      service: activeServices[0]?.id ?? "fence",
       date: formatDateKey(new Date()),
       time: "09:00 AM",
       address: "",
-      status: "Pending",
+      notes: "",
     });
     setIsFormOpen(true);
   };
 
   const openEditForm = (appt) => {
-    setEditingId(appt.id);
+    setEditingId(appt.eventId || appt.id);
+    const nameParts = String(appt.client || "").trim().split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ");
     setFormState({
-      client: appt.client,
-      service: appt.service,
+      firstName,
+      lastName,
+      email: appt.email || "",
+      service: appt.serviceId || "fence",
       date: appt.date,
       time: appt.time,
-      address: appt.address,
-      status: appt.status,
+      address: appt.address || "",
+      notes: appt.notes || "",
     });
     setIsFormOpen(true);
   };
@@ -338,27 +430,40 @@ export default function AdminAppointmentsPage() {
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFormSubmit = (event) => {
+  const handleFormSubmit = async (event) => {
     event.preventDefault();
-    if (!formState.client || !formState.date || !formState.time) return;
 
+    if (!formState.date || !formState.time) return;
+
+    // If editing, reschedule on server (delete+create in your reschedule route)
     if (editingId) {
-      setAppointments((prev) =>
-        prev.map((appt) =>
-          appt.id === editingId ? { ...appt, ...formState } : appt
-        )
-      );
-    } else {
-      setAppointments((prev) => [
-        ...prev,
-        {
-          id: `A-${Date.now()}`,
-          ...formState,
-        },
-      ]);
+      const ok = window.confirm("Reschedule this appointment to the new date/time?");
+      if (!ok) return;
+
+      const success = await rescheduleOnServer(editingId, formState.date, formState.time);
+      if (success) setIsFormOpen(false);
+      return;
     }
 
-    setIsFormOpen(false);
+    // If adding, create on server
+    if (!formState.firstName || !formState.lastName || !formState.email || !formState.service) {
+      alert("Please fill first name, last name, email, and service.");
+      return;
+    }
+
+    const payload = {
+      service: formState.service, // service id (fence, pergola, etc)
+      date: formState.date,
+      time: formState.time,
+      firstName: formState.firstName,
+      lastName: formState.lastName,
+      email: formState.email,
+      address: formState.address,
+      notes: formState.notes,
+    };
+
+    const success = await createOnServer(payload);
+    if (success) setIsFormOpen(false);
   };
 
   const handleViewChange = (mode) => {
@@ -368,23 +473,16 @@ export default function AdminAppointmentsPage() {
 
   const handleToday = () => {
     setCurrentDate(new Date());
-    if (viewMode !== "day") {
-      setViewMode("day");
-    }
+    if (viewMode !== "day") setViewMode("day");
   };
 
   const shiftDate = (direction) => {
     const next = new Date(currentDate);
-    if (viewMode === "day") {
-      next.setDate(currentDate.getDate() + direction);
-    } else if (viewMode === "week") {
-      next.setDate(currentDate.getDate() + direction * 7);
-    } else {
-      next.setMonth(currentDate.getMonth() + direction);
-    }
+    if (viewMode === "day") next.setDate(currentDate.getDate() + direction);
+    else if (viewMode === "week") next.setDate(currentDate.getDate() + direction * 7);
+    else next.setMonth(currentDate.getMonth() + direction);
     setCurrentDate(next);
   };
-
 
   return (
     <AdminLayout>
@@ -392,11 +490,18 @@ export default function AdminAppointmentsPage() {
         <div>
           <p className="admin-kicker">Appointments</p>
           <h1 className="admin-title">Schedule overview</h1>
-          <p className="admin-subtitle">
-            Track upcoming visits, approvals, and on-site details.
-          </p>
+          <p className="admin-subtitle">Synced with Google Calendar bookings.</p>
+          {error ? <p className="admin-subtitle" style={{ color: "#b91c1c" }}>{error}</p> : null}
         </div>
         <div className="admin-hero-actions">
+          <button
+            className="admin-btn admin-btn--secondary"
+            type="button"
+            onClick={refreshAppointments}
+            disabled={loading || busy}
+          >
+            {loading ? "Loading…" : "Refresh"}
+          </button>
         </div>
       </section>
 
@@ -404,51 +509,47 @@ export default function AdminAppointmentsPage() {
         <article className="admin-card admin-card--stat">
           <div className="admin-stat-title">Upcoming</div>
           <div className="admin-stat-value">{upcoming}</div>
-          <div className="admin-muted">Next 14 days</div>
+          <div className="admin-muted">Next 180 days</div>
         </article>
-            <article className="admin-card admin-card--stat">
-              <div className="admin-stat-title">Pending approval</div>
-              <div className="admin-stat-value">{pending}</div>
-              <button
-                type="button"
-                className={`${STATUS_CLASS.Pending} admin-badge--button`}
-                onClick={() => setShowPendingModal(true)}
-              >
-                Review
-              </button>
-            </article>
-            <article className="admin-card admin-card--stat">
-              <div className="admin-stat-title">Confirmed</div>
-              <div className="admin-stat-value">{confirmed}</div>
-              <button
-                type="button"
-                className={`${STATUS_CLASS.Confirmed} admin-badge--button`}
-                onClick={() => setShowBookedModal(true)}
-              >
-                Booked
-              </button>
-            </article>
+
+        <article className="admin-card admin-card--stat">
+          <div className="admin-stat-title">Pending approval</div>
+          <div className="admin-stat-value">{pending}</div>
+          <button
+            type="button"
+            className={`${STATUS_CLASS.Pending} admin-badge--button`}
+            onClick={() => setShowPendingModal(true)}
+            disabled
+            title="Pending is disabled because bookings are confirmed when created."
+          >
+            Review
+          </button>
+        </article>
+
+        <article className="admin-card admin-card--stat">
+          <div className="admin-stat-title">Confirmed</div>
+          <div className="admin-stat-value">{confirmed}</div>
+          <button
+            type="button"
+            className={`${STATUS_CLASS.Confirmed} admin-badge--button`}
+            onClick={() => setShowBookedModal(true)}
+            disabled={busy}
+          >
+            Booked
+          </button>
+        </article>
       </section>
 
-      <section
-        className={`admin-calendar ${
-          viewMode === "day" ? "admin-calendar--day" : ""
-        }`}
-      >
-          <div className="admin-calendar__header">
+      <section className={`admin-calendar ${viewMode === "day" ? "admin-calendar--day" : ""}`}>
+        <div className="admin-calendar__header">
           <div className="admin-calendar__title-stack">
             <h2 className="admin-calendar__title">
-              {currentDate.toLocaleString([], {
-                month: "long",
-                year: "numeric",
-              })}
+              {currentDate.toLocaleString([], { month: "long", year: "numeric" })}
             </h2>
             {viewMode === "day" && (
               <div className="admin-calendar__day-label">
                 <div className="admin-calendar__day-label-row">
-                  <span className="admin-calendar__day-label-number">
-                    {dayDate.getDate()}
-                  </span>
+                  <span className="admin-calendar__day-label-number">{dayDate.getDate()}</span>
                   <span className="admin-calendar__day-label-weekday">
                     {dayDate.toLocaleString([], { weekday: "long" })}
                   </span>
@@ -456,198 +557,176 @@ export default function AdminAppointmentsPage() {
               </div>
             )}
           </div>
-              <div className="admin-calendar__mode">
-                <button
-                  type="button"
-                  className={`admin-calendar__mode-btn ${
-                    viewMode === "day" ? "is-active" : ""
-                  }`}
-                  onClick={() => handleViewChange("day")}
-                >
-                  Day
-                </button>
-                <button
-                  type="button"
-                  className={`admin-calendar__mode-btn ${
-                    viewMode === "week" ? "is-active" : ""
-                  }`}
-                  onClick={() => handleViewChange("week")}
-                >
-                  Week
-                </button>
-                <button
-                  type="button"
-                  className={`admin-calendar__mode-btn ${
-                    viewMode === "month" ? "is-active" : ""
-                  }`}
-                  onClick={() => handleViewChange("month")}
-                >
-                  Month
-                </button>
-              </div>
-              <div className="admin-calendar__actions">
-                <div className="admin-calendar__nav">
-                  <button
-                    className="admin-calendar__nav-btn"
-                    onClick={() => shiftDate(-1)}
-                    type="button"
-                    aria-label="Previous"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    className="admin-calendar__nav-btn admin-calendar__nav-btn--today"
-                    onClick={handleToday}
-                    type="button"
-                  >
-                    Today
-                  </button>
-                  <button
-                    className="admin-calendar__nav-btn"
-                    onClick={() => shiftDate(1)}
-                    type="button"
-                    aria-label="Next"
-                  >
-                    ›
-                  </button>
-                </div>
-                <button
-                  className="admin-btn admin-btn--primary"
-                  onClick={openAddForm}
-                  type="button"
-                >
-                  Add Appointment
-                </button>
-              </div>
+
+          <div className="admin-calendar__mode">
+            <button
+              type="button"
+              className={`admin-calendar__mode-btn ${viewMode === "day" ? "is-active" : ""}`}
+              onClick={() => handleViewChange("day")}
+            >
+              Day
+            </button>
+            <button
+              type="button"
+              className={`admin-calendar__mode-btn ${viewMode === "week" ? "is-active" : ""}`}
+              onClick={() => handleViewChange("week")}
+            >
+              Week
+            </button>
+            <button
+              type="button"
+              className={`admin-calendar__mode-btn ${viewMode === "month" ? "is-active" : ""}`}
+              onClick={() => handleViewChange("month")}
+            >
+              Month
+            </button>
+          </div>
+
+          <div className="admin-calendar__actions">
+            <div className="admin-calendar__nav">
+              <button
+                className="admin-calendar__nav-btn"
+                onClick={() => shiftDate(-1)}
+                type="button"
+                aria-label="Previous"
+              >
+                ‹
+              </button>
+              <button
+                className="admin-calendar__nav-btn admin-calendar__nav-btn--today"
+                onClick={handleToday}
+                type="button"
+              >
+                Today
+              </button>
+              <button
+                className="admin-calendar__nav-btn"
+                onClick={() => shiftDate(1)}
+                type="button"
+                aria-label="Next"
+              >
+                ›
+              </button>
             </div>
+            <button
+              className="admin-btn admin-btn--primary"
+              onClick={openAddForm}
+              type="button"
+              disabled={busy}
+            >
+              Add Appointment
+            </button>
+          </div>
+        </div>
 
-            {viewMode !== "month" ? (
-              <div className="admin-calendar__body">
-                <div className="admin-calendar__week">
-                  {viewMode === "week" && (
-                    <div className="admin-calendar__days">
-                {weekDates.map((date) => {
-                  const dayIndex = date.getDay();
-                  const isToday = formatDateKey(date) === formatDateKey(now);
-                  return (
-                    <div
-                      key={date.toISOString()}
-                      className={`admin-calendar__day ${
-                        isToday ? "is-today" : ""
-                      }`}
-                    >
-                      <span>{weekDays[dayIndex]}</span>
-                      <span className="admin-calendar__day-number">
-                        {date.getDate()}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-                  <div className="admin-calendar__scroll" ref={calendarScrollRef}>
-                    <div className="admin-calendar__scroll-grid">
-                      <div className="admin-calendar__times">
-                        {calendarSlots.map((hour) => (
-                          <div key={hour} className="admin-calendar__time">
-                            {formatHourLabel(hour)}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="admin-calendar__grid">
-                        {calendarSlots.map((hour) => (
-                          <div key={hour} className="admin-calendar__row" />
-                        ))}
-
-                        {nowIndicator && (
-                          <div
-                            className="admin-calendar__now"
-                            style={{ top: `${nowIndicator.offset}px` }}
-                          >
-                            <span className="admin-calendar__now-dot" />
-                            <span className="admin-calendar__now-line" />
-                            <span className="admin-calendar__now-label">
-                              {nowIndicator.label}
-                            </span>
-                          </div>
-                        )}
-
-                        {visibleEvents.map((appt) => (
-                          <div
-                            key={appt.id}
-                          className={`admin-calendar__event ${
-                            appt.status === "Confirmed"
-                              ? "admin-calendar__event--confirmed"
-                              : appt.status === "Pending"
-                                ? "admin-calendar__event--pending"
-                                : "admin-calendar__event--neutral"
-                          }`}
-                            style={{
-                              gridRow: `${appt.gridRow} / span ${appt.span}`,
-                              gridColumn:
-                                viewMode === "day"
-                                  ? "1 / span 1"
-                                  : `${appt.gridCol} / span 1`,
-                            }}
-                            role="button"
-                            tabIndex={0}
-                          onClick={() => handleDetails(appt)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") handleDetails(appt);
-                            }}
-                          >
-                          <div className="admin-calendar__event-title">
-                            {appt.client}
-                          </div>
-                          {appt.status === "Pending" && (
-                            <div className="admin-calendar__event-subtitle">
-                              pending
-                            </div>
-                          )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="admin-calendar__month">
-                <div className="admin-calendar__month-head">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                    (day) => (
-                      <div key={day} className="admin-calendar__month-day">
-                        {day}
-                      </div>
-                    )
-                  )}
-                </div>
-                <div className="admin-calendar__month-grid">
-                  {monthDates.map((date) => {
-                    const key = formatDateKey(date);
-                    const isCurrentMonth =
-                      date.getMonth() === currentDate.getMonth();
+        {viewMode !== "month" ? (
+          <div className="admin-calendar__body">
+            <div className="admin-calendar__week">
+              {viewMode === "week" && (
+                <div className="admin-calendar__days">
+                  {weekDates.map((date) => {
+                    const dayIndex = date.getDay();
                     const isToday = formatDateKey(date) === formatDateKey(now);
                     return (
-                      <button
-                        key={key}
-                        type="button"
-                        className={`admin-calendar__month-cell ${
-                          isCurrentMonth ? "is-current" : "is-muted"
-                        } ${isToday ? "is-today" : ""}`}
-                        onClick={() => {
-                          setCurrentDate(date);
-                          setViewMode("day");
-                        }}
+                      <div
+                        key={date.toISOString()}
+                        className={`admin-calendar__day ${isToday ? "is-today" : ""}`}
                       >
-                        {date.getDate()}
-                      </button>
+                        <span>{weekDays[dayIndex]}</span>
+                        <span className="admin-calendar__day-number">{date.getDate()}</span>
+                      </div>
                     );
                   })}
                 </div>
+              )}
+
+              <div className="admin-calendar__scroll" ref={calendarScrollRef}>
+                <div className="admin-calendar__scroll-grid">
+                  <div className="admin-calendar__times">
+                    {calendarSlots.map((hour) => (
+                      <div key={hour} className="admin-calendar__time">
+                        {formatHourLabel(hour)}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="admin-calendar__grid">
+                    {calendarSlots.map((hour) => (
+                      <div key={hour} className="admin-calendar__row" />
+                    ))}
+
+                    {nowIndicator && (
+                      <div className="admin-calendar__now" style={{ top: `${nowIndicator.offset}px` }}>
+                        <span className="admin-calendar__now-dot" />
+                        <span className="admin-calendar__now-line" />
+                        <span className="admin-calendar__now-label">{nowIndicator.label}</span>
+                      </div>
+                    )}
+
+                    {visibleEvents.map((appt) => (
+                      <div
+                        key={appt.id}
+                        className={`admin-calendar__event ${
+                          appt.status === "Confirmed"
+                            ? "admin-calendar__event--confirmed"
+                            : appt.status === "Pending"
+                            ? "admin-calendar__event--pending"
+                            : "admin-calendar__event--neutral"
+                        }`}
+                        style={{
+                          gridRow: `${appt.gridRow} / span ${appt.span}`,
+                          gridColumn: viewMode === "day" ? "1 / span 1" : `${appt.gridCol} / span 1`,
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleDetails(appt)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") handleDetails(appt);
+                        }}
+                      >
+                        <div className="admin-calendar__event-title">{appt.client}</div>
+                        <div className="admin-calendar__event-subtitle">{appt.timeLabel}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
-          </section>
+            </div>
+          </div>
+        ) : (
+          <div className="admin-calendar__month">
+            <div className="admin-calendar__month-head">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <div key={day} className="admin-calendar__month-day">
+                  {day}
+                </div>
+              ))}
+            </div>
+            <div className="admin-calendar__month-grid">
+              {monthDates.map((date) => {
+                const key = formatDateKey(date);
+                const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+                const isToday = formatDateKey(date) === formatDateKey(now);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`admin-calendar__month-cell ${isCurrentMonth ? "is-current" : "is-muted"} ${
+                      isToday ? "is-today" : ""
+                    }`}
+                    onClick={() => {
+                      setCurrentDate(date);
+                      setViewMode("day");
+                    }}
+                  >
+                    {date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
 
       {activeAppointment && (
         <div className="admin-modal">
@@ -694,24 +773,19 @@ export default function AdminAppointmentsPage() {
               </div>
               <div className="admin-modal__full">
                 <div className="admin-muted">Address</div>
-                <div className="admin-strong">
-                  {activeAppointment.address}
-                </div>
+                <div className="admin-strong">{activeAppointment.address}</div>
+              </div>
+              <div className="admin-modal__full">
+                <div className="admin-muted">Email</div>
+                <div className="admin-strong">{activeAppointment.email || "—"}</div>
+              </div>
+              <div className="admin-modal__full">
+                <div className="admin-muted">Notes</div>
+                <div className="admin-strong">{activeAppointment.notes || "—"}</div>
               </div>
             </div>
+
             <div className="admin-modal__actions">
-              {activeAppointment.status === "Pending" && (
-                <button
-                  className="admin-btn admin-btn--primary"
-                  onClick={() => {
-                    handleApprove(activeAppointment.id);
-                    closeDetails();
-                  }}
-                  type="button"
-                >
-                  Approve
-                </button>
-              )}
               <button
                 className="admin-btn admin-btn--ghost"
                 onClick={() => {
@@ -720,6 +794,7 @@ export default function AdminAppointmentsPage() {
                   closeDetails(false);
                 }}
                 type="button"
+                disabled={busy}
               >
                 Reschedule
               </button>
@@ -731,6 +806,7 @@ export default function AdminAppointmentsPage() {
                   setActiveAppointment(null);
                 }}
                 type="button"
+                disabled={busy}
               >
                 Cancel
               </button>
@@ -755,57 +831,81 @@ export default function AdminAppointmentsPage() {
           >
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">
-                  {editingId ? "Edit Appointment" : "Add Appointment"}
-                </p>
+                <p className="admin-kicker">{editingId ? "Reschedule Appointment" : "Add Appointment"}</p>
                 <h2 className="admin-title">Appointment details</h2>
               </div>
               <button
                 className="admin-btn admin-btn--ghost admin-btn--small"
                 onClick={closeForm}
                 type="button"
+                disabled={busy}
               >
                 Close
               </button>
             </div>
 
             <div className="admin-modal__grid">
+              {!editingId ? (
+                <>
+                  <div>
+                    <label className="admin-label" htmlFor="firstName">First name</label>
+                    <input
+                      id="firstName"
+                      name="firstName"
+                      className="admin-input"
+                      value={formState.firstName}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="admin-label" htmlFor="lastName">Last name</label>
+                    <input
+                      id="lastName"
+                      name="lastName"
+                      className="admin-input"
+                      value={formState.lastName}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                  <div className="admin-modal__full">
+                    <label className="admin-label" htmlFor="email">Email</label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      className="admin-input"
+                      value={formState.email}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                </>
+              ) : null}
+
               <div>
-                <label className="admin-label" htmlFor="client">
-                  Client
-                </label>
-                <input
-                  id="client"
-                  name="client"
-                  className="admin-input"
-                  value={formState.client}
-                  onChange={handleFormChange}
-                  required
-                />
-              </div>
-              <div>
-                <label className="admin-label" htmlFor="service">
-                  Service
-                </label>
+                <label className="admin-label" htmlFor="service">Service</label>
                 <select
                   id="service"
                   name="service"
                   className="admin-input"
                   value={formState.service}
                   onChange={handleFormChange}
-                  required
+                  required={!editingId}
+                  disabled={!!editingId}
+                  title={editingId ? "Service stays the same when rescheduling." : ""}
                 >
                   {activeServices.map((service) => (
-                    <option key={service.id} value={service.name}>
+                    <option key={service.id} value={service.id}>
                       {service.name}
                     </option>
                   ))}
                 </select>
               </div>
+
               <div>
-                <label className="admin-label" htmlFor="date">
-                  Date
-                </label>
+                <label className="admin-label" htmlFor="date">Date</label>
                 <input
                   id="date"
                   name="date"
@@ -816,10 +916,9 @@ export default function AdminAppointmentsPage() {
                   required
                 />
               </div>
+
               <div>
-                <label className="admin-label" htmlFor="time">
-                  Time
-                </label>
+                <label className="admin-label" htmlFor="time">Time</label>
                 <select
                   id="time"
                   name="time"
@@ -835,10 +934,9 @@ export default function AdminAppointmentsPage() {
                   ))}
                 </select>
               </div>
+
               <div className="admin-modal__full">
-                <label className="admin-label" htmlFor="address">
-                  Address
-                </label>
+                <label className="admin-label" htmlFor="address">Address</label>
                 <input
                   id="address"
                   name="address"
@@ -847,17 +945,25 @@ export default function AdminAppointmentsPage() {
                   onChange={handleFormChange}
                 />
               </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="notes">Notes</label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  className="admin-input"
+                  rows={4}
+                  value={formState.notes}
+                  onChange={handleFormChange}
+                />
+              </div>
             </div>
 
             <div className="admin-modal__actions">
-              <button className="admin-btn admin-btn--primary" type="submit">
-                {editingId ? "Save Changes" : "Add Appointment"}
+              <button className="admin-btn admin-btn--primary" type="submit" disabled={busy}>
+                {busy ? "Saving…" : editingId ? "Reschedule" : "Add Appointment"}
               </button>
-              <button
-                className="admin-btn admin-btn--ghost"
-                type="button"
-                onClick={closeForm}
-              >
+              <button className="admin-btn admin-btn--ghost" type="button" onClick={closeForm} disabled={busy}>
                 Cancel
               </button>
             </div>
@@ -878,9 +984,7 @@ export default function AdminAppointmentsPage() {
               <div>
                 <p className="admin-kicker">Pending Approval</p>
                 <h2 className="admin-title">Review appointments</h2>
-                <p className="admin-subtitle">
-                  Confirm each booking to lock it in.
-                </p>
+                <p className="admin-subtitle">Pending is disabled (bookings are confirmed when created).</p>
               </div>
               <button
                 className="admin-btn admin-btn--ghost admin-btn--small"
@@ -890,32 +994,8 @@ export default function AdminAppointmentsPage() {
                 Close
               </button>
             </div>
-
             <div className="admin-pending-list">
-              {pendingAppointments.length === 0 ? (
-                <div className="admin-muted">No pending appointments.</div>
-              ) : (
-                pendingAppointments.map((appt) => (
-                  <div key={appt.id} className="admin-pending-row">
-                    <div>
-                      <div className="admin-strong">{appt.client}</div>
-                      <div className="admin-muted">
-                        {appt.date} · {appt.time}
-                      </div>
-                    </div>
-                    <button
-                      className="admin-btn admin-btn--small admin-btn--primary"
-                      type="button"
-                      onClick={() => {
-                        handleApprove(appt.id);
-                        setShowPendingModal(false);
-                      }}
-                    >
-                      Confirm
-                    </button>
-                  </div>
-                ))
-              )}
+              <div className="admin-muted">No pending appointments.</div>
             </div>
           </div>
         </div>
@@ -934,9 +1014,7 @@ export default function AdminAppointmentsPage() {
               <div>
                 <p className="admin-kicker">Booked</p>
                 <h2 className="admin-title">Confirmed appointments</h2>
-                <p className="admin-subtitle">
-                  All appointments that are locked in.
-                </p>
+                <p className="admin-subtitle">All appointments synced from Google Calendar.</p>
               </div>
               <button
                 className="admin-btn admin-btn--ghost admin-btn--small"
@@ -966,6 +1044,7 @@ export default function AdminAppointmentsPage() {
                         setShowBookedModal(false);
                         handleDetails(appt, "booked");
                       }}
+                      disabled={busy}
                     >
                       Details
                     </button>
@@ -991,13 +1070,14 @@ export default function AdminAppointmentsPage() {
                 <p className="admin-kicker">Cancel Appointment</p>
                 <h2 className="admin-title">Are you sure?</h2>
                 <p className="admin-subtitle">
-                  This will mark the appointment as canceled.
+                  This will remove it from Google Calendar and send cancel emails.
                 </p>
               </div>
               <button
                 className="admin-btn admin-btn--ghost admin-btn--small"
                 onClick={() => setCancelTarget(null)}
                 type="button"
+                disabled={busy}
               >
                 Close
               </button>
@@ -1007,25 +1087,23 @@ export default function AdminAppointmentsPage() {
               <button
                 className="admin-btn admin-btn--danger"
                 type="button"
-                onClick={() => {
-                  handleCancel(cancelTarget.id);
+                disabled={busy}
+                onClick={async () => {
+                  const ok = await cancelOnServer(cancelTarget.eventId || cancelTarget.id);
                   setCancelTarget(null);
-                  if (cancelSource === "booked") {
-                    setShowBookedModal(true);
-                  }
+                  if (ok && cancelSource === "booked") setShowBookedModal(true);
                   setCancelSource(null);
                 }}
               >
-                Yes, cancel it
+                {busy ? "Canceling…" : "Yes, cancel it"}
               </button>
               <button
                 className="admin-btn admin-btn--ghost"
                 type="button"
+                disabled={busy}
                 onClick={() => {
                   setCancelTarget(null);
-                  if (cancelSource === "booked") {
-                    setShowBookedModal(true);
-                  }
+                  if (cancelSource === "booked") setShowBookedModal(true);
                   setCancelSource(null);
                 }}
               >
