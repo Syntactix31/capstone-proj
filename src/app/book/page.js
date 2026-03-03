@@ -142,8 +142,3 @@ export default function BookPage() {
 }
 
 
-
-// TODO:
-// Resizing issues on appointments page (rendering issues in inspect console as well)
-
-
