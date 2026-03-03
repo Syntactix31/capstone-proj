@@ -250,6 +250,7 @@ const handleSubmit = async (e) => {
 
   //     // await emailjs.send("service_my1ew5p", "template_ygvpo45", templateParams);
 
+  
   //     setSummary(`Thanks ${formData.client.name}! Details sent to our team for quoting.`);
   //     setShowSuccess(true);
   //   } catch (err) {
