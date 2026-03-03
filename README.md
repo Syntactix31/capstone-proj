@@ -71,7 +71,9 @@ npx neonctl@latest init
 # and
 npm install googleapis nodemailer date-fns date-fns-tz
 # and
-npm install @emailjs/browser 
+npm install @emailjs/browser
+# and
+npm install resend
 ```
 Run the Production Build:
 
