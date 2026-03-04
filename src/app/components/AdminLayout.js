@@ -6,12 +6,11 @@ import NavBar from "./Navbar.js";
 const MENU_ITEMS = [
   { id: "appointments", label: "Appointments", href: "/dashboard/appointments" },
   { id: "services", label: "Services", href: "/dashboard/services" },
-  { id: "estimates", label: "Estimates", href: "/dashboard/estimates" },
-  { id: "gallery", label: "Gallery", href: "/dashboard/gallery" },
-  { id: "clients", label: "Clientele", href: "/dashboard/clients" },
+  { id: "clients", label: "Clients", href: "/dashboard/clients" },
   { id: "invoices", label: "Invoices", href: "/dashboard/invoices" },
+  { id: "estimates", label: "Estimates", href: "/dashboard/estimates" },
   { id: "payments", label: "Payments", href: "/dashboard/payments" },
-  { id: "reports", label: "Reports", href: "/dashboard/reports" },
+  { id: "gallery", label: "Gallery", href: "/dashboard/gallery" },  
   { id: "settings", label: "Settings", href: "/dashboard/settings" },
 ];
 
@@ -22,7 +21,6 @@ export default function AdminLayout({ children }) {
         <NavBar />
       </header>
 
-{/* resolving discrepancy issues */}
       <div className="admin-shell">
         <aside className="admin-sidebar">
           <div className="admin-sidebar-brand">
