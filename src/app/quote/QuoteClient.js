@@ -117,9 +117,37 @@ const handleSubmit = async (e) => {
 
           <h3 style="border-bottom:2px solid #458500;margin-top:16px;padding-bottom:4px;">Project Details</h3>
           <table style="width:100%;border-collapse:collapse;">${projectFieldsHTML}</table>
+
+          ${formData.files.length > 0 ? `
+            <h4 style="margin-top:16px;">Uploaded Files</h4>
+            <p>${formData.files.map((f) => f.name).join(", ")}</p>
+          ` : ""}
+
         </div>
       </div>
     `;
+
+    // File handling for uploading attached files to email
+    const attachments =
+      formData.files.length > 0
+        ? await Promise.all(
+            Array.from(formData.files).map(async (file) => {
+              const reader = new FileReader();
+              reader.readAsDataURL(file);
+              return new Promise((resolve) => {
+                reader.onload = () => {
+                  const base64 = reader.result.split(",")[1];
+                  resolve({
+                    filename: file.name,
+                    content: base64,
+                    // If your service requires mime type
+                    // mimetype: file.type
+                  });
+                };
+              });
+            })
+          )
+        : [];    
 
     const res = await fetch("/api/send-quote", {
       method: "POST",
@@ -128,6 +156,7 @@ const handleSubmit = async (e) => {
         to_email: formData.client.email, // replace with landscapecraftsmen@yahoo.com when client approves (help him get set up with resend API)
         subject: `New Estimate Request: ${selectedService.title}`,
         message_html: messageHTML,
+        attachments,
       }),
     });
     if (!res.ok) {
