@@ -3,16 +3,16 @@ import { Resend } from "resend";
 
 export async function POST(req) {
   try {
-    // Initialize Resend here, safely accessing env var
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    
-    const { to_email, subject, message_html } = await req.json();
+    const { to_email, subject, message_html, attachments = [] } = await req.json();
 
-    const { error } = await resend.emails.send({
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    const { data, error } = await resend.emails.send({
       from: "LandscapeCraftsmen@resend.dev",
       to: ["l3v1code@gmail.com"],
       subject,
       html: message_html,
+      attachments,
     });
 
     if (error) {
@@ -20,7 +20,7 @@ export async function POST(req) {
       return NextResponse.json({ error }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, id: data.id });
   } catch (err) {
     console.error("API route error:", err);
     return NextResponse.json({ error: "Server crash" }, { status: 500 });

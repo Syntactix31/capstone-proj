@@ -100,7 +100,7 @@ const handleSubmit = async (e) => {
     const messageHTML = `
       <div style="max-width:600px;margin:auto;background:#fff;font-family:arial,sans-serif;color:#333;">
         <div style="border-top:6px solid #458500;padding:16px;">
-          <img src="https://..." style="height:40px;vertical-align:middle;margin-right:8px;">
+          <img src="https://scontent.fyyc2-1.fna.fbcdn.net/v/t39.30808-6/492498142_122104359134841590_6452344028794744127_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=1d70fc&_nc_ohc=2jCzUB78h3gQ7kNvwHIaWH3&_nc_oc=AdmHrrQZmAy0lo2w7Ngee7oxcedxT30nXsxCTtRUtBD2RgQHF0UF3s3eArYhkhM03YzF7HNn_VMFt1pyfvJVQfYo&_nc_zt=23&_nc_ht=scontent.fyyc2-1.fna&_nc_gid=g-SJa0Qr9HYeBg_-KBdojw&_nc_ss=8&oh=00_Afw8ZV_qWzCt3YNkYywhhqtExkYxNGj7m24PmeXPWNnDkw&oe=69AD99B5" style="height:40px;vertical-align:middle;margin-right:8px;">
           <a href="https://landscape-craftsmen.vercel.app/" style="text-decoration:none;font-weight:bold;color:#333;">Landscape Craftsmen</a>
           <span style="font-size:16px;vertical-align:middle;border-left:1px solid #333;padding-left:8px;"><strong>New Quote Request</strong></span>
         </div>
@@ -117,9 +117,35 @@ const handleSubmit = async (e) => {
 
           <h3 style="border-bottom:2px solid #458500;margin-top:16px;padding-bottom:4px;">Project Details</h3>
           <table style="width:100%;border-collapse:collapse;">${projectFieldsHTML}</table>
+
+          ${formData.files.length > 0 ? `
+            <h4 style="margin-top:16px;">Uploaded Files</h4>
+            <p>${formData.files.map((f) => f.name).join(", ")}</p>
+          ` : ""}
+
         </div>
       </div>
     `;
+
+    // File handling for uploading attached files to email
+    const attachments =
+      formData.files.length > 0
+        ? await Promise.all(
+            Array.from(formData.files).map(async (file) => {
+              const reader = new FileReader();
+              reader.readAsDataURL(file);
+              return new Promise((resolve) => {
+                reader.onload = () => {
+                  const base64 = reader.result.split(",")[1];
+                  resolve({
+                    filename: file.name,
+                    content: base64,
+                  });
+                };
+              });
+            })
+          )
+        : [];    
 
     const res = await fetch("/api/send-quote", {
       method: "POST",
@@ -128,6 +154,7 @@ const handleSubmit = async (e) => {
         to_email: formData.client.email, // replace with landscapecraftsmen@yahoo.com when client approves (help him get set up with resend API)
         subject: `New Estimate Request: ${selectedService.title}`,
         message_html: messageHTML,
+        attachments,
       }),
     });
     if (!res.ok) {
@@ -258,6 +285,30 @@ const handleSubmit = async (e) => {
   //   }
   //   setIsSubmitting(false);
   // };
+
+
+  // Resets all inputs after submission
+  const resetForm = () => {
+    setFormData({
+      client: { name: "", address: "", email: "", phone: "" },
+      project: {
+        fence: { gates: "", linearFt: "", height: "4'", postSize: "4x4", pressureTreated: false },
+        deck: { length: "", width: "", height: "", railing: "none" },
+        pergola: { length: "", width: "", height: "" },
+        sod: { squareFt: "", length: "", width: "", condition: "", gradingNeeded: false },
+        "trees-shrubs": {
+          numTrees: "",
+          numShrubs: "",
+          treeSize: "",
+          shrubSize: "",
+          purpose: "",
+          irrigation: false,
+        },
+      },
+      files: [],
+    });
+  };
+
 
   const updateProjectField = (section, field, value) => {
     setFormData(prev => ({
@@ -508,7 +559,7 @@ const handleSubmit = async (e) => {
       </main>
 
       {showSuccess && (
-        <QuoteSuccessModal open={true} onClose={() => setShowSuccess(false)} message={summary} />
+        <QuoteSuccessModal open={true} onClose={() => {setShowSuccess(false); resetForm();}} message={summary} />
       )}
 
       {/* <Footer /> */}

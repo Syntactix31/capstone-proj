@@ -1349,6 +1349,7 @@ body {
   top: 0;
   height: 100%;
   overflow: hidden;
+  border-top: 8px solid #31270C;
 }
 
 .admin-sidebar-brand {
