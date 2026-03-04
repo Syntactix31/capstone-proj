@@ -198,7 +198,7 @@ export default function LoginPage() {
                       className="admin-input"
                       type="text"
                       name="firstName"
-                      placeholder="Jordan"
+                      placeholder="John"
                       autoComplete="given-name"
                       required
                     />
@@ -209,7 +209,7 @@ export default function LoginPage() {
                       className="admin-input"
                       type="text"
                       name="lastName"
-                      placeholder="Lee"
+                      placeholder="Appleseed"
                       autoComplete="family-name"
                       required
                     />
@@ -300,7 +300,11 @@ export default function LoginPage() {
               Continue with Google
             </button>
             <p className="auth-footer">
-              By continuing you agree to our terms and privacy policy.
+              By continuing you agree to our{" "}
+              <Link className="auth-link" href="/terms">
+                terms and privacy policy
+              </Link>
+              .
             </p>
             <p className="auth-footer">
               Need help?{" "}

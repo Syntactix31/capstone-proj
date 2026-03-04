@@ -1,52 +1,15 @@
 "use client";
+
+
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import NavBar from "../components/Navbar.js";
 import Footer from "../components/Footer.js";
 
-// Media items: type = "image" | "video", src = file path, poster = video poster image
-const media = [
-  { type: "video", src: "/projects/Vid1.mp4", poster: "/projects/Post1.JPG" },
-  { type: "video", src: "/projects/Vid2.mp4", poster: "/projects/Post2.JPG" },
-  { type: "video", src: "/projects/Vid3.mp4", poster: "/projects/Post3.JPG" },
-  { type: "video", src: "/projects/Vid4.mp4", poster: "/projects/Post4.JPG" },
-  { type: "image", src: "/projects/Img18.JPG" },
-  { type: "image", src: "/projects/Img2.JPG" },
-  { type: "image", src: "/projects/Img3.JPG" },
-  { type: "image", src: "/projects/Img4.JPG" },
-  { type: "image", src: "/projects/Img11.JPG" },
-  { type: "image", src: "/projects/Img6.JPG" },
-  { type: "image", src: "/projects/Img7.JPG" },
-  { type: "image", src: "/projects/Img8.JPG" },
-  { type: "image", src: "/projects/Img12.JPG" },
-  { type: "image", src: "/projects/Img10.JPG" },
-  { type: "image", src: "/projects/Img5.JPG" },
-  { type: "image", src: "/projects/Img9.JPG" },
-  { type: "image", src: "/projects/Img13.JPG" },
-  { type: "image", src: "/projects/Img14.JPG" },
-  { type: "image", src: "/projects/Img15.JPG" },
-  { type: "image", src: "/projects/Img19.JPG" },
-  { type: "image", src: "/projects/Img17.JPG" },
-  { type: "image", src: "/projects/Img1.JPG" },
-  { type: "image", src: "/projects/Img16.JPG" }
-];
-
-// 23 “Figma slots” using 12-col grid.
-// Each item = { c: columnSpan, r: rowSpan }
 const layout = [
-  { c: 4, r: 6 }, 
-  { c: 4, r: 3 }, 
-  { c: 4, r: 6 }, 
-  { c: 4, r: 3 }, 
-  { c: 6, r: 3 }, 
-  { c: 6, r: 3 },
+  { c: 4, r: 6 },
   { c: 4, r: 3 },
-  { c: 4, r: 3 },
-  { c: 4, r: 3 },
-  { c: 6, r: 3 },
-  { c: 6, r: 3 },
-  { c: 4, r: 3 },
-  { c: 4, r: 3 },
+  { c: 4, r: 6 },
   { c: 4, r: 3 },
   { c: 6, r: 3 },
   { c: 6, r: 3 },
@@ -54,201 +17,226 @@ const layout = [
   { c: 4, r: 3 },
   { c: 4, r: 3 },
   { c: 12, r: 3 },
-  { c: 4, r: 3 },
-  { c: 4, r: 3 },
-  { c: 4, r: 3 }
 ];
 
 function Tile({ src, type, poster, span, onClick, priority }) {
   return (
     <button
       type="button"
-      className="tile relative overflow-hidden cursor-pointer transition-transform duration-500 hover:scale-105"
+      className="relative overflow-hidden cursor-pointer transition-transform duration-500 hover:scale-105"
       onClick={onClick}
       style={{
         gridColumn: `span ${span.c}`,
-        gridRow: `span ${span.r}`
+        gridRow: `span ${span.r}`,
       }}
-      aria-label="View project media"
     >
       {type === "image" ? (
-      <Image
-        src={src}
-        alt="Project image"
-        fill
-        priority={priority}
-        quality={75}
-        style={{ objectFit: "cover" }}
-        sizes="(max-width: 520px) 100vw, (max-width: 900px) 50vw, 33vw"
-      />
+        <Image
+          src={src}
+          alt="Project"
+          fill
+          priority={priority}
+          style={{ objectFit: "cover" }}
+        />
       ) : (
-        <div className="videoTile">
-          <video
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster={poster}
-            className="absolute inset-0 w-full h-full object-cover"
-            onMouseEnter={(e) => {
-              const v = e.currentTarget;
-              if (v.paused) v.play().catch(() => {});
-            }}
-            onMouseLeave={(e) => {
-              const v = e.currentTarget;
-              v.pause();
-              v.currentTime = 0;
-              v.load();
-            }}
-          >
-            <source src={src} type="video/mp4" />
-          </video>
-
-          <div className="videoOverlay" aria-hidden="true">
-            <div className="playBadge">▶</div>
-            <div className="videoLabel">Video</div>
-          </div>
-        </div>
+        <video
+          muted
+          loop
+          playsInline
+          poster={poster}
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src={src} type="video/mp4" />
+        </video>
       )}
     </button>
   );
 }
 
-export default function ProjectsPage() {
+export default function ProjectsPage(){
+  const [mediaItems, setMediaItems] = useState([]);
   const [activeIndex, setActiveIndex] = useState(null);
-  const visibleMedia = media.slice(0, 23);
+
+  // Helper to fetch full folder
+  const fetchMediaFolder = async () => {
+    const res = await fetch("/api/ScanMedia");
+    const data = await res.json();
+    return data;
+  };
+
+  // Load folder on mount
+  useEffect(() => {
+    fetchMediaFolder().then(data => setMediaItems(data));
+  }, []);
+
+  // Upload handler
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Upload file
+    await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    //detect if the uploaded file is a video and if so, create a poster image for it
+    if (file.type === "video/mp4") {
+      const video = document.createElement("video");
+      video.src = URL.createObjectURL(file);
+      video.currentTime = 1; // Capture frame at 1 second
+      video.addEventListener("loadeddata", () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(async (blob) => {
+          const posterFile = new File([blob], `${file.name}-poster.jpg`, {
+            type: "image/jpeg",
+          });
+
+          const posterFormData = new FormData();
+          posterFormData.append("file", posterFile);
+          await fetch("/api/upload", {
+            method: "POST",
+            body: posterFormData,
+          });
+        }
+        );      });
+    }
+
+    // Re-fetch the full folder to include old + new media
+    const updatedMedia = await fetchMediaFolder();
+    setMediaItems(updatedMedia);
+  };
+
   const closeModal = () => setActiveIndex(null);
 
   const showPrev = () => {
-    setActiveIndex((prev) => {
-      if (prev === null) return prev;
-      return (prev - 1 + visibleMedia.length) % visibleMedia.length;
-    });
+    setActiveIndex((prev) =>
+      prev === null
+        ? null
+        : (prev - 1 + mediaItems.length) % mediaItems.length
+    );
   };
 
   const showNext = () => {
-    setActiveIndex((prev) => {
-      if (prev === null) return prev;
-      return (prev + 1) % visibleMedia.length;
-    });
+    setActiveIndex((prev) =>
+      prev === null ? null : (prev + 1) % mediaItems.length
+    );
   };
 
-  // Keyboard controls while modal is open
   useEffect(() => {
     if (activeIndex === null) return;
 
-    const onKeyDown = (e) => {
+    const handleKey = (e) => {
       if (e.key === "Escape") closeModal();
       if (e.key === "ArrowLeft") showPrev();
       if (e.key === "ArrowRight") showNext();
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeIndex]);
-  
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [activeIndex, mediaItems.length]);
+
   return (
-    <div className="projectsPage">
+    <div>
       <NavBar />
 
-      <section className="w-full mx-auto max-w-6xl px-4 mt-10">
-        <div className="relative overflow-hidden rounded-xl border border-[#477a40]/20 bg-linear-to-br from-[#477a40]/10 via-white to-white p-8 shadow-lg md:p-12">
+      <section className="max-w-6xl mx-auto px-4 mt-10">
+        <h1 className="text-4xl italic text-center mb-6">
+          A Collection Of Our Finest Work.
+        </h1>
 
-          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#477a40]/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-[#477a40]/10 blur-3xl" />
+        <div className="mb-8 text-center">
+          <input
+            type="file"
+            accept="image/*,video/mp4"
+            onChange={handleUpload}
+            className="border p-2"
+          />
+        </div>
 
-          <div className="relative text-center">
-            <h1 className="text-4xl font-medium tracking-tight text-gray-900 sm:text-5xl italic">
-              A Collection Of Our <br /> Finest Work.
-            </h1>
-          </div>
+        <div
+          className="grid gap-4"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(12, 1fr)",
+            gridAutoRows: "80px",
+          }}
+        >
+          {mediaItems.map((item, i) => (
+            <Tile
+              key={i}
+              src={item.src}
+              type={item.type}
+              poster={item.poster}
+              span={layout[i % layout.length]}
+              onClick={() => setActiveIndex(i)}
+              priority={i < 2}
+            />
+          ))}
         </div>
       </section>
-      <section className="projectsSection">
-        <div className="collageWrap">
-          <div className="collage">
-            {visibleMedia.slice(0, 23).map((item, i) => (
-              <Tile
-                key={i}
-                src={item.src}
-                type={item.type}
-                poster={item.poster}
-                span={layout[i] || { c: 4, r: 3 }}
-                onClick={() => setActiveIndex(i)}
-                priority={i < 2} // helps the Next.js LCP warning 
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-            {/* ===== Modal / Lightbox ===== */}
+
       {activeIndex !== null && (
         <div
-          className="lightboxOverlay"
-          role="dialog"
-          aria-modal="true"
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
           onClick={closeModal}
         >
-          <div className="lightboxInner" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative w-4/5 h-4/5"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
-              type="button"
-              className="lightboxClose"
               onClick={closeModal}
-              aria-label="Close"
+              className="absolute top-4 right-4 text-white text-3xl"
             >
               ✕
             </button>
 
             <button
-              type="button"
-              className="lightboxNav lightboxLeft"
               onClick={showPrev}
-              aria-label="Previous"
+              className="absolute left-4 top-1/2 text-white text-3xl"
             >
               ‹
             </button>
 
-            <div className="lightboxMedia" key={visibleMedia[activeIndex].src}>
-              {visibleMedia[activeIndex].type === "image" ? (
-                <Image
-                  src={visibleMedia[activeIndex].src}
-                  alt={`Project ${activeIndex + 1}`}
-                  fill
-                  quality={90}
-                  sizes="100vw"
-                  priority
-                  style={{ objectFit: "cover" }}
-                />
-              ) : (
-                <video
-                  controls
-                  autoPlay
-                  playsInline
-                  poster={visibleMedia[activeIndex].poster}
-                  className="lightboxVideo"
-                >
-                  <source src={visibleMedia[activeIndex].src} type="video/mp4" />
-                </video>
-              )}
-            </div>
-
             <button
-              type="button"
-              className="lightboxNav lightboxRight"
               onClick={showNext}
-              aria-label="Next"
+              className="absolute right-4 top-1/2 text-white text-3xl"
             >
               ›
             </button>
+
+            {mediaItems[activeIndex].type === "image" ? (
+              <Image
+                src={mediaItems[activeIndex].src}
+                alt="Preview"
+                fill
+                style={{ objectFit: "contain" }}
+              />
+            ) : (
+              <video
+                controls
+                autoPlay
+                className="w-full h-full object-contain"
+              >
+                <source
+                  src={mediaItems[activeIndex].src}
+                  type="video/mp4"
+                />
+              </video>
+            )}
           </div>
         </div>
       )}
+
       <Footer />
     </div>
   );
 }
-
-
-
-
-// test comment
