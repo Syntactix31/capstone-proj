@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../components/Navbar.js";
@@ -16,7 +16,7 @@ const OAUTH_ERROR_MESSAGES = {
   google_signin_failed: "Google sign-in failed. Please try again.",
 };
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [view, setView] = useState("signin");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -319,5 +319,13 @@ export default function LoginPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
