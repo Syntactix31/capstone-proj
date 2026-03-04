@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import AdminLayout from "../components/AdminLayout.js";
 
 const APPOINTMENTS = [
@@ -109,16 +107,6 @@ const STATUS_CLASS = {
 };
 
 export default function DashboardPage() {
-    const router = useRouter();
-    
-    /*useEffect(() => {
-        if (typeof window === "undefined") return;
-        const role = localStorage.getItem("auth_role");
-        if (role !== "admin") {
-            router.replace("/auth");
-        }
-    }, [router]);*/
-
     const pendingCount = APPOINTMENTS.filter((appt) => appt.status === "Pending").length;
     const confirmedCount = APPOINTMENTS.filter((appt) => appt.status === "Confirmed").length;
     const canceledCount = APPOINTMENTS.filter((appt) => appt.status === "Canceled").length;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import AdminLayout from "../../components/AdminLayout.js";
 
 const SERVICES = [
@@ -51,7 +50,6 @@ function to12h(time24) {
 }
 
 export default function AdminAppointmentsPage() {
-  const router = useRouter();
   const [appointments, setAppointments] = useState([]); // from Google Calendar
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -83,16 +81,6 @@ export default function AdminAppointmentsPage() {
   const [cancelSource, setCancelSource] = useState(null);
 
   const calendarScrollRef = useRef(null);
-
-  /*Role verification*/
-  
-  /*useEffect(() => {
-    if (typeof window === "undefined") return;
-    const role = localStorage.getItem("auth_role");
-    if (role !== "admin") {
-      router.replace("/auth");
-    }
-  }, [router]);*/
 
   // Pull from Google Calendar (via API in /api/admin/appointments)
   async function refreshAppointments() {

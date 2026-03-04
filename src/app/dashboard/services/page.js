@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import AdminLayout from "../../components/AdminLayout.js";
 
 
@@ -55,7 +54,6 @@ const SERVICES = [
 ];
 
 export default function AdminServicesPage() {
-  const router = useRouter();
   const [services, setServices] = useState(SERVICES);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState(null);
@@ -69,17 +67,6 @@ export default function AdminServicesPage() {
     durationValue: "1",
     durationUnit: "hours",
   });
-
-  /*role check*/
-
-  /*
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const role = localStorage.getItem("auth_role");
-    if (role !== "admin") {
-      router.replace("/auth");
-    }
-  }, [router]);*/
 
   useEffect(() => {
     if (typeof window === "undefined") return;
