@@ -1348,8 +1348,9 @@ body {
   position: sticky;
   top: 0;
   height: 100%;
-  overflow: hidden;
-  border-top: 8px solid #31270C;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 
 .admin-sidebar-brand {
@@ -1393,6 +1394,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.admin-sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
 }
 
 .admin-menu-link {
@@ -1593,7 +1602,7 @@ body {
 
 .admin-muted {
   font-size: 12px;
-  color: #6b7280;
+  color: #ffffff;
 }
 
 .admin-actions {
@@ -2568,6 +2577,32 @@ body {
   grid-column: span 2;
 }
 
+.admin-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-section + .admin-section {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.admin-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-section-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
 .admin-textarea {
   border-radius: 12px;
   border: 1px solid #e5e7eb;
@@ -2738,6 +2773,101 @@ body {
   }
 }
 
+/*clients*/
+.admin-client-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 20px;
+}
+
+.admin-client-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-client-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-client-item:hover {
+  border-color: #cbd5f5;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.admin-client-item.is-active {
+  border-color: #477a40;
+  box-shadow: 0 0 0 1px #477a40;
+}
+
+.admin-client-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: rgba(71, 122, 64, 0.15);
+  color: #2f5a29;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.admin-client-avatar--large {
+  width: 56px;
+  height: 56px;
+  font-size: 16px;
+}
+
+.admin-client-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-client-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.admin-client-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-client-title {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.admin-client-sub {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+@media (max-width: 1024px) {
+  .admin-client-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 
 /* FML TS TOOK TOO LONG */
