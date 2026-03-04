@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import NavBar from "../components/Navbar.js";
@@ -52,7 +53,7 @@ function Tile({ src, type, poster, span, onClick, priority }) {
   );
 }
 
-export default function ProjectsPage() {
+export default function ProjectsPage(){
   const [mediaItems, setMediaItems] = useState([]);
   const [activeIndex, setActiveIndex] = useState(null);
 
@@ -109,10 +110,8 @@ export default function ProjectsPage() {
     }
 
     // Re-fetch the full folder to include old + new media
-    await fetchMediaFolder();
-    setMediaItems(await fetchMediaFolder());
-    //refresh the page to show the new media
-    window.location.reload();
+    const updatedMedia = await fetchMediaFolder();
+    setMediaItems(updatedMedia);
   };
 
   const closeModal = () => setActiveIndex(null);
