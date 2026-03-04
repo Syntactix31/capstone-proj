@@ -108,18 +108,6 @@ const STATUS_CLASS = {
   Inactive: "admin-badge admin-badge--muted",
 };
 
-const MENU_ITEMS = [
-  { id: "appointments", label: "Appointments", href: "/dashboard/appointments" },
-  { id: "services", label: "Services", href: "/dashboard/services" },
-  { id: "estimates", label: "Estimates", href: "/dashboard/estimates" },
-  { id: "clients", label: "Clients", href: "/dashboard/clients" },
-  { id: "invoices", label: "Invoices", href: "/dashboard/invoices" },
-  { id: "payments", label: "Payments", href: "/dashboard/payments" },
-  { id: "reports", label: "Reports", href: "/dashboard/reports" },
-  { id: "settings", label: "Settings", href: "/dashboard/settings" },
-  { id: "gallery", label: "Gallery", href: "/dashboard/gallery" },
-];
-
 export default function DashboardPage() {
     const router = useRouter();
     
@@ -131,23 +119,14 @@ export default function DashboardPage() {
         }
     }, [router]);*/
 
-    const pendingCount = APPOINTMENTS.filter(
-        (appt) => appt.status === "Pending"
-    ).length;
-    const confirmedCount = APPOINTMENTS.filter(
-        (appt) => appt.status === "Confirmed"
-    ).length;
-    const canceledCount = APPOINTMENTS.filter(
-        (appt) => appt.status === "Canceled"
-    ).length;
+    const pendingCount = APPOINTMENTS.filter((appt) => appt.status === "Pending").length;
+    const confirmedCount = APPOINTMENTS.filter((appt) => appt.status === "Confirmed").length;
+    const canceledCount = APPOINTMENTS.filter((appt) => appt.status === "Canceled").length;
     const activeServices = SERVICES.filter((service) => service.active).length;
     const inactiveServices = SERVICES.length - activeServices;
-    const activeClients = CLIENTS.filter((client) => client.status === "Active")
-    .length;
+    const activeClients = CLIENTS.filter((client) => client.status === "Active").length;
     const inactiveClients = CLIENTS.length - activeClients;
-    const nextAppointment = APPOINTMENTS.filter(
-        (appt) => appt.status !== "Canceled"
-    ).sort((a, b) => a.date.localeCompare(b.date))[0];
+    const nextAppointment = APPOINTMENTS.filter((appt) => appt.status !== "Canceled").sort((a, b) => a.date.localeCompare(b.date))[0];
     
   return (
     <AdminLayout>
