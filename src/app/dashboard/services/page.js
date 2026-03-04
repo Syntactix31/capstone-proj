@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminLayout from "../../components/AdminLayout.js";
 
+
+/*placeholder services until active database implemented*/
 const SERVICES = [
   {
     id: "S-01",
@@ -67,6 +69,8 @@ export default function AdminServicesPage() {
     durationValue: "1",
     durationUnit: "hours",
   });
+
+  /*role check*/
 
   /*
   useEffect(() => {
