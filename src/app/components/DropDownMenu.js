@@ -2,7 +2,6 @@ import Link from "next/link";
 
 export default function DropDownMenu ({ onClose, isAnimatingOut }) {
 
-
   return (
     <div className={`absolute top-30 right-0 z-999 pointer-events-none animate-slideIn ${isAnimatingOut ? 'animate-slideOut' : 'animate-slideIn'
     }`}>
