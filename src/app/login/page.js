@@ -95,7 +95,7 @@ export default function LoginPage() {
                       className="admin-input"
                       type="text"
                       name="firstName"
-                      placeholder="Jordan"
+                      placeholder="John"
                       autoComplete="given-name"
                       required
                     />
@@ -106,7 +106,7 @@ export default function LoginPage() {
                       className="admin-input"
                       type="text"
                       name="lastName"
-                      placeholder="Lee"
+                      placeholder="Appleseed"
                       autoComplete="family-name"
                       required
                     />
@@ -149,11 +149,6 @@ export default function LoginPage() {
                   />
                 </label>
 
-                <label className="auth-checkbox">
-                  <input type="checkbox" name="terms" required />
-                  I agree to the terms and privacy policy
-                </label>
-
                 <button className="admin-btn admin-btn--primary admin-login-btn" type="submit">
                   Create account
                 </button>
@@ -187,7 +182,11 @@ export default function LoginPage() {
 
             <div className="auth-divider" />
             <p className="auth-footer">
-              By continuing you agree to our terms and privacy policy.
+              By continuing you agree to our{" "}
+              <Link className="auth-link" href="/terms">
+                terms and privacy policy
+              </Link>
+              .
             </p>
             <p className="auth-footer">
               Need help?{" "}
