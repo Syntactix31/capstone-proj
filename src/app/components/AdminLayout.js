@@ -76,7 +76,7 @@ export default function AdminLayout({ children }) {
           </nav>
           <div className="admin-sidebar-footer">
             <div className="admin-sidebar-divider" />
-            {userName ? <div className="admin-muted">Signed in as {userName}</div> : null}
+            {userName ? <div className="admin-user">Signed in as {userName}</div> : null}
             <button className="admin-btn admin-btn--ghost admin-btn--small" type="button" onClick={handleSignOut}>
               Sign out
             </button>
