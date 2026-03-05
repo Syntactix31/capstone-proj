@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCalendarClient } from "../../../lib/googleCalendar";
+import { requireAdmin } from "../../../lib/auth/server";
 
 function toEdmontonPretty(iso) {
   const d = new Date(iso);
@@ -27,6 +28,9 @@ function safe(s) {
 
 export async function GET(req) {
   try {
+    const auth = requireAdmin(req);
+    if (auth.error) return auth.error;
+
     const url = new URL(req.url);
 
 

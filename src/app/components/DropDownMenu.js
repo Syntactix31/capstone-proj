@@ -1,6 +1,47 @@
+ "use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function DropDownMenu ({ onClose, isAnimatingOut }) {
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadAuthState() {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+        setIsSignedIn(Boolean(data?.user));
+      } catch {
+        if (!active) return;
+        setIsSignedIn(false);
+      }
+    }
+
+    loadAuthState();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleLogout() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      onClose?.();
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className={`absolute top-30 right-0 z-999 pointer-events-none animate-slideIn ${isAnimatingOut ? 'animate-slideOut' : 'animate-slideIn'
@@ -19,7 +60,13 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
         <Link href="/quote" onClick={onClose}>Get A Quote</Link>
         <Link href="/book" onClick={onClose}>Book An Appointment</Link>
         <Link href="/dashboard" onClick={onClose}>Admin</Link>
-        <Link href="/login" onClick={onClose}>Login</Link>
+        {isSignedIn ? (
+          <button type="button" onClick={handleLogout} disabled={busy}>
+            {busy ? "Logging out..." : "Logout"}
+          </button>
+        ) : (
+          <Link href="/login" onClick={onClose}>Login</Link>
+        )}
 
       </div>
     </div>
