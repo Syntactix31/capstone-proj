@@ -151,16 +151,6 @@ export default function ProjectsPage(){
         <h1 className="text-4xl italic text-center mb-6">
           A Collection Of Our Finest Work.
         </h1>
-
-        <div className="mb-8 text-center">
-          <input
-            type="file"
-            accept="image/*,video/mp4"
-            onChange={handleUpload}
-            className="border p-2"
-          />
-        </div>
-
         <div
           className="grid gap-4"
           style={{
