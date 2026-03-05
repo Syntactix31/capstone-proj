@@ -7,19 +7,24 @@ export async function GET() {
     const files = await readdir(folderPath);
 
     // Only accept images and mp4 videos
-    const media = files
-      .filter((f) => /\.(jpg|jpeg|png|gif|mp4)$/i.test(f))
-      .map((f) => {
-        const type = /\.mp4$/i.test(f) ? "video" : "image";
-        const poster = type === "video" ? `/projects/Post${f}.jpg` : undefined;
-        return { src: `/projects/${f}`, type, poster };
-      });
+    const videos = files.filter((f) => /\.mp4$/i.test(f));
+    const images = files.filter((f) => /\.(jpg|jpeg|png|gif)$/i.test(f));
 
-    //Sort: videos first, then images
-    media.sort((a, b) => {
-      if (a.type === b.type) return 0;
-      return a.type === "video" ? -1 : 1;
-    });
+    // Map videos to posters (poster1.jpg, poster2.jpg, etc.)
+    const mediaVideos = videos.map((vid, i) => ({
+      src: `/projects/${vid}`,
+      type: "video",
+      poster: `/projects/Post${i + 1}.jpg`,
+    }));
+
+    // Map images
+    const mediaImages = images.map((img) => ({
+      src: `/projects/${img}`,
+      type: "image",
+    }));
+
+    // Videos first, then images
+    const media = [...mediaVideos, ...mediaImages];
 
     return new Response(JSON.stringify(media), {
       headers: { "Content-Type": "application/json" },
