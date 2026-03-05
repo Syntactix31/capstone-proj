@@ -59,17 +59,25 @@ const CLIENTS = [
 ];
 
 export default function AdminClientsPage() {
+  const [clients, setClients] = useState(CLIENTS);
   const [selectedId, setSelectedId] = useState(CLIENTS[0]?.id ?? null);
 
   const selectedClient = useMemo(
-    () => CLIENTS.find((client) => client.id === selectedId) || CLIENTS[0],
-    [selectedId]
+    () => clients.find((client) => client.id === selectedId) || clients[0],
+    [clients, selectedId]
   );
   const [draft, setDraft] = useState(selectedClient);
 
   useEffect(() => {
     setDraft(selectedClient);
   }, [selectedClient]);
+
+  const handleSave = () => {
+    if (!draft?.id) return;
+    setClients((prev) =>
+      prev.map((client) => (client.id === draft.id ? { ...client, ...draft } : client))
+    );
+  };
 
   return (
     <AdminLayout>
@@ -92,11 +100,11 @@ export default function AdminClientsPage() {
         <div className="admin-card">
           <div className="admin-card-header">
             <h2 className="admin-card-title">Clients</h2>
-            <span className="admin-muted">{CLIENTS.length} total</span>
+            <span className="admin-muted">{clients.length} total</span>
           </div>
 
           <div className="admin-client-list">
-            {CLIENTS.map((client) => (
+            {clients.map((client) => (
               <button
                 key={client.id}
                 type="button"
@@ -139,7 +147,11 @@ export default function AdminClientsPage() {
           <div className="admin-section">
             <div className="admin-section-header">
               <h3 className="admin-section-title">Client details</h3>
-              <button className="admin-btn admin-btn--ghost admin-btn--small" type="button">
+              <button
+                className="admin-btn admin-btn--ghost admin-btn--small"
+                type="button"
+                onClick={handleSave}
+              >
                 Save changes
               </button>
             </div>
