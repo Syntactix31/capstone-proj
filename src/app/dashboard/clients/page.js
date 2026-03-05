@@ -275,20 +275,18 @@ export default function AdminClientsPage() {
                 <span className="admin-label">City</span>
                 <input
                   className="admin-input"
-                  value={draft.city}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, city: event.target.value }))
-                  }
+                  value="Calgary"
+                  readOnly
+                  disabled
                 />
               </label>
               <label className="admin-field">
                 <span className="admin-label">Province</span>
                 <input
                   className="admin-input"
-                  value={draft.province}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, province: event.target.value }))
-                  }
+                  value="Alberta"
+                  readOnly
+                  disabled
                 />
               </label>
               <label className="admin-field">
