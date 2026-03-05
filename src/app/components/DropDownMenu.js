@@ -1,14 +1,54 @@
+ "use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function DropDownMenu ({ onClose, isAnimatingOut }) {
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const router = useRouter();
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadAuthState() {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+        setIsSignedIn(Boolean(data?.user));
+      } catch {
+        if (!active) return;
+        setIsSignedIn(false);
+      }
+    }
+
+    loadAuthState();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleLogout() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      onClose?.();
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
-    <div className={`absolute top-24 right-0 z-999 pointer-events-none animate-slideIn ${isAnimatingOut ? 'animate-slideOut' : 'animate-slideIn'
+    <div className={`absolute top-30 right-0 z-999 pointer-events-none animate-slideIn ${isAnimatingOut ? 'animate-slideOut' : 'animate-slideIn'
     }`}>
-      {/* hhh */}
+      
       {/* original width sm:w-80 and mobile w-75 */}
-      <div className="bg-[#477A40] w-74 sm:w-72 h-fit lg:h-90  flex flex-col gap-10 text-white text-center font-semibold p-10 *:hover:scale-105 *:transition-transform *:duration-200 *:active:opacity-50 pointer-events-auto *:active:scale-100 shadow-2xl z-100">
+      <div className="bg-[#477A40] w-74 sm:w-72 h-fit lg:h-90  flex flex-col gap-10 text-white text-center font-semibold p-10 *:hover:scale-105 *:transition-transform *:duration-200 *:active:opacity-50 pointer-events-auto *:active:scale-100 top-outline shadow-2xl z-100">
 
         
         <Link href="/about" className="hidden max-lg:inline" onClick={onClose}>About</Link>
@@ -20,7 +60,13 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
         <Link href="/quote" onClick={onClose}>Get A Quote</Link>
         <Link href="/book" onClick={onClose}>Book An Appointment</Link>
         <Link href="/dashboard" onClick={onClose}>Admin</Link>
-        <Link href="/login" onClick={onClose}>Login</Link>
+        {isSignedIn ? (
+          <button type="button" onClick={handleLogout} disabled={busy}>
+            {busy ? "Logging out..." : "Logout"}
+          </button>
+        ) : (
+          <Link href="/login" onClick={onClose}>Login</Link>
+        )}
 
       </div>
     </div>
@@ -34,7 +80,6 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
 // DROP DOWN FOR MOBILE SHOULD FIT FULLSCREEN AND ANIMATE FROM TOP DOWN
 
 // DROP DOWN FOR MEDIUM VIEWPORTS AND SMALLER SHOULD INCLUDE THE ABOUT SERVICES AND CONTACT PAGES
-
 
 
 

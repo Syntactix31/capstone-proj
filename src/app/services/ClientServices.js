@@ -11,27 +11,27 @@ export default function ClientServices() {
 
   const services = useMemo(() => [
     {
-      slug: "Fence",
+      slug: "fence",
       title: "Fence",
       description: "Professional fence installation using pressure-treated or composite materials.rable, professionally installed fencing to improve privacy, security, and curb appeal with clean lines and solid posts.",
     },
     {
-      slug: "Deck & Railing",
+      slug: "deck-railing",
       title: "Deck & Railing",
       description: "Custom decks built for comfort and longevity, paired with sturdy railings that meet code and match your home's style.",
     },
     {
-      slug: "Pergola",
+      slug: "pergola",
       title: "Pergola",
       description: "A clean, modern pergola that adds shade, structure, and a standout feature to your backyard or patio space.",
     },
     {
-      slug: "Sod",
+      slug: "sod",
       title: "Sod",
       description: "Fresh sod laid and graded properly for a smooth, green lawn with strong root take and a clean finish.",
     },
     {
-      slug: "Trees & Shrubs",
+      slug: "trees-shrubs",
       title: "Trees & Shrubs",
       description: "Thoughtful planting of trees and shrubs for privacy, landscaping design, and low-maintenance greenery that grows well in your yard.",
     },
