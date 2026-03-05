@@ -4,34 +4,9 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import NavBar from "../components/Navbar.js";
 import Footer from "../components/Footer.js";
- 
+
 // Media items: type = "image" | "video", src = file path, poster = video poster image
-const media = [
-  { type: "video", src: "/projects/Vid1.mp4", poster: "/projects/Post1.JPG" },
-  { type: "video", src: "/projects/Vid2.mp4", poster: "/projects/Post2.JPG" },
-  { type: "video", src: "/projects/Vid3.mp4", poster: "/projects/Post3.JPG" },
-  { type: "video", src: "/projects/Vid4.mp4", poster: "/projects/Post4.JPG" },
-  { type: "image", src: "/projects/Img18.JPG" },
-  { type: "image", src: "/projects/Img2.JPG" },
-  { type: "image", src: "/projects/Img3.JPG" },
-  { type: "image", src: "/projects/Img4.JPG" },
-  { type: "image", src: "/projects/Img11.JPG" },
-  { type: "image", src: "/projects/Img6.JPG" },
-  { type: "image", src: "/projects/Img7.JPG" },
-  { type: "image", src: "/projects/Img8.JPG" },
-  { type: "image", src: "/projects/Img12.JPG" },
-  { type: "image", src: "/projects/Img10.JPG" },
-  { type: "image", src: "/projects/Img5.JPG" },
-  { type: "image", src: "/projects/Img9.JPG" },
-  { type: "image", src: "/projects/Img13.JPG" },
-  { type: "image", src: "/projects/Img14.JPG" },
-  { type: "image", src: "/projects/Img15.JPG" },
-  { type: "image", src: "/projects/Img19.JPG" },
-  { type: "image", src: "/projects/Img17.JPG" },
-  { type: "image", src: "/projects/Img1.JPG" },
-  { type: "image", src: "/projects/Img16.JPG" }
-];
- 
+
 // 23 “Figma slots” using 12-col grid.
 // Each item = { c: columnSpan, r: rowSpan }
 const layout = [
@@ -116,6 +91,20 @@ function Tile({ src, type, poster, span, onClick, priority }) {
 }
  
 export default function ProjectsPage() {
+  // Load media from public/projects folder
+  const [media, setMedia] = useState([]);
+
+  // On mount, fetch media list from API
+  useEffect(() => {
+  async function loadMedia() {
+    const res = await fetch("/api/ScanMedia");
+    const data = await res.json();
+    setMedia(data);
+  }
+
+  loadMedia();
+  }, []);
+
   const [activeIndex, setActiveIndex] = useState(null);
   const visibleMedia = media.slice(0, 23);
   const closeModal = () => setActiveIndex(null);
