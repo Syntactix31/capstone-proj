@@ -76,13 +76,7 @@ export default function AdminClientsPage() {
 
   const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
   const EMAIL_PATTERN = String.raw`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`;
-  const raw = String(value || "").toLowerCase().trim();
-  if (raw.length > 254) return false;
-  const parts = raw.split("@");
-  if (parts[0].length > 64) return false;
-  if (parts[1].length > 253) return false;
-  return EMAIL_REGEX.test(raw);
-  };
+  const isValidEmail = (value) => EMAIL_REGEX.test(String(value || "").toLowerCase().trim());
   const normalizePhone = (value) => String(value || "").replace(/\D/g, "");
   const isValidPhone = (value) => /^\d{10}$/.test(normalizePhone(value));
   const formatPhoneDisplay = (value) => {
@@ -343,3 +337,4 @@ export default function AdminClientsPage() {
       </section>
     </AdminLayout>
   );
+}
