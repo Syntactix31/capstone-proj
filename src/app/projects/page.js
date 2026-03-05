@@ -7,6 +7,7 @@ import Footer from "../components/Footer.js";
 
 // Media items: type = "image" | "video", src = file path, poster = video poster image
 
+
 // 23 “Figma slots” using 12-col grid.
 // Each item = { c: columnSpan, r: rowSpan }
 const layout = [

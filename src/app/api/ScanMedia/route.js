@@ -11,7 +11,7 @@ export async function GET() {
       .filter((f) => /\.(jpg|jpeg|png|gif|mp4)$/i.test(f))
       .map((f) => {
         const type = /\.mp4$/i.test(f) ? "video" : "image";
-        const poster = type === "video" ? `/projects/${f}-poster.jpg` : undefined;
+        const poster = type === "video" ? `/projects/Post${f}.jpg` : undefined;
         return { src: `/projects/${f}`, type, poster };
       });
 
