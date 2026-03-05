@@ -11,6 +11,17 @@ const PRICING = {
     heightMultiplier: (h) => (h <= 3 ? 1 : h <= 6 ? 1.12 : h <= 10 ? 1.25 : 1.4),
   },
   pergola: { perSqftByTier: { basic: 45, standard: 60, premium: 80 } },
+
+  sod: {
+    perSqft: 2.75,         
+    gradingPerSqft: 1.25,  
+  },
+  "trees-shrubs": {
+    treeBase: 350,         
+    shrubBase: 95,        
+    irrigationPerPlant: 40,
+  },
+
 };
 
 const TYPE_ALIAS = { fence: "fence", deck: "deck", "deck-railing": "deck", "deck_railing": "deck", pergola: "pergola" };
@@ -80,7 +91,9 @@ function normalizePayload(raw) {
   return {
     claim: {
       fullName: s(pick(c, ["fullName", "name", "full_name"], "")),
-      homeAddress: s(pick(c, ["homeAddress", "address", "home_address"], "")),
+
+      // homeAddress: s(pick(c, ["homeAddress", "address", "home_address"], "")),
+
       email: s(pick(c, ["email"], "")).toLowerCase(),
       phone: s(pick(c, ["phone", "phoneNumber", "phone_number"], "")),
     },
@@ -97,6 +110,21 @@ function normalizePayload(raw) {
       designTier: asLower(pick(details, ["designTier", "tier", "design"], "standard")),
       attachedSide: s(pick(details, ["attachedSide", "attachedToHouse", "houseSide", "houseAttachment"], "unspecified")),
       material: asLower(details.material ?? "pressure-treated wood"),
+
+
+      sodSquareFt: asNum(pick(details, ["squareFt", "sqft", "areaSqft"])),
+      sodLengthFeet: asNum(pick(details, ["lengthFeet", "length"])),
+      sodWidthFeet: asNum(pick(details, ["widthFeet", "width"])),
+      sodCondition: asLower(pick(details, ["condition"], "")),
+      sodGradingNeeded: !!details.gradingNeeded,
+
+      numTrees: asInt(pick(details, ["numTrees", "trees", "treeCount"], 0)),
+      numShrubs: asInt(pick(details, ["numShrubs", "shrubs", "shrubCount"], 0)),
+      treeSize: asLower(pick(details, ["treeSize"], "")),
+      shrubSize: asLower(pick(details, ["shrubSize"], "")),
+      plantingPurpose: asLower(pick(details, ["purpose"], "")),
+      irrigation: !!details.irrigation,
+
     },
   };
 }
@@ -105,11 +133,12 @@ function validate({ claim, project }) {
   const e = [];
   const req = (ok, msg) => !ok && e.push(msg);
   req(!!claim.fullName, "claim.fullName is required.");
-  req(!!claim.homeAddress, "claim.homeAddress is required.");
+  // req(!!claim.homeAddress, "claim.homeAddress is required.");
   req(!!claim.email && claim.email.includes("@"), "claim.email must be valid.");
   req(!!claim.phone, "claim.phone is required.");
+
   const t = project.projectType;
-  if (!["fence", "deck", "pergola"].includes(t)) return ["project.projectType must be one of: fence, deck, pergola."];
+  if (!["fence", "deck", "pergola", "sod", "trees-shrubs"].includes(t)) return ["project.projectType must be one of: fence, deck, pergola."];
 
   if (t === "fence") {
     req(isPos(project.totalLinearFeet), "project.totalLinearFeet must be a positive number.");
@@ -129,6 +158,15 @@ function validate({ claim, project }) {
     req(isPos(project.heightFeet), "project.heightFeet must be a positive number.");
     req(["basic", "standard", "premium"].includes(project.designTier), "project.designTier must be one of: basic, standard, premium.");
   }
+  if (t === "sod") {
+    req(isPos(project.sodSquareFt), "project.sodSquareFt must be a positive number.");
+  }
+
+  if (t === "trees-shrubs") {
+    req(project.numTrees >= 0 && project.numShrubs >= 0, "project.numTrees and project.numShrubs must be >= 0.");
+    req(project.numTrees + project.numShrubs > 0, "At least one tree or shrub is required.");
+  }
+
   return e;
 }
 
@@ -167,6 +205,91 @@ function pricePergola(p) {
   return { subtotal: money(lineItems[0].total), lineItems, assumptions: ["Pressure-treated wood assumed.", "Design tier affects material/finish complexity."] };
 }
 
+function priceSod(p) {
+  const items = [];
+  const area = p.sodSquareFt || (p.sodLengthFeet * p.sodWidthFeet) || 0;
+  const base = PRICING.sod.perSqft * area;
+
+  items.push({
+    label: "Sod installation",
+    qty: money(area),
+    unit: "sq ft",
+    unitPrice: PRICING.sod.perSqft,
+    total: money(base),
+  });
+
+  if (p.sodGradingNeeded) {
+    const gradingTotal = PRICING.sod.gradingPerSqft * area;
+    items.push({
+      label: "Grading / site prep",
+      qty: money(area),
+      unit: "sq ft",
+      unitPrice: PRICING.sod.gradingPerSqft,
+      total: money(gradingTotal),
+    });
+  }
+
+  const assumptions = [
+    "Assumes standard topsoil depth and access for equipment.",
+    "Disposal of existing turf/soil may affect final quote.",
+  ];
+
+  return {
+    subtotal: money(items.reduce((sum, it) => sum + it.total, 0)),
+    lineItems: items,
+    assumptions,
+  };
+}
+
+function priceTreesShrubs(p) {
+  const items = [];
+  const treeCount = Math.max(p.numTrees || 0, 0);
+  const shrubCount = Math.max(p.numShrubs || 0, 0);
+
+  if (treeCount > 0) {
+    items.push({
+      label: "Trees supply & install",
+      qty: treeCount,
+      unit: "each",
+      unitPrice: PRICING["trees-shrubs"].treeBase,
+      total: money(treeCount * PRICING["trees-shrubs"].treeBase),
+    });
+  }
+
+  if (shrubCount > 0) {
+    items.push({
+      label: "Shrubs supply & install",
+      qty: shrubCount,
+      unit: "each",
+      unitPrice: PRICING["trees-shrubs"].shrubBase,
+      total: money(shrubCount * PRICING["trees-shrubs"].shrubBase),
+    });
+  }
+
+  if (p.irrigation && (treeCount + shrubCount) > 0) {
+    const plantCount = treeCount + shrubCount;
+    items.push({
+      label: "Drip irrigation add-on",
+      qty: plantCount,
+      unit: "plant",
+      unitPrice: PRICING["trees-shrubs"].irrigationPerPlant,
+      total: money(plantCount * PRICING["trees-shrubs"].irrigationPerPlant),
+    });
+  }
+
+  const assumptions = [
+    "Typical planting conditions assumed; rock removal or poor soil may change quote.",
+    "Plant sizes are approximate and depend on nursery stock availability.",
+  ];
+
+  return {
+    subtotal: money(items.reduce((sum, it) => sum + it.total, 0)),
+    lineItems: items,
+    assumptions,
+  };
+}
+
+
 export function GET() {
   return NextResponse.json({ ok: true, route: "/api/estimate" });
 }
@@ -185,7 +308,23 @@ export async function POST(req) {
     if (errors.length) return NextResponse.json({ error: "Invalid request", details: errors }, { status: 400 });
 
     const { claim, project } = normalized;
-    const result = project.projectType === "fence" ? priceFence(project) : project.projectType === "deck" ? priceDeck(project) : pricePergola(project);
+    let result;
+    if (project.projectType === "fence") {
+      result = priceFence(project);
+    } else if (project.projectType === "deck") {
+      result = priceDeck(project);
+    } else if (project.projectType === "pergola") {
+      result = pricePergola(project);
+    } else if (project.projectType === "sod") {
+      result = priceSod(project);
+    } else if (project.projectType === "trees-shrubs") {
+      result = priceTreesShrubs(project);
+    } else {
+      return NextResponse.json(
+        { error: "Unsupported project type", details: [`Unsupported projectType: ${project.projectType}.`] },
+        { status: 400 }
+      );
+    }
     const tax = money(result.subtotal * PRICING.taxRate);
 
     return NextResponse.json({
@@ -205,5 +344,6 @@ export async function POST(req) {
     return NextResponse.json({ error: "Server error", message: "Unexpected error while building estimate." }, { status: 500 });
   }
 }
+
 
 
