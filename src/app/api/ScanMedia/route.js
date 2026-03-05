@@ -1,5 +1,6 @@
 import { readdir } from "fs/promises";
 import path from "path";
+import { stat } from "fs/promises";
 
 export async function GET() {
   try {
@@ -7,24 +8,54 @@ export async function GET() {
     const files = await readdir(folderPath);
 
     // Only accept images and mp4 videos
-    const videos = files.filter((f) => /\.mp4$/i.test(f));
-    const images = files.filter((f) => /\.(jpg|jpeg|png|gif)$/i.test(f));
+    const media = await Promise.all(
+      files
+        .filter((f) => /\.(jpg|jpeg|png|gif|mp4)$/i.test(f))
+        .map(async (f) => {
+          const type = /\.mp4$/i.test(f) ? "video" : "image";
+          
+          if (type === "image") {
+            return { src: `/projects/${f}`, type, poster: undefined };
+          }
 
-    // Map videos to posters (poster1.jpg, poster2.jpg, etc.)
-    const mediaVideos = videos.map((vid, i) => ({
-      src: `/projects/${vid}`,
-      type: "video",
-      poster: `/projects/Post${i + 1}.jpg`,
-    }));
+          const nameWithoutExt = f.replace(/\.[^/.]+$/, ""); 
+          const numberMatch = nameWithoutExt.match(/(\d+)$/); 
+          
+          if (numberMatch) {
+            const videoNumber = numberMatch[1];
+            const posterCandidates = [
+              `Post${videoNumber}.jpg`,
+              `Post${videoNumber}.JPG`, 
+              `Post${videoNumber}.png`,
+              `Post${videoNumber}.PNG`
+            ];
+            
+            for (const posterName of posterCandidates) {
+              try {
+                await stat(path.join(folderPath, posterName));
+                return {
+                  src: `/projects/${f}`,
+                  type: "video",
+                  poster: `/projects/${posterName}`
+                };
+              } catch {
+                // Poster doesn't exist, try next
+              }
+            }
+          }
+          
+          return {
+            src: `/projects/${f}`,
+            type: "video",
+            poster: undefined
+          };
+        })
+    );
 
-    // Map images
-    const mediaImages = images.map((img) => ({
-      src: `/projects/${img}`,
-      type: "image",
-    }));
-
-    // Videos first, then images
-    const media = [...mediaVideos, ...mediaImages];
+    media.sort((a, b) => {
+      if (a.type === b.type) return 0;
+      return a.type === "video" ? -1 : 1;
+    });
 
     return new Response(JSON.stringify(media), {
       headers: { "Content-Type": "application/json" },

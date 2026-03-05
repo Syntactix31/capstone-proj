@@ -72,12 +72,14 @@ export default function QuoteClient() {
  
   const buildEstimatePayload = () => {
     if (!selectedService || !ESTIMATE_SERVICE_KEYS.has(selectedService.key)) return null;
+
     const claim = {
       name: formData.client.name,
-      address: formData.client.address,
+      // address: formData.client.address,
       email: formData.client.email,
       phone: formData.client.phone,
     };
+
     if (selectedService.key === "fence") {
       return {
         claim,
@@ -92,6 +94,7 @@ export default function QuoteClient() {
         },
       };
     }
+
     if (selectedService.key === "deck") {
       return {
         claim,
@@ -105,24 +108,61 @@ export default function QuoteClient() {
         },
       };
     }
-    return {
-      claim,
-      projectType: "pergola",
-      project: {
+
+    if (selectedService.key === "pergola") {
+      return {
+        claim,
         projectType: "pergola",
-        length: formData.project.pergola.length,
-        width: formData.project.pergola.width,
-        height: formData.project.pergola.height,
-      },
-    };
+        project: {
+          projectType: "pergola",
+          length: formData.project.pergola.length,
+          width: formData.project.pergola.width,
+          height: formData.project.pergola.height,
+        },
+      };
+    }
+
+    if (selectedService.key === "sod") {
+      return {
+        claim,
+        projectType: "sod",
+        project: {
+          projectType: "sod",
+          squareFt: formData.project.sod.squareFt,
+          length: formData.project.sod.length,
+          width: formData.project.sod.width,
+          condition: formData.project.sod.condition,
+          gradingNeeded: formData.project.sod.gradingNeeded,
+        },
+      };
+    }
+
+    if (selectedService.key === "trees-shrubs") {
+      return {
+        claim,
+        projectType: "trees-shrubs",
+        project: {
+          projectType: "trees-shrubs",
+          numTrees: formData.project["trees-shrubs"].numTrees,
+          numShrubs: formData.project["trees-shrubs"].numShrubs,
+          treeSize: formData.project["trees-shrubs"].treeSize,
+          shrubSize: formData.project["trees-shrubs"].shrubSize,
+          purpose: formData.project["trees-shrubs"].purpose,
+          irrigation: formData.project["trees-shrubs"].irrigation,
+        },
+      };
+    }
+
+    return null;
   };
+
 
   // Change this to allow pergola and sod and trees and shrubs
   const fetchInstantEstimate = async () => {
     const payload = buildEstimatePayload();
     if (!payload) {
       setInstantEstimate(null);
-      setEstimateError("Instant estimate is currently available only for Fence, Deck & Railing, and Pergola.");
+      setEstimateError("Instant estimate is currently available only for Fence, Deck & Railing, Pergola, Sod, and Trees & Shrubs.");
       return null;
     }
     const res = await fetch("/api/estimate", {
@@ -427,6 +467,10 @@ const handleSubmit = async (e) => {
       },
       files: [],
     });
+
+    setInstantEstimate(null);
+    setEstimateError("");
+    setSummary("");
   };
 
 
@@ -498,8 +542,8 @@ const handleSubmit = async (e) => {
                 <input type="text" value={formData.client.address} onChange={(e) => setFormData({ ...formData, client: { ...formData.client, address: e.target.value } })} className="w-full p-4 border border-gray-300 rounded-xl" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">Phone Number</label>
-                <input type="tel" value={formData.client.phone} onChange={(e) => setFormData({ ...formData, client: { ...formData.client, phone: e.target.value } })} className="w-full p-4 border border-gray-300 rounded-xl" />
+                <label className="block text-sm font-bold text-gray-900 mb-2">Phone Number *</label>
+                <input type="tel" value={formData.client.phone} onChange={(e) => setFormData({ ...formData, client: { ...formData.client, phone: e.target.value } })} className="w-full p-4 border border-gray-300 rounded-xl" required/>
               </div>
             </div>
           </section>
