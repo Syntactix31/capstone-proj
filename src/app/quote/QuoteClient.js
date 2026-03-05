@@ -12,6 +12,8 @@ import Link from "next/link";
 // import Footer from "../components/Footer.js";
 import QuoteSuccessModal from "../components/QuoteSuccessModal.js"; 
 
+const ESTIMATE_SERVICE_KEYS = new Set(["fence", "deck", "pergola", "sod", "trees-shrubs"]);
+
 export default function QuoteClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -44,6 +46,8 @@ export default function QuoteClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [summary, setSummary] = useState("");
+  const [instantEstimate, setInstantEstimate] = useState(null);
+  const [estimateError, setEstimateError] = useState("");
 
   // useEffect(() => {
   //   emailjs.init("VYdNBLKU2JIYKKcva");
@@ -58,6 +62,99 @@ export default function QuoteClient() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+ 
+  const formatMoney = (value, currency = "CAD") =>
+    new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(Number(value || 0));
+ 
+  const buildEstimatePayload = () => {
+    if (!selectedService || !ESTIMATE_SERVICE_KEYS.has(selectedService.key)) return null;
+    const claim = {
+      name: formData.client.name,
+      address: formData.client.address,
+      email: formData.client.email,
+      phone: formData.client.phone,
+    };
+    if (selectedService.key === "fence") {
+      return {
+        claim,
+        projectType: "fence",
+        project: {
+          projectType: "fence",
+          gates: formData.project.fence.gates,
+          linearFt: formData.project.fence.linearFt,
+          height: formData.project.fence.height,
+          postSize: formData.project.fence.postSize,
+          pressureTreated: formData.project.fence.pressureTreated,
+        },
+      };
+    }
+    if (selectedService.key === "deck") {
+      return {
+        claim,
+        projectType: "deck-railing",
+        project: {
+          projectType: "deck-railing",
+          length: formData.project.deck.length,
+          width: formData.project.deck.width,
+          height: formData.project.deck.height,
+          railing: formData.project.deck.railing,
+        },
+      };
+    }
+    return {
+      claim,
+      projectType: "pergola",
+      project: {
+        projectType: "pergola",
+        length: formData.project.pergola.length,
+        width: formData.project.pergola.width,
+        height: formData.project.pergola.height,
+      },
+    };
+  };
+
+  // Change this to allow pergola and sod and trees and shrubs
+  const fetchInstantEstimate = async () => {
+    const payload = buildEstimatePayload();
+    if (!payload) {
+      setInstantEstimate(null);
+      setEstimateError("Instant estimate is currently available only for Fence, Deck & Railing, and Pergola.");
+      return null;
+    }
+    const res = await fetch("/api/estimate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const details = Array.isArray(data?.details) ? data.details.join(" ") : data?.error || "Estimate unavailable.";
+      setInstantEstimate(null);
+      setEstimateError(details);
+      throw new Error(details);
+    }
+    setEstimateError("");
+    setInstantEstimate(data);
+    return data;
+  };
+ 
+  const handleEstimatePreview = async () => {
+    if (!validateForm()) return;
+    setIsSubmitting(true);
+    try {
+      await fetchInstantEstimate();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
 
 
 const handleSubmit = async (e) => {
@@ -68,6 +165,15 @@ const handleSubmit = async (e) => {
 
   try {
     const project = formData.project[selectedService.key];
+    let estimate = instantEstimate;
+    if (ESTIMATE_SERVICE_KEYS.has(selectedService.key) && !estimate) {
+      try {
+        estimate = await fetchInstantEstimate();
+      } catch (estimateErr) {
+        console.error("Estimate preview failed:", estimateErr);
+      }
+    }
+
 
   const projectFieldsHTML = Object.entries(project)
     .map(([key, value]) => {
@@ -118,6 +224,17 @@ const handleSubmit = async (e) => {
           <h3 style="border-bottom:2px solid #458500;margin-top:16px;padding-bottom:4px;">Project Details</h3>
           <table style="width:100%;border-collapse:collapse;">${projectFieldsHTML}</table>
 
+          ${
+            estimate
+              ? `<h3 style="border-bottom:2px solid #458500;margin-top:16px;padding-bottom:4px;">Instant Estimate (Preliminary)</h3>
+                 <table style="width:100%;border-collapse:collapse;">
+                   <tr><td><strong>Subtotal:</strong></td><td>${formatMoney(estimate.subtotal, estimate.currency)}</td></tr>
+                   <tr><td><strong>Tax:</strong></td><td>${formatMoney(estimate.tax, estimate.currency)}</td></tr>
+                   <tr><td><strong>Total:</strong></td><td><strong>${formatMoney(estimate.total, estimate.currency)}</strong></td></tr>
+                 </table>`
+              : ""
+          }
+
           ${formData.files.length > 0 ? `
             <h4 style="margin-top:16px;">Uploaded Files</h4>
             <p>${formData.files.map((f) => f.name).join(", ")}</p>
@@ -163,6 +280,9 @@ const handleSubmit = async (e) => {
       throw new Error("Send failed");
     }
 
+    const estimateSummary = estimate
+      ? ` Instant estimate: ${formatMoney(estimate.total, estimate.currency)} (${estimate.currency}).`
+      : "";
     setSummary(`Thanks ${formData.client.name}! Details sent to our team for quoting.`);
     setShowSuccess(true);
   } catch (err) {
@@ -529,6 +649,75 @@ const handleSubmit = async (e) => {
                   <input type="checkbox" checked={formData.project["trees-shrubs"].irrigation} onChange={(e) => updateProjectField("trees-shrubs", "irrigation", e.target.checked)} className="mr-2" />
                   <span className="text-sm font-bold text-gray-900">Include Drip Irrigation</span>
                 </label>
+              </div>
+            )}
+          </section>
+
+
+          <section className="rounded-xl border border-[#477a40]/20 p-8 bg-white/50 shadow-lg">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-2xl font-extrabold border-b-2 border-[#477a40] pb-2">Instant Estimate</h3>
+              {ESTIMATE_SERVICE_KEYS.has(selectedService.key) && (
+                <button
+                  type="button"
+                  onClick={handleEstimatePreview}
+                  disabled={isSubmitting}
+                  className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white hover:bg-[#3a6634] disabled:opacity-60"
+                >
+                  {isSubmitting ? "Calculating..." : "Calculate Estimate"}
+                </button>
+              )}
+            </div>
+ 
+            {!ESTIMATE_SERVICE_KEYS.has(selectedService.key) && (
+              <p className="mt-3 text-sm text-gray-600">
+                Instant estimate is currently available for Fence, Deck & Railing, and Pergola only.
+              </p>
+            )}
+ 
+            {estimateError && (
+              <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {estimateError}
+              </p>
+            )}
+ 
+            {instantEstimate && (
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-gray-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Subtotal</p>
+                    <p className="text-lg font-extrabold text-gray-900">
+                      {formatMoney(instantEstimate.subtotal, instantEstimate.currency)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tax</p>
+                    <p className="text-lg font-extrabold text-gray-900">
+                      {formatMoney(instantEstimate.tax, instantEstimate.currency)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total</p>
+                    <p className="text-lg font-extrabold text-[#477a40]">
+                      {formatMoney(instantEstimate.total, instantEstimate.currency)}
+                    </p>
+                  </div>
+                </div>
+                {Array.isArray(instantEstimate.lineItems) && instantEstimate.lineItems.length > 0 && (
+                  <div className="rounded-lg border border-gray-200 bg-white p-3">
+                    <p className="mb-2 text-sm font-bold text-gray-900">Line Items</p>
+                    <ul className="space-y-1 text-sm text-gray-700">
+                      {instantEstimate.lineItems.map((item, idx) => (
+                        <li key={`${item.label}-${idx}`} className="flex items-center justify-between gap-3">
+                          <span>{item.label}</span>
+                          <span className="font-semibold">
+                            {formatMoney(item.total, instantEstimate.currency)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </section>
