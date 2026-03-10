@@ -75,8 +75,15 @@ npm install @emailjs/browser
 # and
 npm install resend
 ```
+
 Run the Production Build:
 
 ```bash
 npm run build
+```
+
+## Neon PostgreSQL Setup
+
+```bash
+npm run db:setup
 ```
