@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 import NavBar from "../components/Navbar.js";
 import Footer from "../components/Footer.js";
@@ -39,6 +41,32 @@ const SERVICES = [
 ];
 
 export default function BookPage() {
+  const searchParams = useSearchParams();
+  
+  const initialServicesParam = searchParams.get("service") || "";
+  const initialSelectedIds = initialServicesParam 
+    ? initialServicesParam.split(",").filter(Boolean) 
+    : [];
+  
+  const [selectedServiceIds, setSelectedServiceIds] = useState(initialSelectedIds);
+
+  const selectedServices = selectedServiceIds
+    .map(id => SERVICES.find(s => s.id === id))
+    .filter(Boolean);
+
+  const handleServiceClick = (serviceId) => {
+    setSelectedServiceIds(prev => {
+      if (prev.includes(serviceId)) {
+        return prev.filter(id => id !== serviceId);
+      } else {
+        return [...prev, serviceId];
+      }
+    });
+  };
+
+  const servicesParam = selectedServiceIds.join(",");
+  const timePageUrl = servicesParam ? `/book/time?service=${servicesParam}` : "/book/time";
+
   return (
     <div>
       <header>
@@ -47,19 +75,21 @@ export default function BookPage() {
 
       <div className="booking-page">
         <main className="booking-layout">
-          {/* left panel // business info + steps */}
           <section className="booking-left">
-            <header className="select-a-service">Select a service</header>
+            <header className="select-a-service">Select service(s)</header>
 
-            {/* Steps summary */}
-            <div className="step-card step-card--active">
+            <div className={`step-card ${selectedServices.length > 0 ? 'step-card--active' : ''}`}>
               <div className="step-card-header">
-                <h2 className="step-card-title">Selected service</h2>
-                <span className="step-card-status">Current step</span>
+                <h2 className="step-card-title">Selected service(s)</h2>
+                <span className="step-card-status">
+                  {selectedServices.length > 0 ? 'Current step' : ''}
+                </span>
               </div>
               <p className="step-card-text">
-                No service selected yet. Pick a service from the list on the
-                right to continue.
+                {selectedServices.length > 0 
+                  ? `${selectedServices.length} service(s) selected: ${selectedServices.map(s => s.name).join(', ')}`
+                  : 'No service selected yet. Pick services from the list on the right to continue.'
+                }
               </p>
             </div>
 
@@ -93,14 +123,13 @@ export default function BookPage() {
             <div className="booking-block">
               <h2 className="booking-block-title">Contact</h2>
               <p className="booking-text">
-                Email: landscapecraftsmen@yahoo.com
+                Email: [landscapecraftsmen@yahoo.com](mailto:landscapecraftsmen@yahoo.com)
                 <br />
                 Phone: (587)-438-6672
               </p>
             </div>
           </section>
 
-          {/* right panel // services list */}
           <section className="booking-right">
             <h1 className="booking-title">Book an appointment</h1>
 
@@ -111,27 +140,44 @@ export default function BookPage() {
             </div>
 
             <div className="service-list">
-              {SERVICES.map((service) => (
-                <Link
-                  key={service.id}
-                  href={`/book/time?service=${service.id}`}
-                  className="service-card-link"
-                >
-                  <article className="service-card">
-                    <div className="service-card-content">
-                      <div className="service-card-text">
-                        <h3 className="service-card-title">{service.name}</h3>
-                        <p className="service-card-description">
-                          {service.description}
-                        </p>
+              {SERVICES.map((service) => {
+                const isSelected = selectedServiceIds.includes(service.id);
+                return (
+                  <button
+                    key={service.id}
+                    type="button"
+                    onClick={() => handleServiceClick(service.id)}
+                    className={`service-card-link ${isSelected ? 'service-card-link--selected' : ''}`}
+                  >
+                    <article className={`service-card ${isSelected ? 'service-card--selected' : ''}`}>
+                      <div className="service-card-content">
+                        <div className="service-card-text">
+                          <h3 className="service-card-title">{service.name}</h3>
+                          <p className="service-card-description">
+                            {service.description}
+                          </p>
+                          {isSelected && (
+                            <span className="service-card-selected">✓ Selected</span>
+                          )}
+                        </div>
+                        <div className="service-card-chevron">
+                          {isSelected ? '✓' : '>'}
+                        </div>
                       </div>
-
-                      <div className="service-card-chevron">&gt;</div>
-                    </div>
-                  </article>
-                </Link>
-              ))}
+                    </article>
+                  </button>
+                );
+              })}
             </div>
+
+            {selectedServices.length > 0 && (
+              <Link 
+                href={timePageUrl}
+                className="mt-6 w-full inline-flex justify-center rounded-2xl bg-[#477a40] px-6 py-3 text-sm font-bold text-white hover:bg-[#3a5f32] transition-all duration-200"
+              >
+                Continue to Time Selection →
+              </Link>
+            )}
           </section>
         </main>
       </div>
@@ -140,5 +186,4 @@ export default function BookPage() {
     </div>
   );
 }
-
 
