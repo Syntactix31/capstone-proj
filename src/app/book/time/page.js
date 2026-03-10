@@ -78,14 +78,23 @@ function BookTimeInner() {
   const params = useSearchParams();
   const router = useRouter();
 
-  const serviceId = params.get("service") || "";
+  const serviceParam = params.get("service") || "";
+  const serviceIds = useMemo(
+    () => serviceParam.split(",").filter(Boolean),
+    [serviceParam]
+  );
+
+
   const eventId = params.get("eventId") || "";
   const mode = params.get("mode") || "";
 
-  const selectedService = useMemo(
-    () => SERVICE_OPTIONS.find((s) => s.id === serviceId) || null,
-    [serviceId]
+  const selectedServices = useMemo(
+    () => serviceIds
+      .map(id => SERVICE_OPTIONS.find(s => s.id === id))
+      .filter(Boolean),
+    [serviceIds]
   );
+
 
   const today = useMemo(() => startOfDayLocal(), []);
 
@@ -107,7 +116,7 @@ function BookTimeInner() {
     const month = first.getMonth();
 
     const firstOfMonth = new Date(year, month, 1);
-    const startDow = firstOfMonth.getDay(); // 0=Sun
+    const startDow = firstOfMonth.getDay();
 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -175,10 +184,8 @@ function BookTimeInner() {
       const slotStart = makeDateFromYmdAndSlot(selectedDateStr, slot);
       if (!slotStart || Number.isNaN(slotStart.getTime())) continue;
 
-      // slot button represents a 30 minute block
       const slotEnd = new Date(slotStart.getTime() + 30 * 60 * 1000);
 
-      // also disable slots that would start in the past (today only)
       if (slotStart.getTime() < Date.now()) {
         disabled.add(slot.toLowerCase());
         continue;
@@ -225,12 +232,14 @@ function BookTimeInner() {
         }
 
         const qs = new URLSearchParams({
-          service: serviceId,
+          service: serviceParam,
           date: data.date || selectedDateStr,
           time: data.time || selectedTime,
           eventId: data.newEventId || "",
           status: "rescheduled",
         }).toString();
+
+
 
         router.push(`/book/confirm?${qs}`);
       } catch (e) {
@@ -242,10 +251,11 @@ function BookTimeInner() {
     }
 
     router.push(
-      `/book/details?service=${encodeURIComponent(serviceId || "")}&date=${encodeURIComponent(
+      `/book/details?service=${encodeURIComponent(serviceParam)}&date=${encodeURIComponent(
         selectedDateStr
       )}&time=${encodeURIComponent(selectedTime)}`
     );
+
   };
 
   const selectedDateObj = useMemo(() => {
@@ -288,24 +298,31 @@ function BookTimeInner() {
 
       <div className="booking-page">
         <main className="booking-layout">
-          {/* LEFT COLUMN – steps */}
           <section className="booking-left">
             <button type="button" className="back-button" onClick={() => router.push("/book")}>
               ← Back to services
             </button>
+            
 
             <div className="step-card">
-              <h2 className="step-card-title">Selected service</h2>
+              <h2 className="step-card-title">Selected service(s)</h2>
               <p className="step-card-text">
-                {selectedService ? selectedService.name : "No service selected"}
-                {selectedService && (
+                {selectedServices.length > 0 ? (
                   <>
+                    {selectedServices.length} service(s) selected:
                     <br />
-                    <span className="step-card-sub">Duration: {selectedService.duration}</span>
+                    {selectedServices.map(s => s.name).join(", ")}
+                    <br />
+                    <span className="step-card-sub">
+                      {selectedServices.map(s => `${s.name}: ${s.duration}`).join(" • ")}
+                    </span>
                   </>
+                ) : (
+                  "No service selected"
                 )}
               </p>
             </div>
+
 
             <div className="step-card step-card--active">
               <div className="step-card-header">
@@ -327,9 +344,7 @@ function BookTimeInner() {
             </div>
           </section>
 
-          {/* RIGHT COLUMN – calendar + times */}
           <section className="booking-right">
-            {/* Calendar */}
             <div className="calendar-card">
               <div className="calendar-header">
                 <div>
@@ -348,7 +363,6 @@ function BookTimeInner() {
               </div>
 
               <div className="calendar-grid">
-                {/* weekday labels */}
                 <div className="calendar-weekday">Su</div>
                 <div className="calendar-weekday">Mo</div>
                 <div className="calendar-weekday">Tu</div>
@@ -387,7 +401,6 @@ function BookTimeInner() {
               </div>
             </div>
 
-            {/* Time slots */}
             <div className="times-card">
               <h2 className="times-title">Available Times</h2>
               <p className="times-sub">

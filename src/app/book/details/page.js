@@ -32,13 +32,16 @@ function DetailsContent() {
   const router = useRouter();
   const params = useSearchParams();
 
-  const serviceId = params.get("service") || "";
+  const servicesParam = params.get("service") || "";
+  const servicesArray = servicesParam.split(",").filter(Boolean);
+  const selectedServices = servicesArray
+    .map(id => SERVICE_OPTIONS.find(s => s.id === id))
+    .filter(Boolean);
+
   const date = params.get("date") || "";
   const time = params.get("time") || "";
 
-  const selectedService = SERVICE_OPTIONS.find((s) => s.id === serviceId) || null;
-
-  const backHref = `/book/time?service=${encodeURIComponent(serviceId || "")}`;
+  const backHref = `/book/time?service=${encodeURIComponent(servicesParam)}`;
 
   const displayTime = (() => {
     if (!date || !time) return "No time selected";
@@ -75,7 +78,13 @@ function DetailsContent() {
       };
 
       const query = new URLSearchParams(queryObj).toString();
-      router.push(`/book/confirm?${query}`);
+      router.push(
+        `/book/details?service=${encodeURIComponent(serviceParam)}&date=${encodeURIComponent(
+          selectedDateStr
+        )}&time=${encodeURIComponent(selectedTime)}`
+      );
+
+
     } catch (err) {
       console.error(err);
       alert("Something went wrong. Please try again.");
@@ -90,22 +99,25 @@ function DetailsContent() {
 
       <div className="booking-page">
         <main className="booking-layout">
-          {/* LEFT COLUMN – summary cards */}
           <section className="booking-left">
             <Link href={backHref} className="back-button">
               ← Back
             </Link>
 
-            {/* Service summary */}
             <div className="summary-card">
               <div className="summary-card-header">
                 <div>
                   <div className="summary-card-label">Services</div>
                   <div className="summary-card-title">
-                    {selectedService ? selectedService.name : "Not selected"}
+                    {selectedServices.length > 0 
+                      ? selectedServices.map(s => s.name).join(', ')
+                      : "Not selected"
+                    }
                   </div>
-                  {selectedService && (
-                    <div className="summary-card-sub">{selectedService.duration}</div>
+                  {selectedServices.length > 0 && (
+                    <div className="summary-card-sub">
+                      {selectedServices.map(s => `${s.name}: ${s.duration}`).join('; ')}
+                    </div>
                   )}
                 </div>
                 <Link href="/book" className="summary-card-edit">
@@ -114,7 +126,6 @@ function DetailsContent() {
               </div>
             </div>
 
-            {/* Appointment time summary */}
             <div className="summary-card">
               <div className="summary-card-header">
                 <div>
@@ -122,10 +133,9 @@ function DetailsContent() {
                   <div className="summary-card-title">{displayTime}</div>
                 </div>
                 <Link
-                  href={
-                    serviceId
-                      ? `/book/time?service=${encodeURIComponent(serviceId)}`
-                      : "/book/time"
+                  href={servicesParam
+                    ? `/book/time?service=${encodeURIComponent(servicesParam)}`
+                    : "/book/time"
                   }
                   className="summary-card-edit"
                 >
@@ -134,7 +144,6 @@ function DetailsContent() {
               </div>
             </div>
 
-            {/* Step indicator */}
             <div className="step-card step-card--active">
               <div className="step-card-header">
                 <h2 className="step-card-title">Enter your details</h2>
@@ -155,17 +164,14 @@ function DetailsContent() {
             </div>
           </section>
 
-          {/* RIGHT COLUMN – contact form */}
           <section className="booking-right">
             <h1 className="details-title">Enter your details</h1>
 
             <form className="details-form" onSubmit={handleSubmit}>
-              {/* preserve selection in the URL */}
-              <input type="hidden" name="service" value={serviceId} />
+              <input type="hidden" name="service" value={servicesParam} />
               <input type="hidden" name="date" value={date} />
               <input type="hidden" name="time" value={time} />
 
-              {/* Name row */}
               <div className="details-row">
                 <div className="details-field">
                   <label className="details-label" htmlFor="firstName">
@@ -194,7 +200,6 @@ function DetailsContent() {
                 </div>
               </div>
 
-              {/* Email */}
               <div className="details-field">
                 <label className="details-label" htmlFor="email">
                   Email
@@ -207,8 +212,7 @@ function DetailsContent() {
                   required
                 />
               </div>
-  
-              {/* Address */}
+
               <div className="details-field">
                 <label className="details-label" htmlFor="address">
                   Address
@@ -222,7 +226,6 @@ function DetailsContent() {
                 />
               </div>
 
-              {/* Notes */}
               <div className="details-field">
                 <label className="details-label" htmlFor="notes">
                   Appointment notes (optional)

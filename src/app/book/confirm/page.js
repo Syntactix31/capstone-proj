@@ -32,17 +32,26 @@ function ConfirmInner() {
   const params = useSearchParams();
   const router = useRouter();
 
-  const serviceId = params.get("service") || "";
+  const serviceParam = params.get("service") || "";
   const date = params.get("date") || "";
   const time = params.get("time") || "";
   const firstName = params.get("firstName") || "";
   const eventId = params.get("eventId") || "";
   const status = params.get("status") || "";
 
-  const service = useMemo(
-    () => SERVICE_OPTIONS.find((s) => s.id === serviceId) || null,
-    [serviceId]
+  const serviceIds = useMemo(
+    () => serviceParam.split(",").filter(Boolean),
+    [serviceParam]
   );
+
+  const services = useMemo(
+    () =>
+      serviceIds
+        .map(id => SERVICE_OPTIONS.find(s => s.id === id))
+        .filter(Boolean),
+    [serviceIds]
+  );
+
 
   const [busy, setBusy] = useState(false);
 
@@ -80,9 +89,10 @@ function ConfirmInner() {
     }
   };
 
-  const rescheduleHref = serviceId && eventId
-    ? `/book/time?service=${encodeURIComponent(serviceId)}&mode=reschedule&eventId=${encodeURIComponent(eventId)}`
+  const rescheduleHref = serviceParam && eventId
+    ? `/book/time?service=${encodeURIComponent(serviceParam)}&mode=reschedule&eventId=${encodeURIComponent(eventId)}`
     : "/book/time";
+
 
   return (
     <div>
@@ -114,7 +124,12 @@ function ConfirmInner() {
             <div className="confirm-time">{time || "Time not set"}</div>
           </div>
 
-          <div className="confirm-service">{service ? service.name : "Selected service"}</div>
+          <div className="confirm-service">
+            {services.length > 0
+              ? services.map(s => s.name).join(", ")
+              : "Selected service(s)"}
+          </div>
+
 
           <div className="confirm-actions">
             <Link href={rescheduleHref} className="confirm-primary">
@@ -146,3 +161,4 @@ export default function ConfirmPage() {
     </Suspense>
   );
 }
+
