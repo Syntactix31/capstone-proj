@@ -9,6 +9,12 @@ export default function AdminClientsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [lastAddAt, setLastAddAt] = useState(0);
+  const [lastSwitchWarnAt, setLastSwitchWarnAt] = useState(0);
+  const [lastSaveWarnAt, setLastSaveWarnAt] = useState(0);
+  const [pendingClientId, setPendingClientId] = useState(null);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
 
   const selectedClient = useMemo(
     () => clients.find((client) => client.id === selectedId) || clients[0] || null,
@@ -58,14 +64,27 @@ export default function AdminClientsPage() {
     setPhoneFocused(false);
   }, [selectedClient]);
 
+  const normalizePhone = (value) => String(value || "").replace(/\D/g, "");
+  const normalizePostal = (value) =>
+    String(value || "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 6);
   const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
   const EMAIL_PATTERN = String.raw`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`;
   const isValidEmail = (value) => EMAIL_REGEX.test(String(value || "").toLowerCase().trim());
-  const normalizePhone = (value) => String(value || "").replace(/\D/g, "");
   const isValidPhone = (value) => /^\d{10}$/.test(normalizePhone(value));
+  const isValidPostal = (value) => /^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(normalizePostal(value));
+  const formatPostalDisplay = (value) => {
+    const raw = normalizePostal(value);
+    if (!raw) return "";
+    const head = raw.slice(0, 3);
+    const tail = raw.slice(3);
+    return tail ? `${head} ${tail}` : head;
+  };
   const formatPhoneDisplay = (value) => {
     const digits = normalizePhone(value);
-    if (digits.length !== 10) return value || "";
+    if (digits.length !== 10) return "";
     return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
   };
 
@@ -77,51 +96,271 @@ export default function AdminClientsPage() {
         ? formatPhoneDisplay(draft.phone)
         : draft.phone;
 
+  const postalDisplayValue = !draft ? "" : formatPostalDisplay(draft.postal);
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (!draft || !selectedClient) return false;
+    return (
+      String(draft.name || "") !== String(selectedClient.name || "") ||
+      String(draft.email || "") !== String(selectedClient.email || "") ||
+      normalizePhone(draft.phone) !== normalizePhone(selectedClient.phone) ||
+      String(draft.address || "") !== String(selectedClient.address || "") ||
+      String(draft.city || "") !== String(selectedClient.city || "") ||
+      String(draft.province || "") !== String(selectedClient.province || "") ||
+      normalizePostal(draft.postal) !== normalizePostal(selectedClient.postal) ||
+      String(draft.propertyType || "") !== String(selectedClient.propertyType || "") ||
+      String(draft.notes || "") !== String(selectedClient.notes || "") ||
+      String(draft.additionalInstructions || "") !== String(selectedClient.additionalInstructions || "")
+    );
+  }, [draft, selectedClient]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    const handleLinkClick = (event) => {
+      const target = event.target.closest("a");
+      if (!target) return;
+      const href = target.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+      if (href === "/dashboard/clients") return;
+      if (target.getAttribute("target") === "_blank") return;
+      const ok = window.confirm("You have unsaved changes. Leave this page?");
+      if (!ok) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("click", handleLinkClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleLinkClick, true);
+    };
+  }, [hasUnsavedChanges]);
+
   const canSave =
     Boolean(draft?.name?.trim()) &&
     isValidEmail(draft?.email) &&
-    isValidPhone(draft?.phone);
+    isValidPhone(draft?.phone) &&
+    Boolean(draft?.address?.trim()) &&
+    isValidPostal(draft?.postal) &&
+    Boolean(draft?.propertyType?.trim());
+
+  const canAddClient = !draft || canSave;
+
+  const isDraftEmpty = (client) => {
+    if (!client) return true;
+    const name = String(client.name || "").trim();
+    const email = String(client.email || "").trim();
+    const phone = normalizePhone(client.phone || "");
+    const address = String(client.address || "").trim();
+    const postal = String(client.postal || "").trim();
+    const notes = String(client.notes || "").trim();
+    const extra = String(client.additionalInstructions || "").trim();
+    return !name && !email && !phone && !address && !postal && !notes && !extra;
+  };
+
+  const removeEmptyDraftIfNeeded = () => {
+    if (!draft?.id) return;
+    if (hasUnsavedChanges) return;
+    if (!isDraftEmpty(draft)) return;
+    setClients((prev) => prev.filter((client) => client.id !== draft.id));
+  };
+
+  const nextClientId = (items) => {
+    const maxNum = items.reduce((max, client) => {
+      const match = String(client.id || "").match(/^C-(\d+)$/);
+      const num = match ? Number(match[1]) : 0;
+      return Number.isFinite(num) ? Math.max(max, num) : max;
+    }, 0);
+    return `C-${String(maxNum + 1).padStart(4, "0")}`;
+  };
 
   const handleSave = async () => {
-    if (!canSave) return;
-    if (!draft?.id) return;
+    if (!canSave) {
+      const now = Date.now();
+      if (now - lastSaveWarnAt < 1000) return false;
+      setLastSaveWarnAt(now);
+      setAlertMessage("Please complete all required fields before saving.");
+      setTimeout(() => setAlertMessage(""), 2800);
+      return false;
+    }
+    if (!draft?.id) return false;
+    if (busy) return false;
 
     setBusy(true);
     setError("");
+
     const normalizedDraft = {
       ...draft,
       phone: normalizePhone(draft.phone),
     };
 
+    const payload = { ...normalizedDraft };
+    delete payload._isNew;
+    if (draft._isNew) {
+      delete payload.id;
+    }
+
     try {
       const res = await fetch("/api/admin/clients", {
-        method: "PATCH",
+        method: draft._isNew ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(normalizedDraft),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         setError(data?.error || "Failed to save client.");
-        return;
+        return false;
       }
 
       setClients((prev) =>
         prev.map((client) =>
-          client.id === data.client.id ? data.client : client
+          client.id === draft.id ? data.client : client
         )
       );
       setDraft(data.client);
+      setSelectedId(data.client.id);
+      return true;
     } catch (saveError) {
       console.error(saveError);
       setError("Failed to save client.");
+      return false;
     } finally {
       setBusy(false);
     }
   };
 
+  const handleAddClient = () => {
+    const now = Date.now();
+    if (now - lastAddAt < 1000) return;
+    setLastAddAt(now);
+    if (!canAddClient) {
+      setAlertMessage("You have a new client form in progress. Please complete it before adding another.");
+      setTimeout(() => setAlertMessage(""), 2800);
+      return;
+    }
+    if (hasUnsavedChanges) {
+      setPendingClientId("__new__");
+      setShowUnsavedModal(true);
+      return;
+    }
+    const newClient = {
+      id: nextClientId(clients),
+      _isNew: true,
+      name: "",
+      email: "",
+      phone: "",
+      city: "Calgary",
+      province: "Alberta",
+      address: "",
+      postal: "",
+      propertyType: "House",
+      notes: "",
+      additionalInstructions: "",
+    };
+    setClients((prev) => [newClient, ...prev]);
+    setSelectedId(newClient.id);
+    setDraft(newClient);
+  };
+
+  const handleSelectClient = (clientId) => {
+    if (clientId === selectedId) return;
+    if (hasUnsavedChanges) {
+      const now = Date.now();
+      if (now - lastSwitchWarnAt < 1000) return;
+      setLastSwitchWarnAt(now);
+      setPendingClientId(clientId);
+      setShowUnsavedModal(true);
+      return;
+    }
+    removeEmptyDraftIfNeeded();
+    setSelectedId(clientId);
+  };
+
   return (
     <AdminLayout>
+      {alertMessage ? (
+        <div className="admin-toast" role="status" aria-live="polite">
+          {alertMessage}
+        </div>
+      ) : null}
+      {showUnsavedModal ? (
+        <div className="admin-modal">
+          <button
+            className="admin-modal__backdrop"
+            type="button"
+            aria-label="Close unsaved changes modal"
+            onClick={() => {
+              setShowUnsavedModal(false);
+              setPendingClientId(null);
+            }}
+          />
+          <div className="admin-modal__content admin-modal__content--compact" role="dialog" aria-modal="true">
+            <div className="admin-modal__header">
+              <div>
+                <p className="admin-kicker">Unsaved changes</p>
+                <h2 className="admin-title">You have unsaved changes.</h2>
+              </div>
+            </div>
+            <div className="admin-modal__actions">
+              <button
+                className="admin-btn admin-btn--ghost"
+                type="button"
+                onClick={() => {
+                  setShowUnsavedModal(false);
+                  setPendingClientId(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="admin-btn admin-btn--danger"
+                type="button"
+                onClick={() => {
+                  setShowUnsavedModal(false);
+                  if (pendingClientId) {
+                    if (selectedClient?._isNew) {
+                      setClients((prev) => prev.filter((client) => client.id !== selectedClient.id));
+                    }
+                    if (pendingClientId === "__new__") {
+                      const newClient = {
+                        id: nextClientId(clients),
+                        _isNew: true,
+                        name: "",
+                        email: "",
+                        phone: "",
+                        city: "Calgary",
+                        province: "Alberta",
+                        address: "",
+                        postal: "",
+                        propertyType: "House",
+                        notes: "",
+                        additionalInstructions: "",
+                      };
+                      setClients((prev) => [newClient, ...prev]);
+                      setSelectedId(newClient.id);
+                      setDraft(newClient);
+                    } else {
+                      setSelectedId(pendingClientId);
+                    }
+                  }
+                  setPendingClientId(null);
+                }}
+              >
+                Don't save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <section className="admin-hero">
         <div>
           <p className="admin-kicker">Clients</p>
@@ -132,7 +371,12 @@ export default function AdminClientsPage() {
           {error ? <p className="admin-error">{error}</p> : null}
         </div>
         <div className="admin-hero-actions">
-          <button className="admin-btn admin-btn--primary" type="button" disabled>
+          <button
+            className="admin-btn admin-btn--primary"
+            type="button"
+            onClick={handleAddClient}
+            title="Add client"
+          >
             Add client
           </button>
         </div>
@@ -157,18 +401,18 @@ export default function AdminClientsPage() {
                 className={`admin-client-item ${
                   client.id === selectedId ? "is-active" : ""
                 }`}
-                onClick={() => setSelectedId(client.id)}
+                onClick={() => handleSelectClient(client.id)}
               >
                 <div className="admin-client-avatar">
-                  {client.name
+                  {String(client.name || "")
                     .split(" ")
                     .map((part) => part[0])
                     .join("")
                     .slice(0, 2)}
                 </div>
                 <div className="admin-client-body">
-                  <div className="admin-client-name">{client.name}</div>
-                  <div className="admin-muted">{client.email}</div>
+                  <div className="admin-client-name">{client.name || "New client"}</div>
+                  <div className="admin-muted">{client.email || "No email yet"}</div>
                 </div>
               </button>
             ))}
@@ -182,14 +426,14 @@ export default function AdminClientsPage() {
             <>
               <div className="admin-client-header">
                 <div className="admin-client-avatar admin-client-avatar--large">
-                  {draft.name
+                  {String(draft.name || "")
                     .split(" ")
                     .map((part) => part[0])
                     .join("")
                     .slice(0, 2)}
                 </div>
                 <div>
-                  <h2 className="admin-client-title">{draft.name}</h2>
+                  <h2 className="admin-client-title">{draft.name || "New client"}</h2>
                   <div className="admin-client-sub">{draft.id}</div>
                 </div>
               </div>
@@ -201,8 +445,8 @@ export default function AdminClientsPage() {
                     className="admin-btn admin-btn--ghost admin-btn--small"
                     type="button"
                     onClick={handleSave}
-                    disabled={!canSave || busy}
-                    title={canSave ? "Save changes" : "Fix name, email, and phone to save."}
+                    disabled={busy}
+                    title={canSave ? "Save changes" : "Complete required fields to save."}
                   >
                     {busy ? "Saving..." : "Save changes"}
                   </button>
@@ -275,9 +519,6 @@ export default function AdminClientsPage() {
               <div className="admin-section">
                 <div className="admin-section-header">
                   <h3 className="admin-section-title">Property details</h3>
-                  <button className="admin-btn admin-btn--ghost admin-btn--small" type="button" disabled>
-                    New property
-                  </button>
                 </div>
                 <div className="admin-form">
                   <label className="admin-field admin-field--full">
@@ -314,11 +555,17 @@ export default function AdminClientsPage() {
                     <span className="admin-label">Postal code</span>
                     <input
                       className="admin-input"
-                      value={draft.postal}
-                      onChange={(event) =>
-                        setDraft((current) => ({ ...current, postal: event.target.value }))
-                      }
+                      value={postalDisplayValue}
+                      pattern="^[A-Za-z]\\d[A-Za-z]\\s?\\d[A-Za-z]\\d$"
+                      title="Use format X1X 1X1"
+                      onChange={(event) => {
+                        const normalized = normalizePostal(event.target.value);
+                        setDraft((current) => ({ ...current, postal: normalized }));
+                      }}
                     />
+                    {draft.postal && !isValidPostal(draft.postal) ? (
+                      <p className="admin-error">Use format X1X 1X1.</p>
+                    ) : null}
                   </label>
                   <label className="admin-field">
                     <span className="admin-label">Property type</span>
