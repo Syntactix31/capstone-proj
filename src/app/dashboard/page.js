@@ -1,37 +1,8 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminLayout from "../components/AdminLayout.js";
-
-const APPOINTMENTS = [
-  {
-    id: "A-1001",
-    client: "Jordan Lee",
-    service: "Fence Installation",
-    date: "2026-03-04",
-    time: "10:00 AM",
-    address: "123 Main St, Calgary",
-    status: "Pending",
-  },
-  {
-    id: "A-1002",
-    client: "Avery Chen",
-    service: "Deck & Railing",
-    date: "2026-03-05",
-    time: "1:30 PM",
-    address: "44 5 Ave SW, Calgary",
-    status: "Confirmed",
-  },
-  {
-    id: "A-1003",
-    client: "Taylor Singh",
-    service: "Pergola",
-    date: "2026-03-06",
-    time: "9:00 AM",
-    address: "912 10 St NW, Calgary",
-    status: "Canceled",
-  },
-];
 
 const SERVICES = [
   {
@@ -71,33 +42,6 @@ const SERVICES = [
   },
 ];
 
-const CLIENTS = [
-  {
-    id: "C-201",
-    name: "Jordan Lee",
-    email: "jordan@example.com",
-    phone: "(587) 555-0142",
-    lastVisit: "2026-02-01",
-    lifetimeValue: "$8,400",
-  },
-  {
-    id: "C-202",
-    name: "Avery Chen",
-    email: "avery@example.com",
-    phone: "(403) 555-0101",
-    lastVisit: "2026-01-28",
-    lifetimeValue: "$3,200",
-  },
-  {
-    id: "C-203",
-    name: "Taylor Singh",
-    email: "taylor@example.com",
-    phone: "(587) 555-0199",
-    lastVisit: "2025-12-20",
-    lifetimeValue: "$1,600",
-  },
-];
-
 const STATUS_CLASS = {
   Pending: "admin-badge admin-badge--pending",
   Confirmed: "admin-badge admin-badge--active",
@@ -106,15 +50,61 @@ const STATUS_CLASS = {
   Inactive: "admin-badge admin-badge--muted",
 };
 
+function formatPhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length !== 10) return phone || "No phone";
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 export default function DashboardPage() {
-    const pendingCount = APPOINTMENTS.filter((appt) => appt.status === "Pending").length;
-    const confirmedCount = APPOINTMENTS.filter((appt) => appt.status === "Confirmed").length;
-    const canceledCount = APPOINTMENTS.filter((appt) => appt.status === "Canceled").length;
+    const [appointments, setAppointments] = useState([]);
+    const [clients, setClients] = useState([]);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+      let alive = true;
+
+      async function loadOverview() {
+        try {
+          const res = await fetch("/api/admin/overview", { cache: "no-store" });
+          const data = await res.json().catch(() => ({}));
+          if (!alive) return;
+
+          if (!res.ok) {
+            setError(data?.error || "Failed to load dashboard data.");
+            return;
+          }
+
+          setAppointments(Array.isArray(data.appointments) ? data.appointments : []);
+          setClients(Array.isArray(data.clients) ? data.clients : []);
+        } catch (loadError) {
+          console.error(loadError);
+          if (!alive) return;
+          setError("Failed to load dashboard data.");
+        }
+      }
+
+      loadOverview();
+      return () => {
+        alive = false;
+      };
+    }, []);
+
+    const pendingCount = appointments.filter((appt) => appt.status === "Pending").length;
+    const confirmedCount = appointments.filter((appt) => appt.status === "Confirmed").length;
+    const canceledCount = appointments.filter((appt) => appt.status === "Canceled").length;
     const activeServices = SERVICES.filter((service) => service.active).length;
     const inactiveServices = SERVICES.length - activeServices;
-    const activeClients = CLIENTS.filter((client) => client.status === "Active").length;
-    const inactiveClients = CLIENTS.length - activeClients;
-    const nextAppointment = APPOINTMENTS.filter((appt) => appt.status !== "Canceled").sort((a, b) => a.date.localeCompare(b.date))[0];
+    const activeClients = clients.length;
+    const inactiveClients = 0;
+    const nextAppointment = useMemo(
+      () =>
+        appointments
+          .filter((appt) => appt.status !== "Canceled")
+          .sort((a, b) => new Date(a.startIso).getTime() - new Date(b.startIso).getTime())[0],
+      [appointments]
+    );
+    const recentClients = clients.slice(0, 5);
     
   return (
     <AdminLayout>
@@ -129,22 +119,25 @@ export default function DashboardPage() {
                 A quick overview check across appointments, services, and
                 customers.
               </p>
+              {error ? <p className="admin-error">{error}</p> : null}
             </div>
             <div className="admin-hero-actions">
-              <button className="admin-btn admin-btn--primary">
+              <button className="admin-btn admin-btn--primary" type="button">
                 New Appointment
               </button>
-              <button className="admin-btn admin-btn--ghost">
+              <button className="admin-btn admin-btn--ghost" type="button">
                 Create Estimate
               </button>
-              <button className="admin-btn admin-btn--ghost">Add Client</button>
+              <button className="admin-btn admin-btn--ghost" type="button">
+                Add Client
+              </button>
             </div>
           </section>
           {/*summary grid*/}
           <section className="admin-summary-grid">
             <article className="admin-card admin-card--stat">
               <div className="admin-stat-title">Total appointments</div>
-              <div className="admin-stat-value">{APPOINTMENTS.length}</div>
+              <div className="admin-stat-value">{appointments.length}</div>
               <span className={STATUS_CLASS.Confirmed}>
                 {confirmedCount} Confirmed
               </span>
@@ -193,7 +186,7 @@ export default function DashboardPage() {
                     <div className="admin-strong">{nextAppointment.date}</div>
                     <div className="admin-muted">{nextAppointment.time}</div>
                   </div>
-                  <button className="admin-btn admin-btn--small">
+                  <button className="admin-btn admin-btn--small" type="button">
                     View details
                   </button>
                 </div>
@@ -204,6 +197,9 @@ export default function DashboardPage() {
             ) : (
               <p className="admin-muted">No upcoming appointments.</p>
             )}
+            {canceledCount ? (
+              <p className="admin-muted">{canceledCount} canceled appointments archived.</p>
+            ) : null}
           </article>
           {/*Services overivew*/}
           <article className="admin-card">
@@ -254,7 +250,7 @@ export default function DashboardPage() {
                 <div>Actions</div>
               </div>
 
-              {CLIENTS.map((client) => (
+              {recentClients.map((client) => (
                 <div className="admin-table-row" key={client.id}>
                   <div>
                     <div className="admin-strong">{client.name}</div>
@@ -262,26 +258,29 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <div>{client.email}</div>
-                    <div className="admin-muted">{client.phone}</div>
+                    <div className="admin-muted">{formatPhone(client.phone)}</div>
                   </div>
-                  <div>{client.lastVisit}</div>
-                  <div>{client.lifetimeValue}</div>
+                  <div>{client.updatedAt ? client.updatedAt.slice(0, 10) : "N/A"}</div>
+                  <div>N/A</div>
                   <div>
-                    <span className={STATUS_CLASS[client.status]}>
-                      {client.status}
+                    <span className={STATUS_CLASS.Active}>
+                      Active
                     </span>
                   </div>
                   <div className="admin-actions">
-                    <button className="admin-btn admin-btn--small">
+                    <button className="admin-btn admin-btn--small" type="button">
                       Profile
                     </button>
-                    <button className="admin-btn admin-btn--small admin-btn--ghost">
+                    <button className="admin-btn admin-btn--small admin-btn--ghost" type="button">
                       Message
                     </button>
                   </div>
                 </div>
               ))}
             </div>
+            {!recentClients.length ? (
+              <p className="admin-muted">No clients available yet.</p>
+            ) : null}
           </article>
           </section>
     </AdminLayout>
