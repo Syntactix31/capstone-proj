@@ -8,7 +8,7 @@ const CLIENTS = [
     id: "C-3001",
     name: "Natasha Wheeler",
     email: "natasha.wheeler@email.com",
-    phone: "(587) 555-0142",
+    phone: "5875550142",
     city: "Edmonton",
     province: "Alberta",
     address: "11260 Groat Road Northwest",
@@ -21,7 +21,7 @@ const CLIENTS = [
     id: "C-3002",
     name: "Jordan Lee",
     email: "jordan.lee@email.com",
-    phone: "(403) 555-0101",
+    phone: "4035550101",
     city: "Calgary",
     province: "Alberta",
     address: "123 Main St",
@@ -34,7 +34,7 @@ const CLIENTS = [
     id: "C-3003",
     name: "Avery Chen",
     email: "avery.chen@email.com",
-    phone: "(587) 555-0199",
+    phone: "5875550199",
     city: "Calgary",
     province: "Alberta",
     address: "44 5 Ave SW",
@@ -47,7 +47,7 @@ const CLIENTS = [
     id: "C-3004",
     name: "Morgan Park",
     email: "morgan.park@email.com",
-    phone: "(780) 555-0127",
+    phone: "7805550127",
     city: "Red Deer",
     province: "Alberta",
     address: "80 17 Ave",
@@ -59,17 +59,56 @@ const CLIENTS = [
 ];
 
 export default function AdminClientsPage() {
+  const [clients, setClients] = useState(CLIENTS);
   const [selectedId, setSelectedId] = useState(CLIENTS[0]?.id ?? null);
 
   const selectedClient = useMemo(
-    () => CLIENTS.find((client) => client.id === selectedId) || CLIENTS[0],
-    [selectedId]
+    () => clients.find((client) => client.id === selectedId) || clients[0],
+    [clients, selectedId]
   );
   const [draft, setDraft] = useState(selectedClient);
+  const [phoneFocused, setPhoneFocused] = useState(false);
 
   useEffect(() => {
     setDraft(selectedClient);
+    setPhoneFocused(false);
   }, [selectedClient]);
+
+  const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+  const EMAIL_PATTERN = String.raw`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`;
+  const isValidEmail = (value) => EMAIL_REGEX.test(String(value || "").toLowerCase().trim());
+  const normalizePhone = (value) => String(value || "").replace(/\D/g, "");
+  const isValidPhone = (value) => /^\d{10}$/.test(normalizePhone(value));
+  const formatPhoneDisplay = (value) => {
+    const digits = normalizePhone(value);
+    if (digits.length !== 10) return "";
+    return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  };
+
+  const phoneDisplayValue = phoneFocused
+    ? draft.phone
+    : isValidPhone(draft.phone)
+      ? formatPhoneDisplay(draft.phone)
+      : draft.phone;
+
+  const canSave =
+    Boolean(draft?.name?.trim()) &&
+    isValidEmail(draft?.email) &&
+    isValidPhone(draft?.phone);
+
+  const handleSave = () => {
+    if (!canSave) return;
+    if (!draft?.id) return;
+    const normalizedDraft = {
+      ...draft,
+      phone: normalizePhone(draft.phone),
+    };
+    setClients((prev) =>
+      prev.map((client) =>
+        client.id === draft.id ? { ...client, ...normalizedDraft } : client
+      )
+    );
+  };
 
   return (
     <AdminLayout>
@@ -92,11 +131,11 @@ export default function AdminClientsPage() {
         <div className="admin-card">
           <div className="admin-card-header">
             <h2 className="admin-card-title">Clients</h2>
-            <span className="admin-muted">{CLIENTS.length} total</span>
+            <span className="admin-muted">{clients.length} total</span>
           </div>
 
           <div className="admin-client-list">
-            {CLIENTS.map((client) => (
+            {clients.map((client) => (
               <button
                 key={client.id}
                 type="button"
@@ -139,7 +178,13 @@ export default function AdminClientsPage() {
           <div className="admin-section">
             <div className="admin-section-header">
               <h3 className="admin-section-title">Client details</h3>
-              <button className="admin-btn admin-btn--ghost admin-btn--small" type="button">
+              <button
+                className="admin-btn admin-btn--ghost admin-btn--small"
+                type="button"
+                onClick={handleSave}
+                disabled={!canSave}
+                title={canSave ? "Save changes" : "Fix name, email, and phone to save."}
+              >
                 Save changes
               </button>
             </div>
@@ -158,22 +203,41 @@ export default function AdminClientsPage() {
                 <span className="admin-label">Email</span>
                 <input
                   className="admin-input"
+                  type="email"
+                  pattern={EMAIL_PATTERN}
+                  title="Use a valid email like name@example.com."
                   value={draft.email}
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, email: event.target.value }))
                   }
                 />
+                {draft.email && !isValidEmail(draft.email) ? (
+                  <p className="admin-error">Enter a valid email like name@example.com.</p>
+                ) : null}
               </label>
-              <label className="admin-field">
-                <span className="admin-label">Phone</span>
+              <div className="admin-field">
+                <label className="admin-label" htmlFor="clientPhone">
+                  Phone
+                </label>
                 <input
+                  id="clientPhone"
                   className="admin-input"
-                  value={draft.phone}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, phone: event.target.value }))
-                  }
+                  type="tel"
+                  inputMode="tel"
+                  pattern="^\d{10}$"
+                  title="Enter 10 digits, e.g. 5875550142"
+                  value={phoneDisplayValue}
+                  onFocus={() => setPhoneFocused(true)}
+                  onBlur={() => setPhoneFocused(false)}
+                  onChange={(event) => {
+                    const digits = normalizePhone(event.target.value);
+                    setDraft((current) => ({ ...current, phone: digits }));
+                  }}
                 />
-              </label>
+                {draft.phone && !isValidPhone(draft.phone) ? (
+                  <p className="admin-error">Enter a 10-digit phone number.</p>
+                ) : null}
+              </div>
               <label className="admin-field">
                 <span className="admin-label">Notes</span>
                 <textarea
@@ -211,20 +275,18 @@ export default function AdminClientsPage() {
                 <span className="admin-label">City</span>
                 <input
                   className="admin-input"
-                  value={draft.city}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, city: event.target.value }))
-                  }
+                  value="Calgary"
+                  readOnly
+                  disabled
                 />
               </label>
               <label className="admin-field">
                 <span className="admin-label">Province</span>
                 <input
                   className="admin-input"
-                  value={draft.province}
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, province: event.target.value }))
-                  }
+                  value="Alberta"
+                  readOnly
+                  disabled
                 />
               </label>
               <label className="admin-field">
