@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCalendarClient } from "../../../lib/googleCalendar";
 import { getGmailTransporter } from "../../../lib/gmail";
+import { findBookingByGoogleEventId, updateBookingByGoogleEventId } from "../../../lib/db/bookings";
 
 function formatPrettyDate(dateObj) {
   return dateObj.toLocaleString("en-CA", {
@@ -204,6 +205,7 @@ export async function POST(req) {
     }
 
     const calendar = await getCalendarClient();
+    const storedBooking = await findBookingByGoogleEventId(eventId);
 
     const event = await calendar.events.get({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
@@ -228,6 +230,8 @@ export async function POST(req) {
       eventId,
     });
 
+    await updateBookingByGoogleEventId(eventId, { status: "cancelled" });
+
     const transporter = getGmailTransporter();
 
     if (email) {
@@ -251,9 +255,9 @@ export async function POST(req) {
       to: process.env.OWNER_EMAIL,
       subject: "Booking Cancelled",
       html: cancelEmailOwner({
-        fullName: `${firstName} ${lastName}`.trim(),
-        email: email || "Unknown",
-        service,
+        fullName: `${firstName} ${lastName}`.trim() || storedBooking?.client || "Unknown",
+        email: email || storedBooking?.email || "Unknown",
+        service: service || storedBooking?.service || "Appointment",
         startPretty,
       }),
       attachments: [

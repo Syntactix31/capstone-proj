@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCalendarClient } from "../../../lib/googleCalendar";
 import { getGmailTransporter } from "../../../lib/gmail";
+import { createBooking } from "../../../lib/db/bookings";
+import { upsertClient, upsertClientProperty } from "../../../lib/db/clients";
 
 function parseTime12h(timeStr) {
   const match = String(timeStr || "")
@@ -324,6 +326,26 @@ export async function POST(req) {
           ],
         },
       },
+    });
+
+    const client = await upsertClient({
+      name: `${firstName} ${lastName}`.trim(),
+      email,
+    });
+    const property = await upsertClientProperty({
+      clientId: client.id,
+      address,
+    });
+    await createBooking({
+      clientId: client.id,
+      propertyId: property?.id || null,
+      service,
+      bookingDate: date,
+      bookingTime: time,
+      startAt: start.toISOString(),
+      endAt: end.toISOString(),
+      notes,
+      googleEventId: event.data.id,
     });
 
     const transporter = getGmailTransporter();

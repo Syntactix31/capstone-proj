@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCalendarClient } from "../../../lib/googleCalendar";
 import { getGmailTransporter } from "../../../lib/gmail";
+import { findBookingByGoogleEventId, updateBookingByGoogleEventId } from "../../../lib/db/bookings";
+import { upsertClientProperty } from "../../../lib/db/clients";
 
 function parseTime12h(timeStr) {
   const match = String(timeStr || "")
@@ -255,6 +257,7 @@ export async function POST(req) {
       calendarId: process.env.GOOGLE_CALENDAR_ID,
       eventId,
     });
+    const storedBooking = await findBookingByGoogleEventId(eventId);
 
     const p = oldEvent.data.extendedProperties?.private || {};
 
@@ -319,6 +322,24 @@ export async function POST(req) {
           ],
         },
       },
+    });
+
+    const property = storedBooking?.clientId
+      ? await upsertClientProperty({
+          clientId: storedBooking.clientId,
+          address: address || storedBooking.address,
+        })
+      : null;
+
+    await updateBookingByGoogleEventId(eventId, {
+      propertyId: property?.id || storedBooking?.propertyId || null,
+      bookingDate: newDate,
+      bookingTime: newTime,
+      startAt: start.toISOString(),
+      endAt: end.toISOString(),
+      notes,
+      googleEventId: newEvent.data.id,
+      status: "confirmed",
     });
 
     const transporter = getGmailTransporter();
