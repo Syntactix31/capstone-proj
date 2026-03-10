@@ -1,0 +1,292 @@
+import { randomUUID } from "node:crypto";
+import { ensureDatabaseSchema } from "./schema.js";
+import { getSql } from "./client.js";
+import { normalizeEmail } from "./users.js";
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function mapClientRow(row) {
+  return {
+    id: row.client_id,
+    name: row.client_name,
+    email: row.client_email,
+    phone: row.phone,
+    notes: row.client_notes,
+    address: row.address || "",
+    city: row.city || "Calgary",
+    province: row.province || "Alberta",
+    postal: row.postal || "",
+    propertyType: row.property_type || "House",
+    additionalInstructions: row.additional_instructions || "",
+    propertyId: row.property_id || null,
+    createdAt: row.client_created_at,
+    updatedAt: row.client_updated_at,
+  };
+}
+
+async function fetchClientJoinedByEmail(email) {
+  await ensureDatabaseSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      c.id AS client_id,
+      c.name AS client_name,
+      c.email AS client_email,
+      c.phone,
+      c.notes AS client_notes,
+      c.created_at AS client_created_at,
+      c.updated_at AS client_updated_at,
+      p.id AS property_id,
+      p.address,
+      p.city,
+      p.province,
+      p.postal,
+      p.property_type,
+      p.additional_instructions
+    FROM clients c
+    LEFT JOIN client_properties p
+      ON p.client_id = c.id
+    WHERE c.email = ${normalizeEmail(email)}
+    ORDER BY p.updated_at DESC NULLS LAST, p.created_at DESC NULLS LAST
+    LIMIT 1
+  `;
+  return rows[0] ? mapClientRow(rows[0]) : null;
+}
+
+export async function listClients() {
+  await ensureDatabaseSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      c.id AS client_id,
+      c.name AS client_name,
+      c.email AS client_email,
+      c.phone,
+      c.notes AS client_notes,
+      c.created_at AS client_created_at,
+      c.updated_at AS client_updated_at,
+      p.id AS property_id,
+      p.address,
+      p.city,
+      p.province,
+      p.postal,
+      p.property_type,
+      p.additional_instructions
+    FROM clients c
+    LEFT JOIN LATERAL (
+      SELECT *
+      FROM client_properties
+      WHERE client_id = c.id
+      ORDER BY updated_at DESC, created_at DESC
+      LIMIT 1
+    ) p ON TRUE
+    ORDER BY c.updated_at DESC, c.created_at DESC
+  `;
+
+  return rows.map(mapClientRow);
+}
+
+export async function upsertClient({
+  name,
+  email,
+  phone = "",
+  notes = "",
+}) {
+  const normalizedEmail = normalizeEmail(email);
+  const trimmedName = String(name || "").trim();
+  const timestamp = nowIso();
+
+  await ensureDatabaseSchema();
+  const sql = getSql();
+
+  const rows = await sql`
+    INSERT INTO clients (
+      id,
+      email,
+      name,
+      phone,
+      notes,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${randomUUID()},
+      ${normalizedEmail},
+      ${trimmedName},
+      ${String(phone || "")},
+      ${String(notes || "")},
+      ${timestamp},
+      ${timestamp}
+    )
+    ON CONFLICT (email) DO UPDATE
+    SET
+      name = EXCLUDED.name,
+      phone = CASE
+        WHEN EXCLUDED.phone <> '' THEN EXCLUDED.phone
+        ELSE clients.phone
+      END,
+      notes = CASE
+        WHEN EXCLUDED.notes <> '' THEN EXCLUDED.notes
+        ELSE clients.notes
+      END,
+      updated_at = EXCLUDED.updated_at
+    RETURNING id
+  `;
+
+  return fetchClientJoinedByEmail(normalizedEmail);
+}
+
+export async function upsertClientProperty({
+  clientId,
+  address,
+  city = "Calgary",
+  province = "Alberta",
+  postal = "",
+  propertyType = "House",
+  additionalInstructions = "",
+}) {
+  const trimmedAddress = String(address || "").trim();
+  if (!trimmedAddress) return null;
+
+  await ensureDatabaseSchema();
+  const sql = getSql();
+  const timestamp = nowIso();
+
+  const [property] = await sql`
+    INSERT INTO client_properties (
+      id,
+      client_id,
+      address,
+      city,
+      province,
+      postal,
+      property_type,
+      additional_instructions,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${randomUUID()},
+      ${clientId},
+      ${trimmedAddress},
+      ${String(city || "Calgary")},
+      ${String(province || "Alberta")},
+      ${String(postal || "")},
+      ${String(propertyType || "House")},
+      ${String(additionalInstructions || "")},
+      ${timestamp},
+      ${timestamp}
+    )
+    ON CONFLICT (client_id, address) DO UPDATE
+    SET
+      city = EXCLUDED.city,
+      province = EXCLUDED.province,
+      postal = EXCLUDED.postal,
+      property_type = EXCLUDED.property_type,
+      additional_instructions = EXCLUDED.additional_instructions,
+      updated_at = EXCLUDED.updated_at
+    RETURNING id
+  `;
+
+  return property ? { id: property.id } : null;
+}
+
+export async function updateClient(clientId, patch) {
+  await ensureDatabaseSchema();
+  const sql = getSql();
+  const timestamp = nowIso();
+
+  const [current] = await sql`
+    SELECT *
+    FROM clients
+    WHERE id = ${clientId}
+    LIMIT 1
+  `;
+
+  if (!current) return null;
+
+  const nextEmail = patch.email ? normalizeEmail(patch.email) : current.email;
+
+  await sql`
+    UPDATE clients
+    SET
+      name = ${String(patch.name ?? current.name).trim()},
+      email = ${nextEmail},
+      phone = ${String(patch.phone ?? current.phone ?? "")},
+      notes = ${String(patch.notes ?? current.notes ?? "")},
+      updated_at = ${timestamp}
+    WHERE id = ${clientId}
+  `;
+
+  const address = String(patch.address ?? "").trim();
+  if (patch.propertyId || address) {
+    const propertyRows = patch.propertyId
+      ? await sql`
+          SELECT *
+          FROM client_properties
+          WHERE id = ${patch.propertyId} AND client_id = ${clientId}
+          LIMIT 1
+        `
+      : [];
+    const currentProperty = propertyRows[0] || null;
+
+    if (currentProperty) {
+      await sql`
+        UPDATE client_properties
+        SET
+          address = ${address || currentProperty.address},
+          city = ${String(patch.city ?? currentProperty.city ?? "Calgary")},
+          province = ${String(patch.province ?? currentProperty.province ?? "Alberta")},
+          postal = ${String(patch.postal ?? currentProperty.postal ?? "")},
+          property_type = ${String(patch.propertyType ?? currentProperty.property_type ?? "House")},
+          additional_instructions = ${String(
+            patch.additionalInstructions ?? currentProperty.additional_instructions ?? "",
+          )},
+          updated_at = ${timestamp}
+        WHERE id = ${currentProperty.id}
+      `;
+    } else if (address) {
+      await upsertClientProperty({
+        clientId,
+        address,
+        city: patch.city,
+        province: patch.province,
+        postal: patch.postal,
+        propertyType: patch.propertyType,
+        additionalInstructions: patch.additionalInstructions,
+      });
+    }
+  }
+
+  const rows = await sql`
+    SELECT
+      c.id AS client_id,
+      c.name AS client_name,
+      c.email AS client_email,
+      c.phone,
+      c.notes AS client_notes,
+      c.created_at AS client_created_at,
+      c.updated_at AS client_updated_at,
+      p.id AS property_id,
+      p.address,
+      p.city,
+      p.province,
+      p.postal,
+      p.property_type,
+      p.additional_instructions
+    FROM clients c
+    LEFT JOIN LATERAL (
+      SELECT *
+      FROM client_properties
+      WHERE client_id = c.id
+      ORDER BY updated_at DESC, created_at DESC
+      LIMIT 1
+    ) p ON TRUE
+    WHERE c.id = ${clientId}
+    LIMIT 1
+  `;
+
+  return rows[0] ? mapClientRow(rows[0]) : null;
+}

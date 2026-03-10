@@ -6,10 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:setup": "node scripts/setup-neon-db.mjs"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
+    "@neondatabase/serverless": "^1.0.2",
     "all": "^0.0.0",
     "axios": "^1.13.5",
     "date-fns": "^4.1.0",
@@ -20,7 +22,8 @@
     "nodemailer": "^8.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "resend": "^6.9.3"
+    "resend": "^6.9.3",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
