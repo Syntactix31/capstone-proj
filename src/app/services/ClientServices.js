@@ -1,13 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function ClientServices() {
   const searchParams = useSearchParams();
-  const initialSlug = searchParams.get("service");
-  const [selectedSlug, setSelectedSlug] = useState(initialSlug || null);
+  const initialServicesParam = searchParams.get("service");
+  const initialSelected = useMemo(() => {
+    if (!initialServicesParam) return [];
+    return initialServicesParam.split(",").filter(Boolean);
+  }, [initialServicesParam]);
+
+  const [selectedSlugs, setSelectedSlugs] = useState(initialSelected);
 
   const services = useMemo(() => [
     {
@@ -37,22 +42,37 @@ export default function ClientServices() {
     },
   ], []);
 
-  const selectedService = useMemo(
-    () => services.find((s) => s.slug === selectedSlug) || null,
-    [selectedSlug, services]
-  );
+  const toggleSelect = useCallback((slug) => {
+    setSelectedSlugs((prev) => {
+      if (prev.includes(slug)) {
+        return prev.filter((s) => s !== slug);
+      }
+      return [...prev, slug];
+    });
+  }, []);
 
-  const toggleSelect = (slug) => {
-    setSelectedSlug((prev) => (prev === slug ? null : slug));
-  };
+  const serviceUrls = useMemo(() => {
+    const params = selectedSlugs.length > 0 
+      ? `service=${selectedSlugs.join(",")}` 
+      : "";
+    return {
+      book: params ? `/book/time?${params}` : "/book",
+      quote: params ? `/quote?${params}` : "/quote"
+    };
+  }, [selectedSlugs]);
+
+  const selectedCount = selectedSlugs.length;
+  const selectedServices = useMemo(() => 
+    services.filter(s => selectedSlugs.includes(s.slug)), 
+    [selectedSlugs, services]
+  );
 
   return (
     <>
-
       <div className="w-full mx-auto max-w-6xl px-4 mt-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {services.map((service) => {
-            const isSelected = selectedSlug === service.slug;
+            const isSelected = selectedSlugs.includes(service.slug);
 
             return (
               <button
@@ -100,7 +120,7 @@ export default function ClientServices() {
           "fixed inset-x-0 bottom-0 z-50",
           "bg-white/90 backdrop-blur border-t border-black/10",
           "transition-all duration-200 ease-out",
-          selectedSlug
+          selectedCount > 0
             ? "translate-y-0 opacity-100"
             : "translate-y-full opacity-0 pointer-events-none",
         ].join(" ")}
@@ -108,21 +128,24 @@ export default function ClientServices() {
         <div className="w-full mx-auto max-w-6xl px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="select-none">
             <p className="text-sm font-extrabold text-gray-900">
-              {selectedService ? `${selectedService.title} is selected` : ""}
+              {selectedCount > 0 
+                ? `${selectedCount} service${selectedCount > 1 ? 's' : ''} selected: ${selectedServices.map(s => s.title).join(', ')}`
+                : ""
+              }
             </p>
             <p className="text-xs font-semibold text-gray-600">
-              Tap another service to change, or tap the same one to unselect.
+              Tap services to select/deselect. Book or get quote with multiple services selected.
             </p>
           </div>
           <div className="flex gap-3">
             <Link
-              href={selectedSlug ? `/book/time?service=${selectedSlug}` : "/book"}
+              href={serviceUrls.book}
               className="rounded-2xl bg-[#477a40] px-5 py-3 text-sm font-bold text-white hover:cursor-pointer border-2 border-transparent hover:bg-[#f3fff3] hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl"
             >
               Book Now
             </Link>
             <Link
-              href={selectedSlug ? `/quote?service=${selectedSlug}` : "/quote"}
+              href={serviceUrls.quote}
               className="rounded-2xl bg-white px-5 py-3 text-sm font-bold text-[#477a40] border-2 border-[#477A40] hover:bg-[#f3fff3] transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl"
             >
               Get Quote
@@ -133,6 +156,4 @@ export default function ClientServices() {
     </>
   );
 }
-
-
 

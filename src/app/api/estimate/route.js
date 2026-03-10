@@ -92,7 +92,7 @@ function normalizePayload(raw) {
     claim: {
       fullName: s(pick(c, ["fullName", "name", "full_name"], "")),
 
-      // homeAddress: s(pick(c, ["homeAddress", "address", "home_address"], "")),
+      homeAddress: s(pick(c, ["homeAddress", "address", "home_address"], "")),
 
       email: s(pick(c, ["email"], "")).toLowerCase(),
       phone: s(pick(c, ["phone", "phoneNumber", "phone_number"], "")),
@@ -133,7 +133,7 @@ function validate({ claim, project }) {
   const e = [];
   const req = (ok, msg) => !ok && e.push(msg);
   req(!!claim.fullName, "claim.fullName is required.");
-  // req(!!claim.homeAddress, "claim.homeAddress is required.");
+  req(!!claim.homeAddress, "claim.homeAddress is required.");
   req(!!claim.email && claim.email.includes("@"), "claim.email must be valid.");
   req(!!claim.phone, "claim.phone is required.");
 

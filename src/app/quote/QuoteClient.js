@@ -75,7 +75,7 @@ export default function QuoteClient() {
 
     const claim = {
       name: formData.client.name,
-      // address: formData.client.address,
+      address: formData.client.address,
       email: formData.client.email,
       phone: formData.client.phone,
     };
@@ -538,8 +538,8 @@ const handleSubmit = async (e) => {
                 <input type="email" value={formData.client.email} onChange={(e) => setFormData({ ...formData, client: { ...formData.client, email: e.target.value } })} className="w-full p-4 border border-gray-300 rounded-xl" required />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-gray-900 mb-2">Home Address</label>
-                <input type="text" value={formData.client.address} onChange={(e) => setFormData({ ...formData, client: { ...formData.client, address: e.target.value } })} className="w-full p-4 border border-gray-300 rounded-xl" />
+                <label className="block text-sm font-bold text-gray-900 mb-2">Home Address *</label>
+                <input type="text" value={formData.client.address} onChange={(e) => setFormData({ ...formData, client: { ...formData.client, address: e.target.value } })} className="w-full p-4 border border-gray-300 rounded-xl" required />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-900 mb-2">Phone Number *</label>
@@ -706,7 +706,7 @@ const handleSubmit = async (e) => {
                   type="button"
                   onClick={handleEstimatePreview}
                   disabled={isSubmitting}
-                  className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white hover:bg-[#3a6634] disabled:opacity-60"
+                  className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white hover:bg-[#3a6634] disabled:opacity-60 hover:cursor-pointer"
                 >
                   {isSubmitting ? "Calculating..." : "Calculate Estimate"}
                 </button>
