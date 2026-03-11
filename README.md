@@ -74,6 +74,8 @@ npm install googleapis nodemailer date-fns date-fns-tz
 npm install @emailjs/browser
 # and
 npm install resend
+# and
+npm install @neondatabase/serverless
 ```
 
 Run the Production Build:
