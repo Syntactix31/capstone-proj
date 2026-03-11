@@ -309,7 +309,7 @@ function BookTimeInner() {
               <p className="step-card-text">
                 {selectedServices.length > 0 ? (
                   <>
-                    {selectedServices.length} service(s) selected:
+                    {selectedServices.length} {selectedServices.length === 1 ? 'service' : 'services'} selected:
                     <br />
                     {selectedServices.map(s => s.name).join(", ")}
                     <br />
@@ -322,6 +322,7 @@ function BookTimeInner() {
                 )}
               </p>
             </div>
+
 
 
             <div className="step-card step-card--active">

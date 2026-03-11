@@ -77,11 +77,11 @@ function DetailsContent() {
         eventId: data.eventId || "",
       };
 
+      // Might be dead code comment out if u don't need ts
       const query = new URLSearchParams(queryObj).toString();
+
       router.push(
-        `/book/details?service=${encodeURIComponent(serviceParam)}&date=${encodeURIComponent(
-          selectedDateStr
-        )}&time=${encodeURIComponent(selectedTime)}`
+        `/book/confirm?service=${encodeURIComponent(servicesParam)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&eventId=${encodeURIComponent(data.eventId)}&firstName=${encodeURIComponent(payload.firstName || '')}&status=confirmed`
       );
 
 
