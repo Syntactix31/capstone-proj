@@ -12,7 +12,6 @@ const SERVICES = [
 ];
 
 const STATUS_CLASS = {
-  Pending: "admin-badge admin-badge--pending",
   Confirmed: "admin-badge admin-badge--active",
   Canceled: "admin-badge admin-badge--muted",
 };
@@ -75,7 +74,6 @@ export default function AdminAppointmentsPage() {
   });
 
   const [editingId, setEditingId] = useState(null);
-  const [showPendingModal, setShowPendingModal] = useState(false);
   const [showBookedModal, setShowBookedModal] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelSource, setCancelSource] = useState(null);
@@ -99,7 +97,6 @@ export default function AdminAppointmentsPage() {
 
       // Map into the shape the UI expects
       const mapped = appts.map((a) => ({
-        id: a.eventId, // use Google eventId as primary id
         eventId: a.eventId,
         client: a.client || "Unknown",
         service: prettyServiceName(a.service),
@@ -137,8 +134,6 @@ export default function AdminAppointmentsPage() {
   const upcoming = appointments.filter((appt) => appt.status !== "Canceled").length;
 
   // Since Google events are real bookings, treat them as Confirmed
-  const pending = 0;
-  const pendingAppointments = [];
   const bookedAppointments = appointments.filter((appt) => appt.status === "Confirmed");
   const confirmed = bookedAppointments.length;
 
@@ -248,6 +243,11 @@ export default function AdminAppointmentsPage() {
       });
   }, [appointments, calendarStartHour]);
 
+  /* day
+- useMemo hook
+- key: variable for the current date
+- checks calendarevents for appointments that matches the current date
+  */
   const visibleEvents = useMemo(() => {
     if (viewMode === "day") {
       const key = formatDateKey(dayDate);
@@ -260,21 +260,52 @@ export default function AdminAppointmentsPage() {
     return calendarEvents;
   }, [calendarEvents, dayDate, viewMode, weekDates]);
 
+  /*line indicator
+  - checks the current hour, mnutes
+  - then checks if the current hours is less than the calendar start time
+  and current hour is more than calendar end time >> returns null
+  */
   const nowIndicator = useMemo(() => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     if (currentHour < calendarStartHour || currentHour > calendarEndHour) return null;
 
+    /* nowindicator positioning
+    - hoursFromStart represents how many hours into the calendar we currently are
+    - offset vertical postioning of the nowindicator
+    positioning calculation:
+    hoursFromStart - hour since calendar start
+    calendarRowHeight - height of one hour row
+    calendarRowGap - space between rows
+
+    (currentMinute / 60) * calendarRowHeight
+    >> Represents how far we are into the hour
+    - current minute within the hour / 60 * calendarRowHeight
+    */
     const hoursFromStart = currentHour - calendarStartHour;
     const offset =
       calendarPadding +
       hoursFromStart * (calendarRowHeight + calendarRowGap) +
       (currentMinute / 60) * calendarRowHeight;
 
+      /* current time formatted to 00:00
+      Gets the current time from "now" then converts the date to
+      formatted time string with toLocaleTimeString
+
+      { hour: "2-digit", minute: "2-digit" }),
+       show the hour and minute with 2 digits
+       24hour clock
+      */
     return {
       label: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       offset,
     };
+
+    /* 
+    dependency array
+    - compares previous values to current values
+    then reruns the callback
+    */
   }, [
     now,
     calendarStartHour,
@@ -283,7 +314,9 @@ export default function AdminAppointmentsPage() {
     calendarRowGap,
     calendarPadding,
   ]);
-
+  
+/* Upon rendering the page this is to scroll the calendar to
+  where the nowIndicator is*/
   useEffect(() => {
     if (!calendarScrollRef.current || !nowIndicator) return;
     const container = calendarScrollRef.current;
@@ -292,6 +325,7 @@ export default function AdminAppointmentsPage() {
   }, [nowIndicator]);
 
   // Admin actions that actually change Google Calendar
+  // functions implemented by jiro
   async function cancelOnServer(eventId) {
     const ok = window.confirm("Cancel this appointment? This removes it from Google Calendar and sends cancel emails.");
     if (!ok) return false;
@@ -367,17 +401,34 @@ export default function AdminAppointmentsPage() {
     }
   }
 
+  /* appointment details modal
+    appt - the appointment selected
+    source - the source from where handleDetails is called upon
+    (booked component, or from the calendar
+  */
   const handleDetails = (appt, source = null) => {
     setActiveAppointment(appt);
     setDetailSource(source);
   };
-
+  /* if the user selected an appointment through the booked component
+  instead of the calendar then closing that modal ensures that the "booked" appointments
+  modal is shown again 
+  
+  setActivateAppointment to null closes the modal
+  setShowBookedModal(true) - restores the previous modal*/
   const closeDetails = (returnToBooked = true) => {
     setActiveAppointment(null);
     if (returnToBooked && detailSource === "booked") setShowBookedModal(true);
     setDetailSource(null);
   };
-
+  /* add appointment modal
+  setEditingId - null ensures that the form behaves in an "Add appointment" mode
+  setFormState - updates the form with default values
+  service: activeServices[0]?.id ?? "fence", >> checks the first service of the array '?' only if it exists
+  and if it does exists, returns the id. If it doesn't then return as undefined.
+  if the value is null or undefined then '??' uses fallback "fence"
+  ^^ prevents crashing
+  */
   const openAddForm = () => {
     setEditingId(null);
     setFormState({
@@ -393,8 +444,16 @@ export default function AdminAppointmentsPage() {
     setIsFormOpen(true);
   };
 
+  /* Form editing mode
+  sets the editingid to the appointment eventid
+  splits the name between first name and last name
+  (trim > removes extra spaces beginning or end, split > splits the string into an array)
+  firstName gets the first part of the array > if array is empty then it uses "" as the fallback
+  lastName uses slice to remove the first part, or starting at the first (1) index which is the second part of the name
+  */
+
   const openEditForm = (appt) => {
-    setEditingId(appt.eventId || appt.id);
+    setEditingId(appt.eventId);
     const nameParts = String(appt.client || "").trim().split(" ");
     const firstName = nameParts[0] || "";
     const lastName = nameParts.slice(1).join(" ");
@@ -411,6 +470,9 @@ export default function AdminAppointmentsPage() {
     setIsFormOpen(true);
   };
 
+  /* closes the appointment form modal
+  prev - copies everything from the previous form original state,
+  then update the field that has been changed */
   const closeForm = () => setIsFormOpen(false);
 
   const handleFormChange = (event) => {
@@ -418,12 +480,16 @@ export default function AdminAppointmentsPage() {
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
+  // runs when the form is submitted
+  // preventDefault - preventing the page from refreshing when form is submitted
   const handleFormSubmit = async (event) => {
     event.preventDefault();
 
+    //jiro
     if (!formState.date || !formState.time) return;
 
     // If editing, reschedule on server (delete+create in your reschedule route)
+    // jiro
     if (editingId) {
       const ok = window.confirm("Reschedule this appointment to the new date/time?");
       if (!ok) return;
@@ -432,13 +498,13 @@ export default function AdminAppointmentsPage() {
       if (success) setIsFormOpen(false);
       return;
     }
-
+    // jiro
     // If adding, create on server
     if (!formState.firstName || !formState.lastName || !formState.email || !formState.service) {
       alert("Please fill first name, last name, email, and service.");
       return;
     }
-
+    // jiro
     const payload = {
       service: formState.service, // service id (fence, pergola, etc)
       date: formState.date,
@@ -449,21 +515,38 @@ export default function AdminAppointmentsPage() {
       address: formState.address,
       notes: formState.notes,
     };
-
+    // jiro
     const success = await createOnServer(payload);
     if (success) setIsFormOpen(false);
   };
 
+  /* calendar view mode
+  mode - being the parameter that is called upon depending on the view mode
+  the user selects
+  */
   const handleViewChange = (mode) => {
     setViewMode(mode);
     if (mode === "day") setCurrentDate(new Date());
   };
 
+  /* When the user clicks on "today" button
+  this is ran which gets the current date with "new Date"
+  then checks if viewMode isn't "day" and then sets view mode to "day"
+  */
   const handleToday = () => {
     setCurrentDate(new Date());
     if (viewMode !== "day") setViewMode("day");
   };
 
+  /* navigation between calendar days
+  creates a copy of the current date with "next"
+  then checks what viewmode the calendar is in.
+  direction is the parameter in which the user is asking the calendar to navigate to.
+  so (+1) parameter would add +1 from today's date (next.setDate(currentdate+1))
+  vise versa
+  same for week but this time we multiply the direction (1*7) because a week is 7 days
+  month is similar to "day" except we are using getMonth() and then adding either +1 or -1
+  */
   const shiftDate = (direction) => {
     const next = new Date(currentDate);
     if (viewMode === "day") next.setDate(currentDate.getDate() + direction);
@@ -498,20 +581,6 @@ export default function AdminAppointmentsPage() {
           <div className="admin-stat-title">Upcoming</div>
           <div className="admin-stat-value">{upcoming}</div>
           <div className="admin-muted">Next 180 days</div>
-        </article>
-
-        <article className="admin-card admin-card--stat">
-          <div className="admin-stat-title">Pending approval</div>
-          <div className="admin-stat-value">{pending}</div>
-          <button
-            type="button"
-            className={`${STATUS_CLASS.Pending} admin-badge--button`}
-            onClick={() => setShowPendingModal(true)}
-            disabled
-            title="Pending is disabled because bookings are confirmed when created."
-          >
-            Review
-          </button>
         </article>
 
         <article className="admin-card admin-card--stat">
@@ -653,12 +722,10 @@ export default function AdminAppointmentsPage() {
 
                     {visibleEvents.map((appt) => (
                       <div
-                        key={appt.id}
+                        key={appt.eventId}
                         className={`admin-calendar__event ${
                           appt.status === "Confirmed"
                             ? "admin-calendar__event--confirmed"
-                            : appt.status === "Pending"
-                            ? "admin-calendar__event--pending"
                             : "admin-calendar__event--neutral"
                         }`}
                         style={{
@@ -729,7 +796,7 @@ export default function AdminAppointmentsPage() {
               <div>
                 <p className="admin-kicker">Appointment Details</p>
                 <h2 className="admin-title">{activeAppointment.client}</h2>
-                <p className="admin-subtitle">{activeAppointment.id}</p>
+                <p className="admin-subtitle">{activeAppointment.eventId}</p>
               </div>
               <button
                 className="admin-btn admin-btn--ghost admin-btn--small"
@@ -959,36 +1026,6 @@ export default function AdminAppointmentsPage() {
         </div>
       )}
 
-      {showPendingModal && (
-        <div className="admin-modal">
-          <button
-            className="admin-modal__backdrop"
-            onClick={() => setShowPendingModal(false)}
-            aria-label="Close pending appointments"
-            type="button"
-          />
-          <div className="admin-modal__content" role="dialog" aria-modal="true">
-            <div className="admin-modal__header">
-              <div>
-                <p className="admin-kicker">Pending Approval</p>
-                <h2 className="admin-title">Review appointments</h2>
-                <p className="admin-subtitle">Pending is disabled (bookings are confirmed when created).</p>
-              </div>
-              <button
-                className="admin-btn admin-btn--ghost admin-btn--small"
-                onClick={() => setShowPendingModal(false)}
-                type="button"
-              >
-                Close
-              </button>
-            </div>
-            <div className="admin-pending-list">
-              <div className="admin-muted">No pending appointments.</div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showBookedModal && (
         <div className="admin-modal">
           <button
@@ -1013,12 +1050,12 @@ export default function AdminAppointmentsPage() {
               </button>
             </div>
 
-            <div className="admin-pending-list admin-pending-list--booked">
+            <div className="admin-booked-list admin-booked-list--booked">
               {bookedAppointments.length === 0 ? (
                 <div className="admin-muted">No booked appointments.</div>
               ) : (
                 bookedAppointments.map((appt) => (
-                  <div key={appt.id} className="admin-pending-row">
+                  <div key={appt.eventId} className="admin-booked-row">
                     <div>
                       <div className="admin-strong">{appt.client}</div>
                       <div className="admin-muted">
@@ -1077,7 +1114,7 @@ export default function AdminAppointmentsPage() {
                 type="button"
                 disabled={busy}
                 onClick={async () => {
-                  const ok = await cancelOnServer(cancelTarget.eventId || cancelTarget.id);
+                  const ok = await cancelOnServer(cancelTarget.eventId);
                   setCancelTarget(null);
                   if (ok && cancelSource === "booked") setShowBookedModal(true);
                   setCancelSource(null);
