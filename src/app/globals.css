@@ -1336,6 +1336,45 @@ body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  position: relative;
+}
+
+.admin-shell--sidebar-hidden {
+  grid-template-columns: 1fr;
+}
+
+.admin-shell--sidebar-hidden .admin-sidebar {
+  display: none;
+}
+
+.admin-sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  left: 16px;
+  z-index: 35;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+}
+
+.admin-sidebar-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  border: none;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 30;
 }
 
 .admin-sidebar {
@@ -2204,6 +2243,111 @@ body {
   .admin-modal__full {
     grid-column: span 1;
   }
+
+  .admin-appointments .admin-hero {
+    padding: 18px;
+  }
+
+  .admin-appointments .admin-hero-actions {
+    width: 100%;
+  }
+
+  .admin-appointments .admin-hero-actions .admin-btn {
+    flex: 1 1 auto;
+  }
+
+  .admin-appointments .admin-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-calendar {
+    padding: 16px;
+    --calendar-row-height: 46px;
+    --calendar-row-gap: 8px;
+  }
+
+  .admin-calendar__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-calendar__title {
+    font-size: 22px;
+  }
+
+  .admin-calendar__mode {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-calendar__mode-btn {
+    flex: 1 1 0;
+    text-align: center;
+  }
+
+  .admin-calendar__actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-calendar__nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-calendar__actions .admin-btn {
+    width: 100%;
+  }
+
+  .admin-calendar__scroll {
+    max-height: 440px;
+    overflow-x: auto;
+  }
+
+  .admin-calendar__scroll-grid {
+    grid-template-columns: 54px minmax(520px, 1fr);
+  }
+
+  .admin-calendar__times {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(24, var(--calendar-row-height));
+    gap: var(--calendar-row-gap);
+    align-content: start;
+  }
+
+  .admin-calendar__time {
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: right;
+    padding-right: 6px;
+  }
+
+  .admin-calendar__days {
+    min-width: 520px;
+  }
+
+  .admin-calendar__grid {
+    min-width: 520px;
+  }
+
+  .admin-calendar__event-title {
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-calendar__event-subtitle {
+    font-size: 10px;
+  }
+}
+
+.admin-appointments {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 
 @media (max-width: 980px) {
@@ -2216,15 +2360,39 @@ body {
   }
 
   .admin-sidebar {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(78vw, 320px);
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
+    z-index: 40;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-shell--sidebar-open .admin-sidebar {
+    transform: translateX(0);
+  }
+
+  .admin-shell--sidebar-hidden .admin-sidebar {
+    display: flex;
+  }
+
+  .admin-shell--sidebar-open .admin-sidebar-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .admin-sidebar-toggle {
+    display: inline-flex;
   }
 
   .admin-menu {
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
   }
 
   .admin-summary-grid {

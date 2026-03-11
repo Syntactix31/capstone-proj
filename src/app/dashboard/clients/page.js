@@ -16,6 +16,12 @@ export default function AdminClientsPage() {
   const [pendingClientId, setPendingClientId] = useState(null);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
 
+  /*  Theo
+  - Look through clients
+  - Find the client whose id matches selectedId
+  - If none is found, use the first client in the array
+  - If there is no first client, use null
+  */
   const selectedClient = useMemo(
     () => clients.find((client) => client.id === selectedId) || clients[0] || null,
     [clients, selectedId]
@@ -23,6 +29,7 @@ export default function AdminClientsPage() {
   const [draft, setDraft] = useState(null);
   const [phoneFocused, setPhoneFocused] = useState(false);
 
+  // Implemented by jiro
   useEffect(() => {
     let alive = true;
 
@@ -59,6 +66,13 @@ export default function AdminClientsPage() {
     };
   }, []);
 
+  /* Theo
+  when we switch clients, we replace the current form
+  contents with the selected client's data
+
+  Phone number field is formatted when not focused so we establish
+  that the phone number field isn't in focus
+  */
   useEffect(() => {
     setDraft(selectedClient);
     setPhoneFocused(false);

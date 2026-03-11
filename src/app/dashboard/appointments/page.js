@@ -131,6 +131,7 @@ export default function AdminAppointmentsPage() {
     return () => clearInterval(interval);
   }, []);
 
+
   const upcoming = appointments.filter((appt) => appt.status !== "Canceled").length;
 
   // Since Google events are real bookings, treat them as Confirmed
@@ -557,6 +558,7 @@ export default function AdminAppointmentsPage() {
 
   return (
     <AdminLayout>
+      <div className="admin-appointments">
       <section className="admin-hero">
         <div>
           <p className="admin-kicker">Appointments</p>
@@ -1138,6 +1140,7 @@ export default function AdminAppointmentsPage() {
           </div>
         </div>
       )}
+      </div>
     </AdminLayout>
   );
 }

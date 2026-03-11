@@ -16,9 +16,18 @@ const MENU_ITEMS = [
   { id: "settings", label: "Settings", href: "/dashboard/settings" },
 ];
 
-export default function AdminLayout({ children }) {
+export default function AdminLayout({ children, sidebarHidden = false }) {
   const router = useRouter();
   const [userName, setUserName] = useState("");
+  /* sidebar state
+  - hides navigation by default on smaller screens
+  - tracks when the user manually overrides the state
+  */
+  const [isSidebarHidden, setIsSidebarHidden] = useState(sidebarHidden);
+  const [hasSidebarOverride, setHasSidebarOverride] = useState(false);
+  const shellClassName = isSidebarHidden
+    ? "admin-shell admin-shell--sidebar-hidden"
+    : "admin-shell admin-shell--sidebar-open";
 
   useEffect(() => {
     let active = true;
@@ -39,6 +48,45 @@ export default function AdminLayout({ children }) {
     };
   }, []);
 
+  /* sidebar auto hide on mobile
+  - uses matchMedia for responsive defaults
+  - avoids overriding user choice
+  */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 980px)");
+    const syncSidebar = () => {
+      if (!hasSidebarOverride) setIsSidebarHidden(media.matches);
+    };
+    syncSidebar();
+    if (media.addEventListener) {
+      media.addEventListener("change", syncSidebar);
+      return () => media.removeEventListener("change", syncSidebar);
+    }
+    media.addListener(syncSidebar);
+    return () => media.removeListener(syncSidebar);
+  }, [hasSidebarOverride]);
+
+  /* sidebar toggle action
+  - flips the nav drawer state
+  - sets manual override flag
+  */
+  const toggleSidebar = () => {
+    setHasSidebarOverride(true);
+    setIsSidebarHidden((prev) => !prev);
+  };
+
+  /* close nav after selection
+  - keeps mobile workflow simple after picking a page
+  */
+  const handleNavClick = () => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 980px)");
+    if (!media.matches) return;
+    setHasSidebarOverride(true);
+    setIsSidebarHidden(true);
+  };
+
   async function handleSignOut() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
@@ -51,7 +99,23 @@ export default function AdminLayout({ children }) {
         <NavBar />
       </header>
 
-      <div className="admin-shell">
+      <div className={shellClassName}>
+        <button
+          className="admin-sidebar-toggle"
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={isSidebarHidden ? "Open navigation" : "Close navigation"}
+          aria-pressed={!isSidebarHidden}
+        >
+          {isSidebarHidden ? "›" : "‹"}
+        </button>
+        <button
+          className="admin-sidebar-backdrop"
+          type="button"
+          onClick={toggleSidebar}
+          aria-hidden={isSidebarHidden}
+          tabIndex={isSidebarHidden ? -1 : 0}
+        />
         <aside className="admin-sidebar">
           <div className="admin-sidebar-brand">
             <span className="admin-sidebar-logo">LC</span>
@@ -60,7 +124,7 @@ export default function AdminLayout({ children }) {
               <div className="admin-sidebar-subtitle">Admin</div>
             </div>
           </div>
-          <Link href="/dashboard" className="admin-menu-link">
+          <Link href="/dashboard" className="admin-menu-link" onClick={handleNavClick}>
             <span>Dashboard</span>
             <span className="admin-menu-arrow">&gt;</span>
           </Link>
@@ -68,7 +132,7 @@ export default function AdminLayout({ children }) {
           <div className="admin-sidebar-section">Menu</div>
           <nav className="admin-menu">
             {MENU_ITEMS.map((item) => (
-              <Link key={item.id} href={item.href} className="admin-menu-link">
+              <Link key={item.id} href={item.href} className="admin-menu-link" onClick={handleNavClick}>
                 <span>{item.label}</span>
                 <span className="admin-menu-arrow">&gt;</span>
               </Link>
