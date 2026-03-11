@@ -87,11 +87,12 @@ export function BookContent() {
               </div>
               <p className="step-card-text">
                 {selectedServices.length > 0
-                  ? `${selectedServices.length} service(s) selected: ${selectedServices
+                  ? `${selectedServices.length} ${selectedServices.length === 1 ? 'service' : 'services'} selected: ${selectedServices
                       .map((s) => s.name)
                       .join(", ")}`
                   : "No service selected yet. Pick services from the list on the right to continue."}
               </p>
+
             </div>
 
             <div className="step-card">
@@ -196,4 +197,3 @@ export function BookContent() {
     </div>
   );
 }
-
