@@ -23,7 +23,10 @@ export default function AdminLayout({ children, sidebarHidden = false }) {
   - hides navigation by default on smaller screens
   - tracks when the user manually overrides the state
   */
-  const [isSidebarHidden, setIsSidebarHidden] = useState(sidebarHidden);
+  const [isSidebarHidden, setIsSidebarHidden] = useState(() => {
+    if (typeof window === "undefined") return sidebarHidden;
+    return window.matchMedia("(max-width: 980px)").matches;
+  });
   const [hasSidebarOverride, setHasSidebarOverride] = useState(false);
   const shellClassName = isSidebarHidden
     ? "admin-shell admin-shell--sidebar-hidden"
@@ -56,7 +59,11 @@ export default function AdminLayout({ children, sidebarHidden = false }) {
     if (typeof window === "undefined") return;
     const media = window.matchMedia("(max-width: 980px)");
     const syncSidebar = () => {
-      if (!hasSidebarOverride) setIsSidebarHidden(media.matches);
+      if (!media.matches) {
+        setIsSidebarHidden(false);
+        return;
+      }
+      if (!hasSidebarOverride) setIsSidebarHidden(true);
     };
     syncSidebar();
     if (media.addEventListener) {
@@ -72,6 +79,10 @@ export default function AdminLayout({ children, sidebarHidden = false }) {
   - sets manual override flag
   */
   const toggleSidebar = () => {
+    if (typeof window !== "undefined") {
+      const media = window.matchMedia("(max-width: 980px)");
+      if (!media.matches) return;
+    }
     setHasSidebarOverride(true);
     setIsSidebarHidden((prev) => !prev);
   };

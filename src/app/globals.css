@@ -1755,6 +1755,25 @@ body {
   gap: 12px;
 }
 
+.admin-booked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.admin-booked-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-booked-row:last-child {
+  border-bottom: none;
+}
+
 .admin-modal {
   position: fixed;
   inset: 0;
@@ -1816,6 +1835,11 @@ body {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
   --calendar-row-height: 54px;
   --calendar-row-gap: 12px;
+}
+
+.admin-calendar--day {
+  --calendar-row-height: 64px;
+  --calendar-row-gap: 14px;
 }
 
 .admin-calendar__header {
@@ -1936,6 +1960,10 @@ body {
   border-radius: 16px;
   background: #f8fafc;
   padding: 12px;
+}
+
+.admin-calendar--day .admin-calendar__grid {
+  grid-template-columns: 1fr;
 }
 
 .admin-calendar__row {
@@ -2266,6 +2294,11 @@ body {
     --calendar-row-gap: 8px;
   }
 
+  .admin-calendar--day {
+    --calendar-row-height: 56px;
+    --calendar-row-gap: 10px;
+  }
+
   .admin-calendar__header {
     flex-direction: column;
     align-items: stretch;
@@ -2341,6 +2374,49 @@ body {
 
   .admin-calendar__event-subtitle {
     font-size: 10px;
+  }
+
+  .admin-calendar--compact-week .admin-calendar__scroll-grid {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .admin-calendar--compact-week .admin-calendar__days {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    text-align: center;
+    justify-items: center;
+    width: calc(100% - 54px);
+    margin-left: 54px;
+  }
+
+  .admin-calendar--compact-week .admin-calendar__grid {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    position: relative;
+  }
+
+  .admin-calendar--compact-week .admin-calendar__grid::after {
+    content: "";
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 50%;
+    width: 1px;
+    background: #e2e8f0;
+    pointer-events: none;
+  }
+
+  .admin-calendar--day .admin-calendar__scroll {
+    overflow-x: hidden;
+  }
+
+  .admin-calendar--day .admin-calendar__scroll-grid {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .admin-calendar--day .admin-calendar__grid {
+    min-width: 0;
   }
 }
 

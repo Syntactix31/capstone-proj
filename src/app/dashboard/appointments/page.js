@@ -78,6 +78,12 @@ export default function AdminAppointmentsPage() {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelSource, setCancelSource] = useState(null);
 
+  /* mobile layout
+  - detects narrow screens for compact week view
+  - keeps JS layout values in sync with CSS
+  */
+  const [isNarrow, setIsNarrow] = useState(false);
+
   const calendarScrollRef = useRef(null);
 
   // Pull from Google Calendar (via API in /api/admin/appointments)
@@ -131,6 +137,22 @@ export default function AdminAppointmentsPage() {
     return () => clearInterval(interval);
   }, []);
 
+  /* matchMedia hook
+  - updates isNarrow for mobile layout logic
+  */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 640px)");
+    const syncMedia = () => setIsNarrow(media.matches);
+    syncMedia();
+    if (media.addEventListener) {
+      media.addEventListener("change", syncMedia);
+      return () => media.removeEventListener("change", syncMedia);
+    }
+    media.addListener(syncMedia);
+    return () => media.removeListener(syncMedia);
+  }, []);
+
 
   const upcoming = appointments.filter((appt) => appt.status !== "Canceled").length;
 
@@ -142,9 +164,20 @@ export default function AdminAppointmentsPage() {
 
   const calendarStartHour = 0;
   const calendarEndHour = 23;
-  const calendarRowHeight = 54;
-  const calendarRowGap = 12;
-  const calendarPadding = 12;
+  /* calendar sizing
+  - keeps day view taller for readability
+  - matches mobile and desktop CSS values
+  */
+  const calendarSizing = useMemo(() => {
+    if (viewMode === "day") {
+      return isNarrow
+        ? { rowHeight: 56, rowGap: 10, padding: 12 }
+        : { rowHeight: 64, rowGap: 14, padding: 12 };
+    }
+    return isNarrow
+      ? { rowHeight: 46, rowGap: 8, padding: 12 }
+      : { rowHeight: 54, rowGap: 12, padding: 12 };
+  }, [isNarrow, viewMode]);
 
   const calendarSlots = useMemo(() => {
     const hours = [];
@@ -191,6 +224,19 @@ export default function AdminAppointmentsPage() {
       return next;
     });
   }, [currentDate]);
+
+  /* compact week view
+  - shows two days on mobile for readability
+  - aligns with the current date
+  */
+  const weekViewDates = useMemo(() => {
+    if (!(isNarrow && viewMode === "week")) return weekDates;
+    const start = new Date(currentDate);
+    start.setHours(0, 0, 0, 0);
+    const next = new Date(start);
+    next.setDate(start.getDate() + 1);
+    return [start, next];
+  }, [currentDate, isNarrow, viewMode, weekDates]);
 
   const dayDate = useMemo(() => {
     const next = new Date(currentDate);
@@ -255,11 +301,11 @@ export default function AdminAppointmentsPage() {
       return calendarEvents.filter((appt) => appt.date === key);
     }
     if (viewMode === "week") {
-      const keys = new Set(weekDates.map(formatDateKey));
+      const keys = new Set(weekViewDates.map(formatDateKey));
       return calendarEvents.filter((appt) => keys.has(appt.date));
     }
     return calendarEvents;
-  }, [calendarEvents, dayDate, viewMode, weekDates]);
+  }, [calendarEvents, dayDate, viewMode, weekViewDates]);
 
   /*line indicator
   - checks the current hour, mnutes
@@ -285,9 +331,9 @@ export default function AdminAppointmentsPage() {
     */
     const hoursFromStart = currentHour - calendarStartHour;
     const offset =
-      calendarPadding +
-      hoursFromStart * (calendarRowHeight + calendarRowGap) +
-      (currentMinute / 60) * calendarRowHeight;
+      calendarSizing.padding +
+      hoursFromStart * (calendarSizing.rowHeight + calendarSizing.rowGap) +
+      (currentMinute / 60) * calendarSizing.rowHeight;
 
       /* current time formatted to 00:00
       Gets the current time from "now" then converts the date to
@@ -311,9 +357,7 @@ export default function AdminAppointmentsPage() {
     now,
     calendarStartHour,
     calendarEndHour,
-    calendarRowHeight,
-    calendarRowGap,
-    calendarPadding,
+    calendarSizing,
   ]);
   
 /* Upon rendering the page this is to scroll the calendar to
@@ -546,12 +590,16 @@ export default function AdminAppointmentsPage() {
   so (+1) parameter would add +1 from today's date (next.setDate(currentdate+1))
   vise versa
   same for week but this time we multiply the direction (1*7) because a week is 7 days
+  on mobile week view we use 2-day steps for a compact layout
   month is similar to "day" except we are using getMonth() and then adding either +1 or -1
   */
   const shiftDate = (direction) => {
     const next = new Date(currentDate);
     if (viewMode === "day") next.setDate(currentDate.getDate() + direction);
-    else if (viewMode === "week") next.setDate(currentDate.getDate() + direction * 7);
+    else if (viewMode === "week") {
+      const step = isNarrow ? 2 : 7;
+      next.setDate(currentDate.getDate() + direction * step);
+    }
     else next.setMonth(currentDate.getMonth() + direction);
     setCurrentDate(next);
   };
@@ -599,7 +647,11 @@ export default function AdminAppointmentsPage() {
         </article>
       </section>
 
-      <section className={`admin-calendar ${viewMode === "day" ? "admin-calendar--day" : ""}`}>
+      <section
+        className={`admin-calendar ${viewMode === "day" ? "admin-calendar--day" : ""} ${
+          isNarrow && viewMode === "week" ? "admin-calendar--compact-week" : ""
+        }`}
+      >
         <div className="admin-calendar__header">
           <div className="admin-calendar__title-stack">
             <h2 className="admin-calendar__title">
@@ -683,7 +735,7 @@ export default function AdminAppointmentsPage() {
             <div className="admin-calendar__week">
               {viewMode === "week" && (
                 <div className="admin-calendar__days">
-                  {weekDates.map((date) => {
+                  {weekViewDates.map((date) => {
                     const dayIndex = date.getDay();
                     const isToday = formatDateKey(date) === formatDateKey(now);
                     return (
@@ -732,7 +784,17 @@ export default function AdminAppointmentsPage() {
                         }`}
                         style={{
                           gridRow: `${appt.gridRow} / span ${appt.span}`,
-                          gridColumn: viewMode === "day" ? "1 / span 1" : `${appt.gridCol} / span 1`,
+                          gridColumn:
+                            viewMode === "day"
+                              ? "1 / span 1"
+                              : isNarrow && viewMode === "week"
+                                ? (() => {
+                                    const idx = weekViewDates.findIndex(
+                                      (date) => formatDateKey(date) === appt.date
+                                    );
+                                    return idx === -1 ? "1 / span 1" : `${idx + 1} / span 1`;
+                                  })()
+                                : `${appt.gridCol} / span 1`,
                         }}
                         role="button"
                         tabIndex={0}
@@ -1144,3 +1206,4 @@ export default function AdminAppointmentsPage() {
     </AdminLayout>
   );
 }
+
