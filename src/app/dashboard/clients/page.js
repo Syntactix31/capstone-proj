@@ -78,30 +78,44 @@ export default function AdminClientsPage() {
     setPhoneFocused(false);
   }, [selectedClient]);
 
-  const normalizePhone = (value) => String(value || "").replace(/\D/g, "");
-  const normalizePostal = (value) =>
+  /*Field formatting + input rules
+
+  */
+  const normalizePhone = (value) => String(value || "").replace(/\D/g, ""); // takes the value or empty, '\D' replaces all non digit chars
+  const normalizePostal = (value) => // Converts all chars to upercase, '^' which = NOT, so anything that isn't a letter or digt is removed
     String(value || "")
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
       .slice(0, 6);
-  const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-  const EMAIL_PATTERN = String.raw`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`;
-  const isValidEmail = (value) => EMAIL_REGEX.test(String(value || "").toLowerCase().trim());
-  const isValidPhone = (value) => /^\d{10}$/.test(normalizePhone(value));
-  const isValidPostal = (value) => /^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(normalizePostal(value));
+  const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/; // valid email pattern rules
+  const EMAIL_PATTERN = String.raw`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`; // string format
+  const isValidEmail = (value) => EMAIL_REGEX.test(String(value || "").toLowerCase().trim()); // tests the input if it matches the email pattern
+  const isValidPhone = (value) => /^\d{10}$/.test(normalizePhone(value)); // digits only must equal to 10
+  const isValidPostal = (value) => /^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(normalizePostal(value)); // postal code rules
   const formatPostalDisplay = (value) => {
     const raw = normalizePostal(value);
-    if (!raw) return "";
-    const head = raw.slice(0, 3);
-    const tail = raw.slice(3);
-    return tail ? `${head} ${tail}` : head;
+    if (!raw) return ""; // no postal code then returns string empty
+    const head = raw.slice(0, 3); // takes first 3 chars
+    const tail = raw.slice(3); // takes last 3 chars
+    return tail ? `${head} ${tail}` : head; // if there isn't tail (last 3 chars) then return only the first 3
   };
+  /*
+  Ensures that the phone number is exactly 10 digits and if it isn't then string is returned empty
+  then phone number formatting (xxx)-xxx-xxxx
+  */
   const formatPhoneDisplay = (value) => {
     const digits = normalizePhone(value);
     if (digits.length !== 10) return "";
     return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
   };
 
+  /*
+  checks if there is a draft for the phone input field
+  if not then it should return empty
+  checks if input field is focused
+  if it is then phonedisplayvalue will = the draft state of the phone field
+  also formats the phone display text when field isn't in focus
+  */
   const phoneDisplayValue = !draft
     ? ""
     : phoneFocused
@@ -112,16 +126,21 @@ export default function AdminClientsPage() {
 
   const postalDisplayValue = !draft ? "" : formatPostalDisplay(draft.postal);
 
+/*
+Checks the client forms if there is any unsaved changes
+checks if input draft isn't equal to the selectedClient's saved info
+hasUnsavedChange becomes true if ^^ is true
+*/
   const hasUnsavedChanges = useMemo(() => {
-    if (!draft || !selectedClient) return false;
+    if (!draft || !selectedClient) return false; // if either value is null then hasUnsavedChanges returns false
     return (
       String(draft.name || "") !== String(selectedClient.name || "") ||
       String(draft.email || "") !== String(selectedClient.email || "") ||
-      normalizePhone(draft.phone) !== normalizePhone(selectedClient.phone) ||
+      normalizePhone(draft.phone) !== normalizePhone(selectedClient.phone) || // removes the formatting before checking
       String(draft.address || "") !== String(selectedClient.address || "") ||
       String(draft.city || "") !== String(selectedClient.city || "") ||
       String(draft.province || "") !== String(selectedClient.province || "") ||
-      normalizePostal(draft.postal) !== normalizePostal(selectedClient.postal) ||
+      normalizePostal(draft.postal) !== normalizePostal(selectedClient.postal) || // removes the formatting before checking
       String(draft.propertyType || "") !== String(selectedClient.propertyType || "") ||
       String(draft.notes || "") !== String(selectedClient.notes || "") ||
       String(draft.additionalInstructions || "") !== String(selectedClient.additionalInstructions || "")
@@ -129,20 +148,26 @@ export default function AdminClientsPage() {
   }, [draft, selectedClient]);
 
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
+    if (!hasUnsavedChanges) return; // if there aren't unsaved changes then function exits
 
     const handleBeforeUnload = (event) => {
-      event.preventDefault();
-      event.returnValue = "";
+      event.preventDefault(); // prevents the browser from immediately leaving
+      event.returnValue = ""; // browser confirmation pop up
     };
 
+    /*
+    handles the interaction of links inside the page
+
+    FIX:
+    need to prevent button navigations like logging out
+    */
     const handleLinkClick = (event) => {
-      const target = event.target.closest("a");
-      if (!target) return;
-      const href = target.getAttribute("href");
-      if (!href || href.startsWith("#")) return;
+      const target = event.target.closest("a"); // detects an element is clicked. "a" because next.js renders <Link> as <a> in the DOM
+      if (!target) return; // ignores interaction if it wasn't a link
+      const href = target.getAttribute("href"); // gets the link destination
+      if (!href || href.startsWith("#")) return; // ignores links with no destination
       if (href === "/dashboard/clients") return;
-      if (target.getAttribute("target") === "_blank") return;
+      if (target.getAttribute("target") === "_blank") return; // allows links that open in a new tab. "_blank" open link in new tab
       const ok = window.confirm("You have unsaved changes. Leave this page?");
       if (!ok) {
         event.preventDefault();
@@ -150,8 +175,8 @@ export default function AdminClientsPage() {
       }
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    document.addEventListener("click", handleLinkClick, true);
+    window.addEventListener("beforeunload", handleBeforeUnload); // beforeunload - browser event that is executed when user tries to exit out of page
+    document.addEventListener("click", handleLinkClick, true); // listens for clicke events anywhere on the page
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("click", handleLinkClick, true);

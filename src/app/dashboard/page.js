@@ -271,9 +271,6 @@ export default function DashboardPage() {
                     <button className="admin-btn admin-btn--small" type="button">
                       Profile
                     </button>
-                    <button className="admin-btn admin-btn--small admin-btn--ghost" type="button">
-                      Message
-                    </button>
                   </div>
                 </div>
               ))}
