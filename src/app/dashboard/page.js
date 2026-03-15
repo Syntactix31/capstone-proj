@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminLayout from "../components/AdminLayout.js";
 
+// still need database implementation
 const SERVICES = [
   {
     id: "S-01",
@@ -42,16 +43,17 @@ const SERVICES = [
   },
 ];
 
+// status class
 const STATUS_CLASS = {
-  Pending: "admin-badge admin-badge--pending",
   Confirmed: "admin-badge admin-badge--active",
-  Canceled: "admin-badge admin-badge--muted",
   Active: "admin-badge admin-badge--active",
-  Inactive: "admin-badge admin-badge--muted",
 };
 
+/*
+phone input field formatting
+*/
 function formatPhone(phone) {
-  const digits = String(phone || "").replace(/\D/g, "");
+  const digits = String(phone || "").replace(/\D/g, ""); // input field, takes only digits, removes any spaces
   if (digits.length !== 10) return phone || "No phone";
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
@@ -61,6 +63,7 @@ export default function DashboardPage() {
     const [clients, setClients] = useState([]);
     const [error, setError] = useState("");
 
+    // jiro
     useEffect(() => {
       let alive = true;
 
@@ -90,17 +93,13 @@ export default function DashboardPage() {
       };
     }, []);
 
-    const pendingCount = appointments.filter((appt) => appt.status === "Pending").length;
     const confirmedCount = appointments.filter((appt) => appt.status === "Confirmed").length;
-    const canceledCount = appointments.filter((appt) => appt.status === "Canceled").length;
     const activeServices = SERVICES.filter((service) => service.active).length;
-    const inactiveServices = SERVICES.length - activeServices;
     const activeClients = clients.length;
-    const inactiveClients = 0;
     const nextAppointment = useMemo(
       () =>
         appointments
-          .filter((appt) => appt.status !== "Canceled")
+          .filter((appt) => appt.status === "Confirmed")
           .sort((a, b) => new Date(a.startIso).getTime() - new Date(b.startIso).getTime())[0],
       [appointments]
     );
@@ -121,17 +120,6 @@ export default function DashboardPage() {
               </p>
               {error ? <p className="admin-error">{error}</p> : null}
             </div>
-            <div className="admin-hero-actions">
-              <button className="admin-btn admin-btn--primary" type="button">
-                New Appointment
-              </button>
-              <button className="admin-btn admin-btn--ghost" type="button">
-                Create Estimate
-              </button>
-              <button className="admin-btn admin-btn--ghost" type="button">
-                Add Client
-              </button>
-            </div>
           </section>
           {/*summary grid*/}
           <section className="admin-summary-grid">
@@ -143,19 +131,12 @@ export default function DashboardPage() {
               </span>
             </article>
             <article className="admin-card admin-card--stat">
-              <div className="admin-stat-title">Pending approvals</div>
-              <div className="admin-stat-value">{pendingCount}</div>
-              <span className={STATUS_CLASS.Pending}>Needs review</span>
-            </article>
-            <article className="admin-card admin-card--stat">
               <div className="admin-stat-title">Active services</div>
               <div className="admin-stat-value">{activeServices}</div>
-              <div className="admin-muted">{inactiveServices} inactive</div>
             </article>
             <article className="admin-card admin-card--stat">
               <div className="admin-stat-title">Active clients</div>
               <div className="admin-stat-value">{activeClients}</div>
-              <div className="admin-muted">{inactiveClients} inactive</div>
             </article>
           </section>
 
@@ -177,8 +158,8 @@ export default function DashboardPage() {
                       {nextAppointment.service}
                     </div>
                   </div>
-                  <span className={STATUS_CLASS[nextAppointment.status]}>
-                    {nextAppointment.status}
+                  <span className={STATUS_CLASS.Confirmed}>
+                    Scheduled
                   </span>
                 </div>
                 <div className="admin-list-row">
@@ -197,9 +178,6 @@ export default function DashboardPage() {
             ) : (
               <p className="admin-muted">No upcoming appointments.</p>
             )}
-            {canceledCount ? (
-              <p className="admin-muted">{canceledCount} canceled appointments archived.</p>
-            ) : null}
           </article>
           {/*Services overivew*/}
           <article className="admin-card">
@@ -218,15 +196,6 @@ export default function DashboardPage() {
                       {service.duration} - {service.price}
                     </div>
                   </div>
-                  <span
-                    className={
-                      service.active
-                        ? "admin-badge admin-badge--active"
-                        : "admin-badge admin-badge--muted"
-                    }
-                  >
-                    {service.active ? "Active" : "Inactive"}
-                  </span>
                 </div>
               ))}
             </div>
