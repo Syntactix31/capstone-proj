@@ -44,7 +44,8 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
   }
 
   return (
-    <div className={`absolute top-30 right-0 z-999 pointer-events-none animate-slideIn ${isAnimatingOut ? 'animate-slideOut' : 'animate-slideIn'
+    // Changed from absolute to fixed to prevent horizontal scroll and see it it works properly for mobile viewports
+    <div className={`fixed top-30 right-0 z-999 pointer-events-none animate-slideIn ${isAnimatingOut ? 'animate-slideOut' : 'animate-slideIn'
     }`}>
       
       {/* original width sm:w-80 and mobile w-75 */}
@@ -75,11 +76,14 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
 
 
 
-// Check to see why shadow on drop down is not working it has a weird bevel on the left, right, and bottom sides
+// Check to see why shadow on drop down is not working it has a weird bevel on the left, right, and bottom sides - DONE
 
 // DROP DOWN FOR MOBILE SHOULD FIT FULLSCREEN AND ANIMATE FROM TOP DOWN
 
-// DROP DOWN FOR MEDIUM VIEWPORTS AND SMALLER SHOULD INCLUDE THE ABOUT SERVICES AND CONTACT PAGES
+// DROP DOWN FOR MEDIUM VIEWPORTS AND SMALLER SHOULD INCLUDE THE ABOUT SERVICES AND CONTACT PAGES - DONE
+
+
+
 
 
 

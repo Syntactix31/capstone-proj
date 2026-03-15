@@ -197,3 +197,13 @@ export function BookContent() {
     </div>
   );
 }
+
+
+/**  ======= TO DO =========
+ * services stay outlined/highlight when selected (minor)
+ * 
+ * 
+ * 
+ */
+
+

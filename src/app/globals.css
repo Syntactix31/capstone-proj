@@ -18,6 +18,21 @@ body {
   font-family: Arial, Helvetica, sans-serif, Inter;
 }
 
+/* Potential fix for scrollbar issue moving page content on drop down menu */
+
+/* html {
+  scrollbar-gutter: stable both-edges;
+} */
+
+
+/* Uncomment this to prevent horizontal scroll and keep scrollbar for dropdown animation */
+
+/* html, body {
+  overflow-x: hidden;
+} */
+
+
+
 /* ===== PROJECTS PAGE ===== */
 
 .projectsPage {
