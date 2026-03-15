@@ -178,11 +178,16 @@ hasUnsavedChange becomes true if ^^ is true
     window.addEventListener("beforeunload", handleBeforeUnload); // beforeunload - browser event that is executed when user tries to exit out of page
     document.addEventListener("click", handleLinkClick, true); // listens for clicke events anywhere on the page
     return () => {
+      // removes listeners after returning the function
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("click", handleLinkClick, true);
     };
   }, [hasUnsavedChanges]);
 
+  /*
+  checks if required fields are filled out before saving changes
+  uses optional chaining to access properties in draft without throwing an error if draft or property is undefined
+  */
   const canSave =
     Boolean(draft?.name?.trim()) &&
     isValidEmail(draft?.email) &&
@@ -191,10 +196,13 @@ hasUnsavedChange becomes true if ^^ is true
     isValidPostal(draft?.postal) &&
     Boolean(draft?.propertyType?.trim());
 
+  // can add a new client if theres no input draft or if you can save
   const canAddClient = !draft || canSave;
 
+  // checks if input draft is empty >> blank client page
   const isDraftEmpty = (client) => {
     if (!client) return true;
+    // cleans up the fields, returns the client info or empty field
     const name = String(client.name || "").trim();
     const email = String(client.email || "").trim();
     const phone = normalizePhone(client.phone || "");
@@ -202,29 +210,41 @@ hasUnsavedChange becomes true if ^^ is true
     const postal = String(client.postal || "").trim();
     const notes = String(client.notes || "").trim();
     const extra = String(client.additionalInstructions || "").trim();
-    return !name && !email && !phone && !address && !postal && !notes && !extra;
-  };
+    // turns the strings to booleans then flips it. If theres a value in the input then boolean is false
+    return !name && !email && !phone && !address && !postal && !notes && !extra; // returns true only if every field is empty
+  }; 
 
+
+  // prevents user from adding infinite new client forms
   const removeEmptyDraftIfNeeded = () => {
     if (!draft?.id) return;
     if (hasUnsavedChanges) return;
     if (!isDraftEmpty(draft)) return;
+    // gets previous state of clients list, filter > keep clients whose id is NOT the draft id > updates the setClients useState with the new list
     setClients((prev) => prev.filter((client) => client.id !== draft.id));
   };
 
+
+  /*
+  the regular expression captures the numeric part of the client id,
+  converts it to a number, uses reduece() to run a loop comparing the current number with the current maximum
+  to then determine the largest client ID
+  */
   const nextClientId = (items) => {
-    const maxNum = items.reduce((max, client) => {
-      const match = String(client.id || "").match(/^C-(\d+)$/);
-      const num = match ? Number(match[1]) : 0;
-      return Number.isFinite(num) ? Math.max(max, num) : max;
+    const maxNum = items.reduce((max, client) => { // loops through the array of clients and build a final value
+      const match = String(client.id || "").match(/^C-(\d+)$/); // .match builds an array and the regex captures the digit part into the [1] index
+      const num = match ? Number(match[1]) : 0; // if match exists, convert to number
+      return Number.isFinite(num) ? Math.max(max, num) : max; // gets the larger value between the current max and the current client number
     }, 0);
-    return `C-${String(maxNum + 1).padStart(4, "0")}`;
+    return `C-${String(maxNum + 1).padStart(4, "0")}`; // generate nextClientId by incrementing maxNum and formatting it to 4 digits
   };
 
+
+  // jiro
   const handleSave = async () => {
     if (!canSave) {
       const now = Date.now();
-      if (now - lastSaveWarnAt < 1000) return false;
+      if (now - lastSaveWarnAt < 1000) return false; // click throttling
       setLastSaveWarnAt(now);
       setAlertMessage("Please complete all required fields before saving.");
       setTimeout(() => setAlertMessage(""), 2800);
@@ -277,15 +297,21 @@ hasUnsavedChange becomes true if ^^ is true
     }
   };
 
+  /*
+  adding client functionality
+  includes click throttling
+  */
   const handleAddClient = () => {
-    const now = Date.now();
-    if (now - lastAddAt < 1000) return;
+    const now = Date.now(); // gets time in milliseconds
+    if (now - lastAddAt < 3000) return; // 3 second delay before clicking add new client btn
     setLastAddAt(now);
+    // if canAddClient isn't true then user gets alert message
     if (!canAddClient) {
       setAlertMessage("You have a new client form in progress. Please complete it before adding another.");
-      setTimeout(() => setAlertMessage(""), 2800);
+      setTimeout(() => setAlertMessage(""), 3000);
       return;
     }
+    // unsaved changes popup
     if (hasUnsavedChanges) {
       setPendingClientId("__new__");
       setShowUnsavedModal(true);
@@ -293,7 +319,7 @@ hasUnsavedChange becomes true if ^^ is true
     }
     const newClient = {
       id: nextClientId(clients),
-      _isNew: true,
+      _isNew: true, // create new client in backend
       name: "",
       email: "",
       phone: "",
@@ -305,16 +331,20 @@ hasUnsavedChange becomes true if ^^ is true
       notes: "",
       additionalInstructions: "",
     };
-    setClients((prev) => [newClient, ...prev]);
+    setClients((prev) => [newClient, ...prev]); // updates client state and inserts newClient in front
     setSelectedId(newClient.id);
-    setDraft(newClient);
+    setDraft(newClient); // sets form draft to newClient
   };
 
+/*
+when user selects a different client from the list
+ensures that user is prompted with a warning when there is unsaved changes
+*/
   const handleSelectClient = (clientId) => {
     if (clientId === selectedId) return;
     if (hasUnsavedChanges) {
       const now = Date.now();
-      if (now - lastSwitchWarnAt < 1000) return;
+      if (now - lastSwitchWarnAt < 1000) return; // 1 sec delay
       setLastSwitchWarnAt(now);
       setPendingClientId(clientId);
       setShowUnsavedModal(true);
