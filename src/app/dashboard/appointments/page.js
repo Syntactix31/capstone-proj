@@ -13,7 +13,6 @@ const SERVICES = [
 
 const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
-  Canceled: "admin-badge admin-badge--muted",
 };
 
 function prettyServiceName(serviceIdOrName) {
@@ -87,6 +86,7 @@ export default function AdminAppointmentsPage() {
   const calendarScrollRef = useRef(null);
 
   // Pull from Google Calendar (via API in /api/admin/appointments)
+  // jiro
   async function refreshAppointments() {
     setLoading(true);
     setError("");
@@ -99,6 +99,7 @@ export default function AdminAppointmentsPage() {
         return;
       }
 
+      // checks if the appointments data is an array, if not then use empty array
       const appts = Array.isArray(data.appointments) ? data.appointments : [];
 
       // Map into the shape the UI expects
@@ -154,7 +155,7 @@ export default function AdminAppointmentsPage() {
   }, []);
 
 
-  const upcoming = appointments.filter((appt) => appt.status !== "Canceled").length;
+  const upcoming = appointments.filter((appt) => appt.status === "Confirmed").length;
 
   // Since Google events are real bookings, treat them as Confirmed
   const bookedAppointments = appointments.filter((appt) => appt.status === "Confirmed");
@@ -185,12 +186,14 @@ export default function AdminAppointmentsPage() {
     return hours;
   }, [calendarStartHour, calendarEndHour]);
 
+  // 24 to 12 hour clock formatting
   const formatHourLabel = (hour) => {
     const period = hour >= 12 ? "PM" : "AM";
-    const normalized = hour % 12 === 0 ? 12 : hour % 12;
+    const normalized = hour % 12 === 0 ? 12 : hour % 12; // checks if hour modulus 12 is = to 0, then it stays 12. Elsewise hour % 12 = (the hour in 12hr format)
     return `${normalized}${period}`;
   };
 
+  // time slot intervals - used for when user wants to create a new appointment and has to choose a timeslot
   const timeSlots = useMemo(() => {
     const slots = [];
     for (let hour = 0; hour < 24; hour += 1) {
@@ -206,8 +209,15 @@ export default function AdminAppointmentsPage() {
 
   const weekDays = useMemo(() => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], []);
 
+  // splits the ISOString fomratted date and takes the date segment only
   const formatDateKey = (date) => date.toISOString().split("T")[0];
 
+  /* gets the day that starts off the week (sundays)
+  getDay() returns the day of the week as a number (0-6)
+  Example : March 16 Monday (current day) - jsDay (Monday would be [1]) = March 15 Sunday 
+
+  getWeekStart is to get the current week of whichever day is currently selected
+  */
   const getWeekStart = (date) => {
     const jsDay = date.getDay();
     const start = new Date(date);
@@ -216,9 +226,12 @@ export default function AdminAppointmentsPage() {
     return start;
   };
 
+  /*
+  builds an array of 7 elements representing the day of the week
+  */
   const weekDates = useMemo(() => {
     const start = getWeekStart(currentDate);
-    return Array.from({ length: 7 }, (_, idx) => {
+    return Array.from({ length: 7 }, (_, idx) => { // '_' unused element, idx - current index
       const next = new Date(start);
       next.setDate(start.getDate() + idx);
       return next;
@@ -269,7 +282,7 @@ export default function AdminAppointmentsPage() {
 
   const calendarEvents = useMemo(() => {
     return appointments
-      .filter((appt) => appt.status !== "Canceled")
+      .filter((appt) => appt.status === "Confirmed")
       .map((appt) => {
         const time24 = to24h(appt.time); 
         const hour = Number(time24.split(":")[0] || 0);
