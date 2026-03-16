@@ -44,6 +44,7 @@ export default function QuoteClient() {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [summary, setSummary] = useState("");
   const [instantEstimates, setInstantEstimates] = useState({}); // Changed to object: {fence: estimate, sod: estimate}
@@ -148,7 +149,7 @@ export default function QuoteClient() {
     return null;
   };
 
-  // Fetch estimates for ALL selected services
+  // Estimate for just each service but when mutplie services selected
   const fetchInstantEstimates = async () => {
     const newEstimates = {};
     const newErrors = {};
@@ -182,13 +183,13 @@ export default function QuoteClient() {
 
   const handleEstimatePreview = async () => {
     if (!validateForm()) return;
-    setIsSubmitting(true);
+    setIsCalculating(true);
     try {
       await fetchInstantEstimates();
     } catch (err) {
       console.error(err);
     } finally {
-      setIsSubmitting(false);
+      setIsCalculating(false);
     }
   };
 
@@ -199,10 +200,8 @@ export default function QuoteClient() {
     setIsSubmitting(true);
 
     try {
-      // Get all estimates if not already loaded
       await fetchInstantEstimates();
 
-      // Build HTML tables for each service
       const projectTablesHTML = selectedServices.map(service => {
         const project = formData.project[service.key];
         const projectFieldsHTML = Object.entries(project)
@@ -325,6 +324,47 @@ export default function QuoteClient() {
     }
   };
 
+  // Fetch estimate for one service (individual buttons)
+  const fetchSingleEstimate = async (serviceKey) => {
+    if (!ESTIMATE_SERVICE_KEYS.has(serviceKey)) return;
+
+    try {
+      const payload = buildEstimatePayload(serviceKey);
+      if (!payload) return;
+
+      const res = await fetch("/api/estimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setInstantEstimates((prev) => ({
+          ...prev,
+          [serviceKey]: data,
+        }));
+        setEstimateErrors((prev) => ({
+          ...prev,
+          [serviceKey]: undefined,
+        }));
+      } else {
+        setEstimateErrors((prev) => ({
+          ...prev,
+          [serviceKey]: data?.error || "Estimate unavailable",
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+      setEstimateErrors((prev) => ({
+        ...prev,
+        [serviceKey]: "Estimate calculation failed",
+      }));
+    }
+  };
+
+
   const resetForm = () => {
     setFormData({
       client: { name: "", address: "", email: "", phone: "" },
@@ -361,7 +401,7 @@ export default function QuoteClient() {
             href="/services" 
             className="rounded-2xl bg-[#477a40] px-8 py-4 text-lg font-bold text-white hover:bg-white hover:border-[#477A40] hover:text-[#477A40] hover:scale-105 hover:border-2 transition-all shadow-lg"
           >
-            Select Services First →
+            Select a Service First →
           </Link>
         </main>
       </div>
@@ -578,45 +618,79 @@ export default function QuoteClient() {
                 </div>
               )}
 
-              {/* Per-service estimate preview */}
-              {ESTIMATE_SERVICE_KEYS.has(service.key) && (
-                <div className="mt-8 pt-6 border-t border-gray-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-bold text-[#477a40]">{service.title} Estimate</h4>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const payload = buildEstimatePayload(service.key);
-                        if (payload) fetch("/api/estimate", { /* ... */ }); // Single service calc
-                      }}
-                      className="text-sm bg-[#477a40]/20 hover:bg-[#477a40]/30 px-3 py-1 rounded-lg text-[#477a40] font-medium"
-                    >
-                      Calculate
-                    </button>
-                  </div>
-                  {estimateErrors[service.key] && (
-                    <p className="text-sm text-red-600 mb-3">{estimateErrors[service.key]}</p>
-                  )}
-                  {instantEstimates[service.key] && (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <div className="p-3 bg-white rounded-lg border">
-                        <p className="text-xs text-gray-500 uppercase">Subtotal</p>
-                        <p className="font-bold">{formatMoney(instantEstimates[service.key].subtotal)}</p>
+           {/*       selectedServices.length > 1 &&        */}
+            {ESTIMATE_SERVICE_KEYS.has(service.key) && (
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                  <h4 className="text-xl font-extrabold border-b-2 border-[#477a40] pb-2">{service.title} Instant Estimate</h4>
+                  <button
+                    type="button"
+                    onClick={() => fetchSingleEstimate(service.key)}
+                    className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white hover:bg-[#3a6634] hover:cursor-pointer active:scale-95"
+                  >
+                    Calculate
+                  </button>
+                </div>
+
+                {estimateErrors[service.key] && (
+                  <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {estimateErrors[service.key]}
+                  </p>
+                )}
+
+                {instantEstimates[service.key] && (
+                  <div className="mt-4 space-y-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="rounded-lg border border-gray-200 bg-white p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Subtotal</p>
+                        <p className="text-lg font-bold text-gray-900">
+                          {formatMoney(instantEstimates[service.key].subtotal, instantEstimates[service.key]?.currency || "CAD")}
+                        </p>
                       </div>
-                      <div className="p-3 bg-white rounded-lg border">
-                        <p className="text-xs text-gray-500 uppercase">Tax</p>
-                        <p className="font-bold">{formatMoney(instantEstimates[service.key].tax)}</p>
+                      <div className="rounded-lg border border-gray-200 bg-white p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tax</p>
+                        <p className="text-lg font-bold text-gray-900">
+                          {formatMoney(instantEstimates[service.key].tax, instantEstimates[service.key]?.currency || "CAD")}
+                        </p>
                       </div>
-                      <div className="p-3 bg-white rounded-lg border">
-                        <p className="text-xs text-gray-500 uppercase">Total</p>
-                        <p className="font-bold text-[#477a40] text-lg">{formatMoney(instantEstimates[service.key].total)}</p>
+                      <div className="rounded-lg border border-gray-200 bg-white p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total</p>
+                        <p className="text-lg font-bold text-[#477a40]">
+                          {formatMoney(instantEstimates[service.key].total, instantEstimates[service.key]?.currency || "CAD")}
+                        </p>
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {Array.isArray(instantEstimates[service.key].lineItems) && 
+                    instantEstimates[service.key].lineItems.length > 0 && (
+                      <div className="rounded-lg border border-gray-200 bg-white p-3">
+                        <p className="mb-2 text-sm font-bold text-gray-900">Line Items</p>
+                        <ul className="space-y-1 text-sm text-gray-700 max-h-48 overflow-y-auto">
+                          {instantEstimates[service.key].lineItems.map((item, idx) => (
+                            <li key={`${service.key}-${item.label}-${idx}`} className="flex items-center justify-between gap-3 py-1 border-b border-gray-100 last:border-b-0">
+                              <span className="truncate">{item.label}</span>
+                              <span className="font-semibold text-gray-900 min-w-[80px] text-right">
+                                {formatMoney(item.total, instantEstimates[service.key].currency)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             </section>
           ))}
+
+
+
+{/* {selectedServices.length === 1 && ESTIMATE_SERVICE_KEYS.has(service.key) && ( )} */}
+
+
+
+
           
           {/* File Upload - Shared */}
           <section className="rounded-xl border border-[#477a40]/20 p-8 bg-white/50 shadow-lg">
@@ -631,27 +705,91 @@ export default function QuoteClient() {
             </div>
           </section>
 
-          {/* Calculate All Button */}
-          {selectedServices.some(s => ESTIMATE_SERVICE_KEYS.has(s.key)) && (
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={handleEstimatePreview}
-                disabled={isSubmitting}
-                className="rounded-xl bg-[#477a40] px-8 py-3 text-base font-bold text-white hover:bg-[#3a6634] disabled:opacity-60 mb-6"
-              >
-                {isSubmitting ? "Calculating..." : `Calculate All Estimates (${selectedServices.filter(s => ESTIMATE_SERVICE_KEYS.has(s.key)).length})`}
-              </button>
-            </div>
+          {/* Calculate All Button Will be replaced with a project total estimate section */}
+          {selectedServices.length > 1 && selectedServices.some(s => ESTIMATE_SERVICE_KEYS.has(s.key)) && (
+            <section className="rounded-xl border border-[#477a40]/20 p-8 bg-white/50 shadow-lg">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="text-2xl font-extrabold border-b-2 border-[#477a40] pb-2">Project Summary</h3>
+                <button
+                  type="button"
+                  onClick={handleEstimatePreview}
+                  disabled={isCalculating}
+                  className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white active:scale-95 hover:bg-[#3a6634] disabled:opacity-60 hover:cursor-pointer"
+                >
+                  {isCalculating ? "Calculating..." : `Calculate All (${selectedServices.filter(s => ESTIMATE_SERVICE_KEYS.has(s.key)).length})`}
+                </button>
+              </div>
+
+              {selectedServices.filter(s => ESTIMATE_SERVICE_KEYS.has(s.key)).length === 0 && (
+                <p className="mt-3 text-sm text-gray-600">
+                  Instant estimates available for Fence, Deck & Railing, Pergola, Sod, and Trees & Shrubs.
+                </p>
+              )}
+
+              {Object.values(estimateErrors).some(error => error) && (
+                <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  Some estimates unavailable. Check individual service calculators above.
+                </p>
+              )}
+
+              {/* Show grand total when ALL estimates loaded */}
+              {selectedServices.filter(s => ESTIMATE_SERVICE_KEYS.has(s.key)).every(s => instantEstimates[s.key]) && (
+                <div className="mt-4 space-y-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border border-gray-200 bg-white p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Project Subtotal</p>
+                      <p className="text-lg font-extrabold text-gray-900">
+                        {formatMoney(
+                          Object.values(instantEstimates).reduce((sum, est) => sum + (est.subtotal || 0), 0)
+                        )}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tax</p>
+                      <p className="text-lg font-extrabold text-gray-900">
+                        {formatMoney(
+                          Object.values(instantEstimates).reduce((sum, est) => sum + (est.tax || 0), 0)
+                        )}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total</p>
+                      <p className="text-lg font-extrabold text-[#477a40]">
+                        {formatMoney(
+                          Object.values(instantEstimates).reduce((sum, est) => sum + (est.total || 0), 0)
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {Object.values(instantEstimates).some(est => Array.isArray(est.lineItems) && est.lineItems.length > 0) && (
+                    <div className="rounded-lg border border-gray-200 bg-white p-6">
+                      <h4 className="mb-4 text-sm font-bold text-gray-900 uppercase tracking-wide">Service Breakdown</h4>
+                      <div className="space-y-2">
+                        {selectedServices.map(service => instantEstimates[service.key] && (
+                          <div key={service.key} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-b-0">
+                            <span className="font-medium text-gray-900">{service.title}</span>
+                            <span className="font-bold text-[#477a40]">
+                              {formatMoney(instantEstimates[service.key].total)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
           )}
+
 
           {/* Submit Button */}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-2xl bg-[#477a40] px-8 py-4 text-xl font-bold text-white hover:bg-white hover:border-[#477A40] hover:text-[#477A40] hover:scale-105 hover:border-2 transition-all shadow-xl disabled:opacity-50"
+            className="w-full flex items-center justify-center text-center max-h-15 rounded-2xl bg-[#477a40] px-8 py-4 text-xl font-bold text-white hover:cursor-pointer hover:bg-white hover:border-[#477A40] hover:text-[#477A40] hover:scale-105 hover:border-2 active:scale-95 shadow-xl transition-all disabled:opacity-50"
           >
-            {isSubmitting ? "Sending..." : `Send Estimate Request for ${selectedServices.length} Service${selectedServices.length > 1 ? 's' : ''}`}
+            {isSubmitting ? "Sending..." : `${selectedServices.length > 1 ? `Send Estimate Request for ${selectedServices.length} Services` : 'Send Estimate Request'}`}
           </button>
         </form>
       </main>
@@ -662,3 +800,14 @@ export default function QuoteClient() {
     </div>
   );
 }
+
+ 
+
+
+// ====================================     DO NOT SYNC TO MAIN OR PULL FROM MAIN REPO!!!!!   =========================================
+
+//                                          DO NOT COMMIT THIS FILE TO GITHUB PUBLIC REPO!!!!!
+
+
+
+
