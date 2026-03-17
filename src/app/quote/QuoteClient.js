@@ -426,6 +426,7 @@ export default function QuoteClient() {
                 <label className="block text-sm font-bold text-gray-900 mb-2">Full Name *</label>
                 <input
                   type="text"
+                  maxLength={35}
                   value={formData.client.name}
                   onChange={(e) => setFormData({ ...formData, client: { ...formData.client, name: e.target.value } })}
                   className="w-full p-4 border border-gray-300 rounded-xl"
@@ -437,6 +438,7 @@ export default function QuoteClient() {
                 <label className="block text-sm font-bold text-gray-900 mb-2">Email *</label>
                 <input 
                   type="email" 
+                  maxLength={35}
                   value={formData.client.email} 
                   onChange={(e) => setFormData({ ...formData, client: { ...formData.client, email: e.target.value } })} 
                   className="w-full p-4 border border-gray-300 rounded-xl" 
@@ -446,7 +448,8 @@ export default function QuoteClient() {
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-gray-900 mb-2">Home Address *</label>
                 <input 
-                  type="text" 
+                  type="text"
+                  maxLength={100} 
                   value={formData.client.address} 
                   onChange={(e) => setFormData({ ...formData, client: { ...formData.client, address: e.target.value } })} 
                   className="w-full p-4 border border-gray-300 rounded-xl" 
@@ -456,9 +459,14 @@ export default function QuoteClient() {
               <div>
                 <label className="block text-sm font-bold text-gray-900 mb-2">Phone Number *</label>
                 <input 
-                  type="tel" 
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10} 
                   value={formData.client.phone} 
-                  onChange={(e) => setFormData({ ...formData, client: { ...formData.client, phone: e.target.value } })} 
+                  onChange={(e) => { 
+                    const onlyDigits = e.target.value.replace(/\D/g, "");
+                    setFormData({ ...formData, client: { ...formData.client, phone: onlyDigits }}) 
+                  }} 
                   className="w-full p-4 border border-gray-300 rounded-xl" 
                   required
                 />
@@ -618,8 +626,8 @@ export default function QuoteClient() {
                 </div>
               )}
 
-           {/*       selectedServices.length > 1 &&        */}
-            {ESTIMATE_SERVICE_KEYS.has(service.key) && (
+           {/*      Conditional to change UI based on number of services selected         */}
+            {selectedServices.length > 1 && ESTIMATE_SERVICE_KEYS.has(service.key) && (
               <div className="mt-8 pt-6 border-t border-gray-200">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
                   <h4 className="text-xl font-extrabold border-b-2 border-[#477a40] pb-2">{service.title} Instant Estimate</h4>
@@ -681,18 +689,84 @@ export default function QuoteClient() {
                 )}
               </div>
             )}
-            </section>
-          ))}
-
+  </section>
+))}
 
 
 {/* {selectedServices.length === 1 && ESTIMATE_SERVICE_KEYS.has(service.key) && ( )} */}
+
+  
+{selectedServices.length === 1 && ESTIMATE_SERVICE_KEYS.has(selectedServices[0].key) && (
+<section key={selectedServices[0].key} className="rounded-xl border border-[#477a40]/20 p-8 bg-white/50 shadow-lg">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h3 className="text-2xl font-extrabold border-b-2 border-[#477a40] pb-2">
+        {selectedServices[0].title} Instant Estimate
+      </h3>
+      <button
+        type="button"
+        onClick={() => fetchSingleEstimate(selectedServices[0].key)}
+        disabled={isCalculating}
+        className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white hover:bg-[#3a6634] hover:cursor-pointer active:scale-95 disabled:opacity-60"
+      >
+        Calculate Estimate
+      </button>
+    </div>
+
+    {estimateErrors[selectedServices[0].key] && (
+      <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        {estimateErrors[selectedServices[0].key]}
+      </p>
+    )}
+
+    {instantEstimates[selectedServices[0].key] && (
+      <div className="mt-4 space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-gray-200 bg-white p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Subtotal</p>
+            <p className="text-lg font-extrabold text-gray-900">
+              {formatMoney(instantEstimates[selectedServices[0].key].subtotal, instantEstimates[selectedServices[0].key]?.currency || "CAD")}
+            </p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tax</p>
+            <p className="text-lg font-extrabold text-gray-900">
+              {formatMoney(instantEstimates[selectedServices[0].key].tax, instantEstimates[selectedServices[0].key]?.currency || "CAD")}
+            </p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total</p>
+            <p className="text-lg font-extrabold text-[#477a40]">
+              {formatMoney(instantEstimates[selectedServices[0].key].total, instantEstimates[selectedServices[0].key]?.currency || "CAD")}
+            </p>
+          </div>
+        </div>
+
+        {Array.isArray(instantEstimates[selectedServices[0].key].lineItems) && 
+         instantEstimates[selectedServices[0].key].lineItems.length > 0 && (
+          <div className="rounded-lg border border-gray-200 bg-white p-3">
+            <p className="mb-2 text-sm font-bold text-gray-900">Line Items</p>
+            <ul className="space-y-1 text-sm text-gray-700 max-h-48 overflow-y-auto">
+              {instantEstimates[selectedServices[0].key].lineItems.map((item, idx) => (
+                <li key={`${selectedServices[0].key}-${item.label}-${idx}`} className="flex items-center justify-between gap-3 py-1 border-b border-gray-100 last:border-b-0">
+                  <span className="truncate">{item.label}</span>
+                  <span className="font-semibold text-gray-900 min-w-[80px] text-right">
+                    {formatMoney(item.total, instantEstimates[selectedServices[0].key].currency)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    )}
+</section>
+)}
 
 
 
 
           
-          {/* File Upload - Shared */}
+          {/* File upload - shared to resend email template*/}
           <section className="rounded-xl border border-[#477a40]/20 p-8 bg-white/50 shadow-lg">
             <h3 className="text-2xl font-extrabold border-b-2 border-[#477a40] pb-2 mb-6">Optional Media</h3>
             <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#477a40] transition-all">
@@ -705,7 +779,7 @@ export default function QuoteClient() {
             </div>
           </section>
 
-          {/* Calculate All Button Will be replaced with a project total estimate section */}
+          {/* Calculate All Button Will be replaced with a project total estimate section - rmeoved */}
           {selectedServices.length > 1 && selectedServices.some(s => ESTIMATE_SERVICE_KEYS.has(s.key)) && (
             <section className="rounded-xl border border-[#477a40]/20 p-8 bg-white/50 shadow-lg">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -783,7 +857,6 @@ export default function QuoteClient() {
           )}
 
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={isSubmitting}
