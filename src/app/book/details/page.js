@@ -179,6 +179,7 @@ function DetailsContent() {
                   </label>
                   <input
                     id="firstName"
+                    maxLength={20}
                     name="firstName"
                     type="text"
                     className="details-input"
@@ -192,6 +193,7 @@ function DetailsContent() {
                   </label>
                   <input
                     id="lastName"
+                    maxLength={20}
                     name="lastName"
                     type="text"
                     className="details-input"
@@ -206,6 +208,7 @@ function DetailsContent() {
                 </label>
                 <input
                   id="email"
+                  maxLength={35}
                   name="email"
                   type="email"
                   className="details-input"
@@ -219,6 +222,7 @@ function DetailsContent() {
                 </label>
                 <input
                   id="address"
+                  maxLength={100}
                   name="address"
                   type="text"
                   className="details-input"
@@ -232,6 +236,7 @@ function DetailsContent() {
                 </label>
                 <textarea
                   id="notes"
+                  maxLength={999}
                   name="notes"
                   className="details-textarea"
                   rows={5}
