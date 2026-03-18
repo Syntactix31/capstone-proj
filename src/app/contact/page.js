@@ -131,7 +131,7 @@ export default function Contact() {
  * Add hover animation on the the call and text boxes at the bottom so 
  * when a desktop user hovers on it the phone/email emoji animates
  * 
- * Add Socials section so media links aren't floating
+ * Add Socials section so media links aren't floating text
  * 
  */
 

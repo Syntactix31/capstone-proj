@@ -1,4 +1,4 @@
-// app/book/BookContent.jsx
+// app/book/BookContent.js
 "use client";
 
 import Link from "next/link";
@@ -197,3 +197,13 @@ export function BookContent() {
     </div>
   );
 }
+
+
+/**  ======= TO DO =========
+ * services stay outlined/highlight when selected (minor)
+ * 
+ * 
+ * 
+ */
+
+

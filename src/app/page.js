@@ -111,8 +111,8 @@ export default function Home() {
           </section>
         </div>
 
-        <div>
-          <h2 className="mx-auto w-85 text-center p-2 text-3xl font-extrabold border-b-2 border-[#477a40] text-black">Our Projects</h2>
+        <div className="flex items-center justify-center">
+          <h2 className="mx-10 w-full max-w-sm  lg:w-85 text-center p-2 text-3xl font-extrabold border-b-2 border-[#477a40] text-black">Our Projects</h2>
         </div>
 
 

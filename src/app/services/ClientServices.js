@@ -69,8 +69,8 @@ export default function ClientServices() {
 
   return (
     <>
-      <div className="w-full mx-auto max-w-6xl px-4 mt-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="services-select-wrap">
+        <div className="services-select-grid">
           {services.map((service) => {
             const isSelected = selectedSlugs.includes(service.slug);
 
@@ -81,32 +81,29 @@ export default function ClientServices() {
                 onClick={() => toggleSelect(service.slug)}
                 onMouseDown={(e) => e.preventDefault()}
                 className={[
-                  "select-none text-left rounded-xl border p-6 shadow-sm transition-all duration-200 active:scale-[0.99]",
-                  "bg-white border-[#477a40]/20 hover:shadow-lg",
-                  isSelected
-                    ? "ring-2 ring-[#477a40] bg-[#477a40]/5"
-                    : "",
+                  "service-select-card",
+                  isSelected ? "is-selected" : "",
                 ].join(" ")}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-xl font-extrabold text-gray-900">
+                <div className="service-select-card__header">
+                  <h3 className="service-select-card__title">
                     {service.title}
                   </h3>
                   <span
                     className={[
-                      "shrink-0 rounded-full px-3 py-1 text-xs font-extrabold",
+                      "service-select-card__badge",
                       isSelected
-                        ? "bg-[#477a40] text-white"
-                        : "bg-[#477a40]/10 text-[#2f5a29] border border-[#477a40]/20",
+                        ? "is-selected"
+                        : "is-unselected",
                     ].join(" ")}
                   >
                     {isSelected ? "Selected" : "Select"}
                   </span>
                 </div>
-                <p className="mt-3 text-base leading-relaxed text-gray-600">
+                <p className="service-select-card__description">
                   {service.description}
                 </p>
-                <p className="mt-4 text-sm font-semibold text-gray-500">
+                <p className="service-select-card__meta">
                   Materials included where applicable
                 </p>
               </button>
@@ -117,36 +114,34 @@ export default function ClientServices() {
 
       <div
         className={[
-          "fixed inset-x-0 bottom-0 z-50",
-          "bg-white/90 backdrop-blur border-t border-black/10",
-          "transition-all duration-200 ease-out",
+          "services-select-bar",
           selectedCount > 0
-            ? "translate-y-0 opacity-100"
-            : "translate-y-full opacity-0 pointer-events-none",
+            ? "is-visible"
+            : "is-hidden",
         ].join(" ")}
       >
-        <div className="w-full mx-auto max-w-6xl px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="select-none">
-            <p className="text-sm font-extrabold text-gray-900">
+        <div className="services-select-bar__inner">
+          <div className="services-select-bar__copy">
+            <p className="services-select-bar__title">
               {selectedCount > 0 
                 ? `${selectedCount} service${selectedCount > 1 ? 's' : ''} selected: ${selectedServices.map(s => s.title).join(', ')}`
                 : ""
               }
             </p>
-            <p className="text-xs font-semibold text-gray-600">
+            <p className="services-select-bar__text">
               Tap services to select/deselect. Book or get quote with multiple services selected.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="services-select-bar__actions">
             <Link
               href={serviceUrls.book}
-              className="rounded-2xl bg-[#477a40] px-5 py-3 text-sm font-bold text-white hover:cursor-pointer border-2 border-transparent hover:bg-[#f3fff3] hover:border-[#477A40] hover:text-[#477A40] transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl"
+              className="services-select-bar__button services-select-bar__button--primary"
             >
               Book Now
             </Link>
             <Link
               href={serviceUrls.quote}
-              className="rounded-2xl bg-white px-5 py-3 text-sm font-bold text-[#477a40] border-2 border-[#477A40] hover:bg-[#f3fff3] transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl"
+              className="services-select-bar__button services-select-bar__button--secondary"
             >
               Get Quote
             </Link>

@@ -29,7 +29,7 @@ export default function AdminClientsPage() {
   const [draft, setDraft] = useState(null);
   const [phoneFocused, setPhoneFocused] = useState(false);
 
-  // Implemented by jiro
+  // backend
   useEffect(() => {
     let alive = true;
 
@@ -78,30 +78,44 @@ export default function AdminClientsPage() {
     setPhoneFocused(false);
   }, [selectedClient]);
 
-  const normalizePhone = (value) => String(value || "").replace(/\D/g, "");
-  const normalizePostal = (value) =>
+  /*Field formatting + input rules
+
+  */
+  const normalizePhone = (value) => String(value || "").replace(/\D/g, ""); // takes the value or empty, '\D' replaces all non digit chars
+  const normalizePostal = (value) => // Converts all chars to upercase, '^' which = NOT, so anything that isn't a letter or digt is removed
     String(value || "")
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
       .slice(0, 6);
-  const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-  const EMAIL_PATTERN = String.raw`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`;
-  const isValidEmail = (value) => EMAIL_REGEX.test(String(value || "").toLowerCase().trim());
-  const isValidPhone = (value) => /^\d{10}$/.test(normalizePhone(value));
-  const isValidPostal = (value) => /^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(normalizePostal(value));
+  const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/; // valid email pattern rules
+  const EMAIL_PATTERN = String.raw`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`; // string format
+  const isValidEmail = (value) => EMAIL_REGEX.test(String(value || "").toLowerCase().trim()); // tests the input if it matches the email pattern
+  const isValidPhone = (value) => /^\d{10}$/.test(normalizePhone(value)); // digits only must equal to 10
+  const isValidPostal = (value) => /^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(normalizePostal(value)); // postal code rules
   const formatPostalDisplay = (value) => {
     const raw = normalizePostal(value);
-    if (!raw) return "";
-    const head = raw.slice(0, 3);
-    const tail = raw.slice(3);
-    return tail ? `${head} ${tail}` : head;
+    if (!raw) return ""; // no postal code then returns string empty
+    const head = raw.slice(0, 3); // takes first 3 chars
+    const tail = raw.slice(3); // takes last 3 chars
+    return tail ? `${head} ${tail}` : head; // if there isn't tail (last 3 chars) then return only the first 3
   };
+  /*
+  Ensures that the phone number is exactly 10 digits and if it isn't then string is returned empty
+  then phone number formatting (xxx)-xxx-xxxx
+  */
   const formatPhoneDisplay = (value) => {
     const digits = normalizePhone(value);
     if (digits.length !== 10) return "";
     return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
   };
 
+  /*
+  checks if there is a draft for the phone input field
+  if not then it should return empty
+  checks if input field is focused
+  if it is then phonedisplayvalue will = the draft state of the phone field
+  also formats the phone display text when field isn't in focus
+  */
   const phoneDisplayValue = !draft
     ? ""
     : phoneFocused
@@ -112,16 +126,21 @@ export default function AdminClientsPage() {
 
   const postalDisplayValue = !draft ? "" : formatPostalDisplay(draft.postal);
 
+/*
+Checks the client forms if there is any unsaved changes
+checks if input draft isn't equal to the selectedClient's saved info
+hasUnsavedChange becomes true if ^^ is true
+*/
   const hasUnsavedChanges = useMemo(() => {
-    if (!draft || !selectedClient) return false;
+    if (!draft || !selectedClient) return false; // if either value is null then hasUnsavedChanges returns false
     return (
       String(draft.name || "") !== String(selectedClient.name || "") ||
       String(draft.email || "") !== String(selectedClient.email || "") ||
-      normalizePhone(draft.phone) !== normalizePhone(selectedClient.phone) ||
+      normalizePhone(draft.phone) !== normalizePhone(selectedClient.phone) || // removes the formatting before checking
       String(draft.address || "") !== String(selectedClient.address || "") ||
       String(draft.city || "") !== String(selectedClient.city || "") ||
       String(draft.province || "") !== String(selectedClient.province || "") ||
-      normalizePostal(draft.postal) !== normalizePostal(selectedClient.postal) ||
+      normalizePostal(draft.postal) !== normalizePostal(selectedClient.postal) || // removes the formatting before checking
       String(draft.propertyType || "") !== String(selectedClient.propertyType || "") ||
       String(draft.notes || "") !== String(selectedClient.notes || "") ||
       String(draft.additionalInstructions || "") !== String(selectedClient.additionalInstructions || "")
@@ -129,20 +148,26 @@ export default function AdminClientsPage() {
   }, [draft, selectedClient]);
 
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
+    if (!hasUnsavedChanges) return; // if there aren't unsaved changes then function exits
 
     const handleBeforeUnload = (event) => {
-      event.preventDefault();
-      event.returnValue = "";
+      event.preventDefault(); // prevents the browser from immediately leaving
+      event.returnValue = ""; // browser confirmation pop up
     };
 
+    /*
+    handles the interaction of links inside the page
+
+    FIX:
+    need to prevent button navigations like logging out
+    */
     const handleLinkClick = (event) => {
-      const target = event.target.closest("a");
-      if (!target) return;
-      const href = target.getAttribute("href");
-      if (!href || href.startsWith("#")) return;
+      const target = event.target.closest("a"); // detects an element is clicked. "a" because next.js renders <Link> as <a> in the DOM
+      if (!target) return; // ignores interaction if it wasn't a link
+      const href = target.getAttribute("href"); // gets the link destination
+      if (!href || href.startsWith("#")) return; // ignores links with no destination
       if (href === "/dashboard/clients") return;
-      if (target.getAttribute("target") === "_blank") return;
+      if (target.getAttribute("target") === "_blank") return; // allows links that open in a new tab. "_blank" open link in new tab
       const ok = window.confirm("You have unsaved changes. Leave this page?");
       if (!ok) {
         event.preventDefault();
@@ -150,14 +175,19 @@ export default function AdminClientsPage() {
       }
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    document.addEventListener("click", handleLinkClick, true);
+    window.addEventListener("beforeunload", handleBeforeUnload); // beforeunload - browser event that is executed when user tries to exit out of page
+    document.addEventListener("click", handleLinkClick, true); // listens for clicke events anywhere on the page
     return () => {
+      // removes listeners after returning the function
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("click", handleLinkClick, true);
     };
   }, [hasUnsavedChanges]);
 
+  /*
+  checks if required fields are filled out before saving changes
+  uses optional chaining to access properties in draft without throwing an error if draft or property is undefined
+  */
   const canSave =
     Boolean(draft?.name?.trim()) &&
     isValidEmail(draft?.email) &&
@@ -166,10 +196,13 @@ export default function AdminClientsPage() {
     isValidPostal(draft?.postal) &&
     Boolean(draft?.propertyType?.trim());
 
+  // can add a new client if theres no input draft or if you can save
   const canAddClient = !draft || canSave;
 
+  // checks if input draft is empty >> blank client page
   const isDraftEmpty = (client) => {
     if (!client) return true;
+    // cleans up the fields, returns the client info or empty field
     const name = String(client.name || "").trim();
     const email = String(client.email || "").trim();
     const phone = normalizePhone(client.phone || "");
@@ -177,29 +210,41 @@ export default function AdminClientsPage() {
     const postal = String(client.postal || "").trim();
     const notes = String(client.notes || "").trim();
     const extra = String(client.additionalInstructions || "").trim();
-    return !name && !email && !phone && !address && !postal && !notes && !extra;
-  };
+    // turns the strings to booleans then flips it. If theres a value in the input then boolean is false
+    return !name && !email && !phone && !address && !postal && !notes && !extra; // returns true only if every field is empty
+  }; 
 
+
+  // prevents user from adding infinite new client forms
   const removeEmptyDraftIfNeeded = () => {
     if (!draft?.id) return;
     if (hasUnsavedChanges) return;
     if (!isDraftEmpty(draft)) return;
+    // gets previous state of clients list, filter > keep clients whose id is NOT the draft id > updates the setClients useState with the new list
     setClients((prev) => prev.filter((client) => client.id !== draft.id));
   };
 
+
+  /*
+  the regular expression captures the numeric part of the client id,
+  converts it to a number, uses reduece() to run a loop comparing the current number with the current maximum
+  to then determine the largest client ID
+  */
   const nextClientId = (items) => {
-    const maxNum = items.reduce((max, client) => {
-      const match = String(client.id || "").match(/^C-(\d+)$/);
-      const num = match ? Number(match[1]) : 0;
-      return Number.isFinite(num) ? Math.max(max, num) : max;
+    const maxNum = items.reduce((max, client) => { // loops through the array of clients and build a final value
+      const match = String(client.id || "").match(/^C-(\d+)$/); // .match builds an array and the regex captures the digit part into the [1] index
+      const num = match ? Number(match[1]) : 0; // if match exists, convert to number
+      return Number.isFinite(num) ? Math.max(max, num) : max; // gets the larger value between the current max and the current client number
     }, 0);
-    return `C-${String(maxNum + 1).padStart(4, "0")}`;
+    return `C-${String(maxNum + 1).padStart(4, "0")}`; // generate nextClientId by incrementing maxNum and formatting it to 4 digits
   };
 
+
+  // backend
   const handleSave = async () => {
     if (!canSave) {
       const now = Date.now();
-      if (now - lastSaveWarnAt < 1000) return false;
+      if (now - lastSaveWarnAt < 1000) return false; // click throttling
       setLastSaveWarnAt(now);
       setAlertMessage("Please complete all required fields before saving.");
       setTimeout(() => setAlertMessage(""), 2800);
@@ -252,15 +297,21 @@ export default function AdminClientsPage() {
     }
   };
 
+  /*
+  adding client functionality
+  includes click throttling
+  */
   const handleAddClient = () => {
-    const now = Date.now();
-    if (now - lastAddAt < 1000) return;
+    const now = Date.now(); // gets time in milliseconds
+    if (now - lastAddAt < 3000) return; // 3 second delay before clicking add new client btn
     setLastAddAt(now);
+    // if canAddClient isn't true then user gets alert message
     if (!canAddClient) {
       setAlertMessage("You have a new client form in progress. Please complete it before adding another.");
-      setTimeout(() => setAlertMessage(""), 2800);
+      setTimeout(() => setAlertMessage(""), 3000);
       return;
     }
+    // unsaved changes popup
     if (hasUnsavedChanges) {
       setPendingClientId("__new__");
       setShowUnsavedModal(true);
@@ -268,7 +319,7 @@ export default function AdminClientsPage() {
     }
     const newClient = {
       id: nextClientId(clients),
-      _isNew: true,
+      _isNew: true, // create new client in backend
       name: "",
       email: "",
       phone: "",
@@ -280,16 +331,20 @@ export default function AdminClientsPage() {
       notes: "",
       additionalInstructions: "",
     };
-    setClients((prev) => [newClient, ...prev]);
+    setClients((prev) => [newClient, ...prev]); // updates client state and inserts newClient in front
     setSelectedId(newClient.id);
-    setDraft(newClient);
+    setDraft(newClient); // sets form draft to newClient
   };
 
+/*
+when user selects a different client from the list
+ensures that user is prompted with a warning when there is unsaved changes
+*/
   const handleSelectClient = (clientId) => {
     if (clientId === selectedId) return;
     if (hasUnsavedChanges) {
       const now = Date.now();
-      if (now - lastSwitchWarnAt < 1000) return;
+      if (now - lastSwitchWarnAt < 1000) return; // 1 sec delay
       setLastSwitchWarnAt(now);
       setPendingClientId(clientId);
       setShowUnsavedModal(true);
@@ -297,6 +352,29 @@ export default function AdminClientsPage() {
     }
     removeEmptyDraftIfNeeded();
     setSelectedId(clientId);
+  };
+
+  const handleDeleteClientUI = () => {
+    if (!draft?.id) return;
+
+    const shouldDelete = window.confirm(
+      `Delete ${draft.name || "this client"} from the current UI list? This will not affect the backend.`
+    );
+    if (!shouldDelete) return;
+
+    const currentIndex = clients.findIndex((client) => client.id === draft.id);
+    const remainingClients = clients.filter((client) => client.id !== draft.id);
+    const nextSelectedClient =
+      remainingClients[currentIndex] ||
+      remainingClients[currentIndex - 1] ||
+      remainingClients[0] ||
+      null;
+
+    setClients(remainingClients);
+    setSelectedId(nextSelectedClient?.id ?? null);
+    setDraft(nextSelectedClient);
+    setAlertMessage("Client removed from the current UI list.");
+    setTimeout(() => setAlertMessage(""), 2500);
   };
 
   return (
@@ -611,6 +689,16 @@ export default function AdminClientsPage() {
                       }
                     />
                   </label>
+                </div>
+                <div className="admin-client-actions">
+                  <button
+                    className="admin-btn admin-btn--danger"
+                    type="button"
+                    onClick={handleDeleteClientUI}
+                    disabled={busy}
+                  >
+                    Delete client
+                  </button>
                 </div>
               </div>
             </>

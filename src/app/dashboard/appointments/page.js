@@ -13,7 +13,6 @@ const SERVICES = [
 
 const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
-  Canceled: "admin-badge admin-badge--muted",
 };
 
 function prettyServiceName(serviceIdOrName) {
@@ -35,17 +34,6 @@ function to24h(time12h) {
   if (hh === 12) hh = 0;
   if (mer === "PM") hh += 12;
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-}
-
-function to12h(time24) {
-  // "14:30" -> "2:30 PM"
-  const [hhRaw, mmRaw] = String(time24 || "").split(":");
-  const hh = Number(hhRaw);
-  const mm = Number(mmRaw);
-  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return "";
-  const mer = hh >= 12 ? "PM" : "AM";
-  const h12 = hh % 12 === 0 ? 12 : hh % 12;
-  return `${h12}:${String(mm).padStart(2, "0")} ${mer}`;
 }
 
 export default function AdminAppointmentsPage() {
@@ -87,6 +75,7 @@ export default function AdminAppointmentsPage() {
   const calendarScrollRef = useRef(null);
 
   // Pull from Google Calendar (via API in /api/admin/appointments)
+  // backend
   async function refreshAppointments() {
     setLoading(true);
     setError("");
@@ -99,6 +88,7 @@ export default function AdminAppointmentsPage() {
         return;
       }
 
+      // checks if the appointments data is an array, if not then use empty array
       const appts = Array.isArray(data.appointments) ? data.appointments : [];
 
       // Map into the shape the UI expects
@@ -139,22 +129,25 @@ export default function AdminAppointmentsPage() {
 
   /* matchMedia hook
   - updates isNarrow for mobile layout logic
+  checks if sceen width is smaller or larger than 640px
   */
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const media = window.matchMedia("(max-width: 640px)");
-    const syncMedia = () => setIsNarrow(media.matches);
-    syncMedia();
+    const media = window.matchMedia("(max-width: 640px)") ; // checks if screen size has a width less than 640px
+    const syncMedia = () => setIsNarrow(media.matches); 
+    syncMedia(); // setIsNarrow becomes true, since media.matches = true
     if (media.addEventListener) {
+       // when theres a change in the media query result, run the syncMedia func depending on whether media.matches = true/false
       media.addEventListener("change", syncMedia);
       return () => media.removeEventListener("change", syncMedia);
     }
+    // for older browsers
     media.addListener(syncMedia);
     return () => media.removeListener(syncMedia);
   }, []);
 
 
-  const upcoming = appointments.filter((appt) => appt.status !== "Canceled").length;
+  const upcoming = appointments.filter((appt) => appt.status === "Confirmed").length;
 
   // Since Google events are real bookings, treat them as Confirmed
   const bookedAppointments = appointments.filter((appt) => appt.status === "Confirmed");
@@ -185,12 +178,14 @@ export default function AdminAppointmentsPage() {
     return hours;
   }, [calendarStartHour, calendarEndHour]);
 
+  // 24 to 12 hour clock formatting
   const formatHourLabel = (hour) => {
     const period = hour >= 12 ? "PM" : "AM";
-    const normalized = hour % 12 === 0 ? 12 : hour % 12;
+    const normalized = hour % 12 === 0 ? 12 : hour % 12; // checks if hour modulus 12 is = to 0, then it stays 12. Elsewise hour % 12 = (the hour in 12hr format)
     return `${normalized}${period}`;
   };
 
+  // time slot intervals - used for when user wants to create a new appointment and has to choose a timeslot
   const timeSlots = useMemo(() => {
     const slots = [];
     for (let hour = 0; hour < 24; hour += 1) {
@@ -206,8 +201,15 @@ export default function AdminAppointmentsPage() {
 
   const weekDays = useMemo(() => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], []);
 
+  // splits the ISOString fomratted date and takes the date segment only
   const formatDateKey = (date) => date.toISOString().split("T")[0];
 
+  /* gets the day that starts off the week (sundays)
+  getDay() returns the day of the week as a number (0-6)
+  Example : March 16 Monday (current day) - jsDay (Monday would be [1]) = March 15 Sunday 
+
+  getWeekStart is to get the current week of whichever day is currently selected
+  */
   const getWeekStart = (date) => {
     const jsDay = date.getDay();
     const start = new Date(date);
@@ -216,11 +218,14 @@ export default function AdminAppointmentsPage() {
     return start;
   };
 
+  /*
+  builds an array of 7 elements representing the day of the week
+  */
   const weekDates = useMemo(() => {
     const start = getWeekStart(currentDate);
-    return Array.from({ length: 7 }, (_, idx) => {
+    return Array.from({ length: 7 }, (_, idx) => { // '_' unused element, idx - current index
       const next = new Date(start);
-      next.setDate(start.getDate() + idx);
+      next.setDate(start.getDate() + idx); // adds the current index (0–6) to the starting Sunday date to generate each day of the week
       return next;
     });
   }, [currentDate]);
@@ -232,27 +237,35 @@ export default function AdminAppointmentsPage() {
   const weekViewDates = useMemo(() => {
     if (!(isNarrow && viewMode === "week")) return weekDates;
     const start = new Date(currentDate);
-    start.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0); // reset time h,m,s,ms - to ensure consistency between comparing days
     const next = new Date(start);
-    next.setDate(start.getDate() + 1);
-    return [start, next];
-  }, [currentDate, isNarrow, viewMode, weekDates]);
+    next.setDate(start.getDate() + 1); // moves forward 1 day
+    return [start, next]; // returns an array of the 2 days
+  }, [currentDate, isNarrow, viewMode, weekDates]); // if any of these changes, recompute
 
   const dayDate = useMemo(() => {
     const next = new Date(currentDate);
-    next.setHours(0, 0, 0, 0);
+    next.setHours(0, 0, 0, 0); // reset the time on the day again to ensure that we are representing the start of the day
     return next;
   }, [currentDate]);
 
+  /*
+  in a calendar we always want to start off the month on a sunday
+  same way a week does, so we include some days from the previous
+  month to the current month to ensure of this.
+  */
   const monthDates = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    const first = new Date(year, month, 1);
-    const last = new Date(year, month + 1, 0);
+    const first = new Date(year, month, 1); // gets year, month, and first day of the month
+    const last = new Date(year, month + 1, 0); // gets the next month but then uses '0' to get the last day of the previous month
+    // copy of the previous objects
     const start = new Date(first);
     const end = new Date(last);
 
+    // how many days to go backwards to start the month with a sunday
     start.setDate(first.getDate() - first.getDay());
+    // amount of days needed to get to saturday to complete the full week
     end.setDate(last.getDate() + (6 - last.getDay()));
 
     start.setHours(0, 0, 0, 0);
@@ -269,12 +282,11 @@ export default function AdminAppointmentsPage() {
 
   const calendarEvents = useMemo(() => {
     return appointments
-      .filter((appt) => appt.status !== "Canceled")
+      .filter((appt) => appt.status === "Confirmed")
       .map((appt) => {
         const time24 = to24h(appt.time); 
         const hour = Number(time24.split(":")[0] || 0);
-        const gridRowStart = Math.max(hour - calendarStartHour + 1, 1);
-
+        const gridRowStart = Math.max(hour - calendarStartHour + 1, 1); // which row the event is positioned from, +1 so calendar starts at row 1
       
         const span = 1;
 
@@ -370,7 +382,7 @@ export default function AdminAppointmentsPage() {
   }, [nowIndicator]);
 
   // Admin actions that actually change Google Calendar
-  // functions implemented by jiro
+  // backend
   async function cancelOnServer(eventId) {
     const ok = window.confirm("Cancel this appointment? This removes it from Google Calendar and sends cancel emails.");
     if (!ok) return false;
@@ -397,7 +409,7 @@ export default function AdminAppointmentsPage() {
       setBusy(false);
     }
   }
-
+  // backend
   async function rescheduleOnServer(eventId, newDate, newTime) {
     setBusy(true);
     try {
@@ -421,7 +433,7 @@ export default function AdminAppointmentsPage() {
       setBusy(false);
     }
   }
-
+  // backend
   async function createOnServer(payload) {
     setBusy(true);
     try {
@@ -530,11 +542,11 @@ export default function AdminAppointmentsPage() {
   const handleFormSubmit = async (event) => {
     event.preventDefault();
 
-    //jiro
+    //backend
     if (!formState.date || !formState.time) return;
 
     // If editing, reschedule on server (delete+create in your reschedule route)
-    // jiro
+    // backend
     if (editingId) {
       const ok = window.confirm("Reschedule this appointment to the new date/time?");
       if (!ok) return;
@@ -543,13 +555,13 @@ export default function AdminAppointmentsPage() {
       if (success) setIsFormOpen(false);
       return;
     }
-    // jiro
+    // backend
     // If adding, create on server
     if (!formState.firstName || !formState.lastName || !formState.email || !formState.service) {
       alert("Please fill first name, last name, email, and service.");
       return;
     }
-    // jiro
+    // backend
     const payload = {
       service: formState.service, // service id (fence, pergola, etc)
       date: formState.date,
@@ -560,7 +572,7 @@ export default function AdminAppointmentsPage() {
       address: formState.address,
       notes: formState.notes,
     };
-    // jiro
+    // backend
     const success = await createOnServer(payload);
     if (success) setIsFormOpen(false);
   };
@@ -604,16 +616,23 @@ export default function AdminAppointmentsPage() {
     setCurrentDate(next);
   };
 
-  return (
+return (
     <AdminLayout>
+      {/* Main wrapper for the appointments page content */}
       <div className="admin-appointments">
+
+      {/* Hero / page header section showing title, subtitle, and refresh button */}
       <section className="admin-hero">
         <div>
           <p className="admin-kicker">Appointments</p>
           <h1 className="admin-title">Schedule overview</h1>
           <p className="admin-subtitle">Synced with Google Calendar bookings.</p>
+
+          {/* Displays an error message if the appointments failed to load */}
           {error ? <p className="admin-subtitle" style={{ color: "#b91c1c" }}>{error}</p> : null}
         </div>
+
+        {/* Button to manually refresh appointments from the backend / Google Calendar */}
         <div className="admin-hero-actions">
           <button
             className="admin-btn admin-btn--secondary"
@@ -626,16 +645,23 @@ export default function AdminAppointmentsPage() {
         </div>
       </section>
 
+
+      {/* Summary cards showing appointment statistics */}
       <section className="admin-summary-grid">
+
+        {/* Card showing total upcoming appointments */}
         <article className="admin-card admin-card--stat">
           <div className="admin-stat-title">Upcoming</div>
           <div className="admin-stat-value">{upcoming}</div>
           <div className="admin-muted">Next 180 days</div>
         </article>
 
+        {/* Card showing confirmed appointments and button to open booked list modal */}
         <article className="admin-card admin-card--stat">
           <div className="admin-stat-title">Confirmed</div>
           <div className="admin-stat-value">{confirmed}</div>
+
+          {/* Opens modal listing all booked appointments */}
           <button
             type="button"
             className={`${STATUS_CLASS.Confirmed} admin-badge--button`}
@@ -647,16 +673,24 @@ export default function AdminAppointmentsPage() {
         </article>
       </section>
 
+
+      {/* Main calendar container (changes layout depending on day/week/month view and screen size) */}
       <section
         className={`admin-calendar ${viewMode === "day" ? "admin-calendar--day" : ""} ${
           isNarrow && viewMode === "week" ? "admin-calendar--compact-week" : ""
         }`}
       >
+
+        {/* Calendar header with title, view mode buttons, navigation, and add appointment button */}
         <div className="admin-calendar__header">
+
+          {/* Displays the current month and year */}
           <div className="admin-calendar__title-stack">
             <h2 className="admin-calendar__title">
               {currentDate.toLocaleString([], { month: "long", year: "numeric" })}
             </h2>
+
+            {/* Shows large day label when the calendar is in day view */}
             {viewMode === "day" && (
               <div className="admin-calendar__day-label">
                 <div className="admin-calendar__day-label-row">
@@ -669,6 +703,8 @@ export default function AdminAppointmentsPage() {
             )}
           </div>
 
+
+          {/* Buttons that allow switching between Day / Week / Month views */}
           <div className="admin-calendar__mode">
             <button
               type="button"
@@ -677,6 +713,7 @@ export default function AdminAppointmentsPage() {
             >
               Day
             </button>
+
             <button
               type="button"
               className={`admin-calendar__mode-btn ${viewMode === "week" ? "is-active" : ""}`}
@@ -684,6 +721,7 @@ export default function AdminAppointmentsPage() {
             >
               Week
             </button>
+
             <button
               type="button"
               className={`admin-calendar__mode-btn ${viewMode === "month" ? "is-active" : ""}`}
@@ -693,7 +731,11 @@ export default function AdminAppointmentsPage() {
             </button>
           </div>
 
+
+          {/* Navigation controls for moving through the calendar and adding appointments */}
           <div className="admin-calendar__actions">
+
+            {/* Previous / Today / Next navigation buttons */}
             <div className="admin-calendar__nav">
               <button
                 className="admin-calendar__nav-btn"
@@ -703,6 +745,8 @@ export default function AdminAppointmentsPage() {
               >
                 ‹
               </button>
+
+              {/* Resets calendar to today's date */}
               <button
                 className="admin-calendar__nav-btn admin-calendar__nav-btn--today"
                 onClick={handleToday}
@@ -710,6 +754,7 @@ export default function AdminAppointmentsPage() {
               >
                 Today
               </button>
+
               <button
                 className="admin-calendar__nav-btn"
                 onClick={() => shiftDate(1)}
@@ -719,6 +764,8 @@ export default function AdminAppointmentsPage() {
                 ›
               </button>
             </div>
+
+            {/* Opens modal form for creating a new appointment */}
             <button
               className="admin-btn admin-btn--primary"
               onClick={openAddForm}
@@ -730,9 +777,16 @@ export default function AdminAppointmentsPage() {
           </div>
         </div>
 
+
+        {/* Conditional rendering of the calendar body.
+            Shows either the time-grid calendar (day/week) or the month grid view */}
         {viewMode !== "month" ? (
+
+          /* Day / Week calendar layout */
           <div className="admin-calendar__body">
             <div className="admin-calendar__week">
+
+              {/* Weekday header row shown only in week view */}
               {viewMode === "week" && (
                 <div className="admin-calendar__days">
                   {weekViewDates.map((date) => {
@@ -751,8 +805,12 @@ export default function AdminAppointmentsPage() {
                 </div>
               )}
 
+
+              {/* Scrollable calendar grid that holds the hour slots and events */}
               <div className="admin-calendar__scroll" ref={calendarScrollRef}>
                 <div className="admin-calendar__scroll-grid">
+
+                  {/* Left column showing hour labels */}
                   <div className="admin-calendar__times">
                     {calendarSlots.map((hour) => (
                       <div key={hour} className="admin-calendar__time">
@@ -761,11 +819,17 @@ export default function AdminAppointmentsPage() {
                     ))}
                   </div>
 
+
+                  {/* Main grid where appointment events are positioned */}
                   <div className="admin-calendar__grid">
+
+                    {/* Empty rows representing hourly time slots */}
                     {calendarSlots.map((hour) => (
                       <div key={hour} className="admin-calendar__row" />
                     ))}
 
+
+                    {/* Red line showing the current time position in the calendar */}
                     {nowIndicator && (
                       <div className="admin-calendar__now" style={{ top: `${nowIndicator.offset}px` }}>
                         <span className="admin-calendar__now-dot" />
@@ -774,6 +838,8 @@ export default function AdminAppointmentsPage() {
                       </div>
                     )}
 
+
+                    {/* Render appointment events inside the grid */}
                     {visibleEvents.map((appt) => (
                       <div
                         key={appt.eventId}
@@ -782,11 +848,13 @@ export default function AdminAppointmentsPage() {
                             ? "admin-calendar__event--confirmed"
                             : "admin-calendar__event--neutral"
                         }`}
+
+                        /* Grid positioning logic determines which row/time and day column the event appears in */
                         style={{
-                          gridRow: `${appt.gridRow} / span ${appt.span}`,
-                          gridColumn:
+                          gridRow: `${appt.gridRow} / span ${appt.span}`, // determines appt positioning vertically (time)
+                          gridColumn: // determines appts positioning horizontally (day)
                             viewMode === "day"
-                              ? "1 / span 1"
+                              ? "1 / span 1" // start at column 1, span across column 1
                               : isNarrow && viewMode === "week"
                                 ? (() => {
                                     const idx = weekViewDates.findIndex(
@@ -796,8 +864,11 @@ export default function AdminAppointmentsPage() {
                                   })()
                                 : `${appt.gridCol} / span 1`,
                         }}
+
                         role="button"
                         tabIndex={0}
+
+                        /* Opens the appointment details modal when clicked */
                         onClick={() => handleDetails(appt)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter") handleDetails(appt);
@@ -812,8 +883,13 @@ export default function AdminAppointmentsPage() {
               </div>
             </div>
           </div>
+
         ) : (
+
+          /* Month calendar layout */
           <div className="admin-calendar__month">
+
+            {/* Weekday labels for month view */}
             <div className="admin-calendar__month-head">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                 <div key={day} className="admin-calendar__month-day">
@@ -821,11 +897,14 @@ export default function AdminAppointmentsPage() {
                 </div>
               ))}
             </div>
+
+            {/* Grid of days for the month */}
             <div className="admin-calendar__month-grid">
               {monthDates.map((date) => {
                 const key = formatDateKey(date);
                 const isCurrentMonth = date.getMonth() === currentDate.getMonth();
                 const isToday = formatDateKey(date) === formatDateKey(now);
+
                 return (
                   <button
                     key={key}
@@ -833,6 +912,8 @@ export default function AdminAppointmentsPage() {
                     className={`admin-calendar__month-cell ${isCurrentMonth ? "is-current" : "is-muted"} ${
                       isToday ? "is-today" : ""
                     }`}
+
+                    /* Clicking a day switches to day view and shows that specific date */
                     onClick={() => {
                       setCurrentDate(date);
                       setViewMode("day");
@@ -846,10 +927,11 @@ export default function AdminAppointmentsPage() {
           </div>
         )}
       </section>
-
+{/* modal for appointments on the grid */}
       {activeAppointment && (
         <div className="admin-modal">
-          <button
+            {/*for when user clicks outside the form to close it*/}
+          <button 
             className="admin-modal__backdrop"
             onClick={closeDetails}
             aria-label="Close appointment details"
@@ -933,9 +1015,10 @@ export default function AdminAppointmentsPage() {
           </div>
         </div>
       )}
-
+{/* modal corresponding to add appointment form */}
       {isFormOpen && (
-        <div className="admin-modal">
+        <div className="admin-modal admin-modal--scrollable">
+          {/*for when user clicks outside the form to close it*/}
           <button
             className="admin-modal__backdrop"
             onClick={closeForm}
@@ -943,7 +1026,7 @@ export default function AdminAppointmentsPage() {
             type="button"
           />
           <form
-            className="admin-modal__content"
+            className="admin-modal__content admin-modal__content--scrollable"
             role="dialog"
             aria-modal="true"
             onSubmit={handleFormSubmit}
@@ -1089,7 +1172,7 @@ export default function AdminAppointmentsPage() {
           </form>
         </div>
       )}
-
+{/* modal for when user clicks on "booked" button*/}
       {showBookedModal && (
         <div className="admin-modal">
           <button
@@ -1144,7 +1227,7 @@ export default function AdminAppointmentsPage() {
           </div>
         </div>
       )}
-
+{/* confirmation modal for canceling an appointment */}
       {cancelTarget && (
         <div className="admin-modal">
           <button
@@ -1206,4 +1289,3 @@ export default function AdminAppointmentsPage() {
     </AdminLayout>
   );
 }
-
