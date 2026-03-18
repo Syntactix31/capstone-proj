@@ -29,7 +29,7 @@ export default function AdminClientsPage() {
   const [draft, setDraft] = useState(null);
   const [phoneFocused, setPhoneFocused] = useState(false);
 
-  // Implemented by jiro
+  // backend
   useEffect(() => {
     let alive = true;
 
@@ -240,7 +240,7 @@ hasUnsavedChange becomes true if ^^ is true
   };
 
 
-  // jiro
+  // backend
   const handleSave = async () => {
     if (!canSave) {
       const now = Date.now();

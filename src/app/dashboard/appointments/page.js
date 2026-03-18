@@ -75,7 +75,7 @@ export default function AdminAppointmentsPage() {
   const calendarScrollRef = useRef(null);
 
   // Pull from Google Calendar (via API in /api/admin/appointments)
-  // jiro
+  // backend
   async function refreshAppointments() {
     setLoading(true);
     setError("");
@@ -382,7 +382,7 @@ export default function AdminAppointmentsPage() {
   }, [nowIndicator]);
 
   // Admin actions that actually change Google Calendar
-  // jiro
+  // backend
   async function cancelOnServer(eventId) {
     const ok = window.confirm("Cancel this appointment? This removes it from Google Calendar and sends cancel emails.");
     if (!ok) return false;
@@ -409,7 +409,7 @@ export default function AdminAppointmentsPage() {
       setBusy(false);
     }
   }
-  // jiro
+  // backend
   async function rescheduleOnServer(eventId, newDate, newTime) {
     setBusy(true);
     try {
@@ -433,7 +433,7 @@ export default function AdminAppointmentsPage() {
       setBusy(false);
     }
   }
-  // jiro
+  // backend
   async function createOnServer(payload) {
     setBusy(true);
     try {
@@ -542,11 +542,11 @@ export default function AdminAppointmentsPage() {
   const handleFormSubmit = async (event) => {
     event.preventDefault();
 
-    //jiro
+    //backend
     if (!formState.date || !formState.time) return;
 
     // If editing, reschedule on server (delete+create in your reschedule route)
-    // jiro
+    // backend
     if (editingId) {
       const ok = window.confirm("Reschedule this appointment to the new date/time?");
       if (!ok) return;
@@ -555,13 +555,13 @@ export default function AdminAppointmentsPage() {
       if (success) setIsFormOpen(false);
       return;
     }
-    // jiro
+    // backend
     // If adding, create on server
     if (!formState.firstName || !formState.lastName || !formState.email || !formState.service) {
       alert("Please fill first name, last name, email, and service.");
       return;
     }
-    // jiro
+    // backend
     const payload = {
       service: formState.service, // service id (fence, pergola, etc)
       date: formState.date,
@@ -572,7 +572,7 @@ export default function AdminAppointmentsPage() {
       address: formState.address,
       notes: formState.notes,
     };
-    // jiro
+    // backend
     const success = await createOnServer(payload);
     if (success) setIsFormOpen(false);
   };
