@@ -930,7 +930,8 @@ return (
 {/* modal for appointments on the grid */}
       {activeAppointment && (
         <div className="admin-modal">
-          <button
+            {/*for when user clicks outside the form to close it*/}
+          <button 
             className="admin-modal__backdrop"
             onClick={closeDetails}
             aria-label="Close appointment details"
@@ -1017,6 +1018,7 @@ return (
 {/* modal corresponding to add appointment form */}
       {isFormOpen && (
         <div className="admin-modal admin-modal--scrollable">
+          {/*for when user clicks outside the form to close it*/}
           <button
             className="admin-modal__backdrop"
             onClick={closeForm}
