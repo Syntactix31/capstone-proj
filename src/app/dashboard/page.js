@@ -64,7 +64,7 @@ export default function DashboardPage() {
     const [error, setError] = useState("");
     const [activeClient, setActiveClient] = useState(null);
 
-    // jiro
+    // backend
     useEffect(() => {
       let alive = true;
 
