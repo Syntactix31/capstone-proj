@@ -927,7 +927,7 @@ return (
           </div>
         )}
       </section>
-
+{/* modal for appointments on the grid */}
       {activeAppointment && (
         <div className="admin-modal">
           <button
@@ -1014,9 +1014,9 @@ return (
           </div>
         </div>
       )}
-
+{/* modal corresponding to add appointment form */}
       {isFormOpen && (
-        <div className="admin-modal">
+        <div className="admin-modal admin-modal--scrollable">
           <button
             className="admin-modal__backdrop"
             onClick={closeForm}
@@ -1024,7 +1024,7 @@ return (
             type="button"
           />
           <form
-            className="admin-modal__content"
+            className="admin-modal__content admin-modal__content--scrollable"
             role="dialog"
             aria-modal="true"
             onSubmit={handleFormSubmit}
@@ -1170,7 +1170,7 @@ return (
           </form>
         </div>
       )}
-
+{/* modal for when user clicks on "booked" button*/}
       {showBookedModal && (
         <div className="admin-modal">
           <button
@@ -1225,7 +1225,7 @@ return (
           </div>
         </div>
       )}
-
+{/* confirmation modal for canceling an appointment */}
       {cancelTarget && (
         <div className="admin-modal">
           <button
@@ -1287,4 +1287,3 @@ return (
     </AdminLayout>
   );
 }
-
