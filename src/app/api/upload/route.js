@@ -26,4 +26,19 @@ export async function POST(req) {
 }
 
 
+// Code to work on
+// import { list } from "@vercel/blob";
+ 
+// export async function GET() {
+//   const { blobs } = await list();
+ 
+//   const media = blobs.map((b) => ({
+//     src: b.url,
+//     type: b.pathname.endsWith(".mp4") ? "video" : "image"
+//   }));
+ 
+//   return Response.json(media);
+// }
+
+
 

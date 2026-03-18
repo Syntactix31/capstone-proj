@@ -241,6 +241,69 @@ export default function QuoteClient() {
         `;
       }).join("<hr style='border: none; border-top: 2px solid #eee; margin: 24px 0;'>");
 
+
+      let projectSummaryHTML = "";
+      const estimatableServices = selectedServices.filter(s => ESTIMATE_SERVICE_KEYS.has(s.key));
+      
+      if (selectedServices.length > 1 && estimatableServices.length > 0) {
+        const projectSubtotal = Object.values(instantEstimates)
+          .reduce((sum, est) => sum + (est?.subtotal || 0), 0);
+        const projectTax = Object.values(instantEstimates)
+          .reduce((sum, est) => sum + (est?.tax || 0), 0);
+        const projectTotal = Object.values(instantEstimates)
+          .reduce((sum, est) => sum + (est?.total || 0), 0);
+
+        const serviceBreakdownHTML = estimatableServices.map(service => {
+          const estimate = instantEstimates[service.key];
+          if (estimate) {
+            return `
+              <tr>
+                <td style="font-weight: 500;">${service.title}</td>
+                <td style="text-align: right; font-weight: bold;">${formatMoney(estimate.total, estimate.currency)}</td>
+              </tr>
+            `;
+          }
+          return `<tr><td style="font-weight: 500;">${service.title}</td><td style="text-align: right;">Estimate pending</td></tr>`;
+        }).join("");
+
+        projectSummaryHTML = `
+          <div style="margin:24px 0;border:2px solid #458500;border-radius:8px;padding:10px;">
+            <h3 style="border-bottom:2px solid #458500;padding-bottom:4px;margin-bottom:16px;">Project Summary</h3>
+            
+            <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+              <tr>
+                <td style="padding:8px 0;"><strong>Services (${estimatableServices.length}):</strong></td>
+                <td style="text-align: right;padding:8px 0;font-weight:bold;">${estimatableServices.map(s => s.title).join(", ")}</td>
+              </tr>
+            </table>
+
+            <table style="width:100%;border-collapse:collapse;">
+              ${serviceBreakdownHTML}
+              <tr style="border-top:2px solid #458500;">
+                <td style="padding:12px 0 8px 0;"><strong>Project Subtotal:</strong></td>
+                <td style="text-align: right;padding:12px 0 8px 0;font-weight:bold;">${formatMoney(projectSubtotal)}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;"><strong>Tax:</strong></td>
+                <td style="text-align: right;padding:8px 0;font-weight:bold;">${formatMoney(projectTax)}</td>
+              </tr>
+              <tr style="border-top:1px solid #ddd;">
+                <td style="padding:12px 0;"><strong>PROJECT TOTAL:</strong></td>
+                <td style="text-align: right;padding:12px 0;font-weight:bold;color:#458500;">${formatMoney(projectTotal)}</td>
+              </tr>
+            </table>
+
+            ${estimatableServices.length < selectedServices.length ? `
+              <p style="color:#666;font-style:italic;margin-top:8px;">
+                * Some services don't have instant estimates available
+              </p>
+            ` : ""}
+          </div>
+        `;
+
+      }
+
+
       const formatPhoneNumber = (phone) => {
         if (!phone) return "-";
         const digits = phone.replace(/\D/g, '');
@@ -267,6 +330,8 @@ export default function QuoteClient() {
               <tr><td><strong>Address:</strong></td><td>${formData.client.address || "-"}</td></tr>
               <tr><td><strong>Phone:</strong></td><td>${formatPhoneNumber(formData.client.phone)}</td></tr>
             </table>
+          
+            ${projectSummaryHTML}
 
             ${projectTablesHTML}
 
