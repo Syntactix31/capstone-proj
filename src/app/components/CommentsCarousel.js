@@ -61,7 +61,7 @@ if (!comments.length && shimmerKey === 0) {
 
 
       {/* Added large gap between comment boxes so only in focus one is shown on mobile screens test different gaps (10 is good for all viewports*/}
-      <div className="relative flex items-center justify-center gap-10 sm:gap-6 h-63">
+      <div className="relative flex items-center justify-center gap-10 h-63">
         <Bubble data={getItem(-1)} faded />
         <Bubble data={getItem(0)} key={`focused-${shimmerKey}`} focused />
         <Bubble data={getItem(1)} faded />

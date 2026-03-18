@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="bg-[#31270C] w-full text-white py-12 px-6 md:px-12 lg:px-16">
+    <footer className="bg-[#31270C] w-full mt-20 text-white py-12 px-6 md:px-12 lg:px-16">
       <div className="max-w-6xl mx-auto">
         {/* Top Section - Logo/Contact + Social + Nav */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 items-center mb-8 pb-8 border-b border-[#31270C]/30">
@@ -56,14 +56,14 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Facebook"
-              className="group"
+              className="group flex items-center justify-center"
             >
               <Image 
                 src="/icons/facebook.png" 
                 alt="Facebook" 
-                height={28} 
-                width={28} 
-                className="w-7 h-7 group-hover:scale-110 transition-all duration-200 filter brightness-0 invert"
+                height={24} 
+                width={24} 
+                className="w-8 h-8 hover:scale-110 transition-transform duration-200"
               />
             </a>
             <a
@@ -76,9 +76,9 @@ export default function Footer() {
               <Image 
                 src="/icons/instagram.png" 
                 alt="Instagram" 
-                height={28} 
-                width={28} 
-                className="w-7 h-7 group-hover:scale-110 transition-all duration-200 filter brightness-0 invert"
+                height={24} 
+                width={24} 
+                className="w-10 h-10 hover:scale-110 transition-transform duration-200"
               />
             </a>
           </div>
@@ -102,41 +102,7 @@ export default function Footer() {
               Contact
             </Link>
           </nav>
-
-          {/* Social Media - Mobile */}
-          <div className="flex justify-center sm:justify-end space-x-6 flex-shrink-0 md:hidden">
-            <a
-              href="https://www.facebook.com/p/Landscape-Craftsmen-61575247719417/"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Facebook"
-              className="group"
-            >
-              <Image 
-                src="/icons/facebook.png" 
-                alt="Facebook" 
-                height={24} 
-                width={24} 
-                className="w-6 h-6 group-hover:scale-110 transition-all duration-200 filter brightness-0 invert"
-              />
-            </a>
-            <a
-              href="https://www.instagram.com/landscape.craftsmen"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Instagram"
-              className="group"
-            >
-              <Image 
-                src="/icons/instagram.png" 
-                alt="Instagram" 
-                height={24} 
-                width={24} 
-                className="w-6 h-6 group-hover:scale-110 transition-all duration-200 filter brightness-0 invert"
-              />
-            </a>
-          </div>
-
+          
           {/* Copyright */}
           <div className="text-center text-xs text-[#D9D9D9] mt-4 sm:mt-0">
             <p>&copy; 2026 Landscape Craftsmen. All rights reserved.</p>

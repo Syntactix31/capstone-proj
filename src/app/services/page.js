@@ -5,28 +5,28 @@ import Footer from "../components/Footer.js";
 
 export default function ServicesPage() {
   return (
-    <div className="overflow-hidden bg-white">
-      <header className="flex w-full bg-white">
+    <div className="services-page-shell">
+      <header className="services-page-header">
         <NavBar />
       </header>
 
-      <main className="flex min-h-screen w-full flex-col bg-white">
+      <main className="services-page-main">
 
-        <div className="w-full mx-auto max-w-6xl px-4 mt-12">
-          <h2 className="mx-auto w-fit text-center p-2 text-3xl font-extrabold border-b-2 border-[#477a40] text-black">
+        <div className="services-page-title-wrap">
+          <h2 className="services-page-title">
             Choose a Service
           </h2>
         </div>
 
         <Suspense fallback={
-          <div className="w-full mx-auto max-w-6xl px-4 mt-12">
-            <div className="mt-8 h-64 bg-gray-100 rounded-xl animate-pulse" />
+          <div className="services-page-fallback-wrap">
+            <div className="services-page-fallback-card" />
           </div>
         }>
           <ClientServices />
         </Suspense>
 
-        <div className="mt-14">
+        <div className="services-page-footer-wrap">
           <Footer />
         </div>
       </main>

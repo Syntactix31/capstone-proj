@@ -11,8 +11,8 @@ const SERVICES = [
     name: "Fence Installation",
     description: "Custom fence design, materials, and full installation.",
     duration: "1-2 days",
-    price: "$2,800+",
-    type: "Service",
+    price: "2800.00",
+    quantity: 1,
     active: true,
   },
   {
@@ -20,8 +20,8 @@ const SERVICES = [
     name: "Deck & Railing",
     description: "Deck builds, railing upgrades, and safety repairs.",
     duration: "3-5 days",
-    price: "$4,500+",
-    type: "Service",
+    price: "4500.00",
+    quantity: 1,
     active: true,
   },
   {
@@ -29,8 +29,8 @@ const SERVICES = [
     name: "Pergola",
     description: "Backyard pergola installation and finishing.",
     duration: "1-3 days",
-    price: "$3,200+",
-    type: "Service",
+    price: "3200.00",
+    quantity: 1,
     active: true,
   },
   {
@@ -38,8 +38,8 @@ const SERVICES = [
     name: "Sod Installation",
     description: "Site prep and fresh sod installation.",
     duration: "1 day",
-    price: "$1,100+",
-    type: "Service",
+    price: "1100.00",
+    quantity: 1,
     active: false,
   },
   {
@@ -47,8 +47,8 @@ const SERVICES = [
     name: "Trees and Shrubs",
     description: "Planting, pruning, and seasonal care.",
     duration: "1 day",
-    price: "$1,100+",
-    type: "Service",
+    price: "1100.00",
+    quantity: 1,
     active: true,
   },
 ];
@@ -62,9 +62,8 @@ export default function AdminServicesPage() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    cost: "100",
-    markup: "-100",
-    exemptTax: false,
+    price: "0.00",
+    quantity: "1",
     durationValue: "1",
     durationUnit: "hours",
   });
@@ -80,10 +79,6 @@ export default function AdminServicesPage() {
     [services]
   );
 
-  const costValue = Number.parseFloat(formData.cost || "0") || 0;
-  const markupValue = Number.parseFloat(formData.markup || "0") || 0;
-  const unitPrice = costValue * (1 + markupValue / 100);
-
   // Update whichever field changed in the service form.
   const handleFormChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -98,9 +93,8 @@ export default function AdminServicesPage() {
     setFormData({
       name: "",
       description: "",
-      cost: "100",
-      markup: "-100",
-      exemptTax: false,
+      price: "0.00",
+      quantity: "1",
       durationValue: "1",
       durationUnit: "hours",
     });
@@ -111,6 +105,13 @@ export default function AdminServicesPage() {
   const handleSubmit = (event) => {
     event.preventDefault();
     const formattedDuration = `${formData.durationValue} ${formData.durationUnit}`;
+    const normalizedPrice = (
+      Number.parseFloat(formData.price || "0") || 0
+    ).toFixed(2);
+    const normalizedQuantity = String(
+      Math.max(1, Number.parseInt(formData.quantity || "1", 10) || 1)
+    );
+
     if (selectedServiceId) {
       setServices((prev) =>
         prev.map((service) =>
@@ -120,7 +121,8 @@ export default function AdminServicesPage() {
                 name: formData.name || "Updated Service",
                 description: formData.description || service.description,
                 duration: formattedDuration,
-                price: `$${unitPrice.toFixed(2)}`,
+                price: normalizedPrice,
+                quantity: normalizedQuantity,
               }
             : service
         )
@@ -133,8 +135,8 @@ export default function AdminServicesPage() {
           name: formData.name || "New Service",
           description: formData.description || "Service description",
           duration: formattedDuration,
-          price: `$${unitPrice.toFixed(2)}`,
-          type: "Service",
+          price: normalizedPrice,
+          quantity: normalizedQuantity,
           active: true,
         },
         ...prev,
@@ -156,6 +158,8 @@ export default function AdminServicesPage() {
       ...prev,
       name: service.name,
       description: service.description || "",
+      price: String(service.price || "0.00"),
+      quantity: String(service.quantity || "1"),
       durationValue: valuePart,
       durationUnit: unitPart,
     }));
@@ -202,8 +206,8 @@ export default function AdminServicesPage() {
         <div className="admin-service-table">
           <div className="admin-service-row admin-service-row--head">
             <span>Name</span>
-            <span>Description</span>
-            <span>Type</span>
+            <span>Price</span>
+            <span>Quantity</span>
           </div>
           {activeServices.map((service) => (
             <button
@@ -213,10 +217,8 @@ export default function AdminServicesPage() {
               onClick={() => openEditService(service)}
             >
               <span className="admin-strong">{service.name}</span>
-              <span className="admin-muted admin-service-desc">
-                {service.description}
-              </span>
-              <span className="admin-muted">{service.type}</span>
+              <span className="admin-muted">${Number(service.price || 0).toFixed(2)}</span>
+              <span className="admin-muted">{service.quantity}</span>
             </button>
           ))}
         </div>
@@ -238,7 +240,7 @@ export default function AdminServicesPage() {
                   {selectedServiceId ? "Edit service" : "Add a new service"}
                 </h2>
                 <p className="admin-subtitle">
-                  Fill in the details to make this service available online.
+                  Set the service details, price, quantity, and duration.
                 </p>
               </div>
               <button
@@ -254,7 +256,7 @@ export default function AdminServicesPage() {
             </div>
 
             <div className="admin-form">
-              <label className="admin-field">
+              <label className="admin-field admin-field--full">
                 <span className="admin-label">Name</span>
                 <input
                   className="admin-input"
@@ -278,48 +280,32 @@ export default function AdminServicesPage() {
                 />
               </label>
 
-              <div className="admin-form__row admin-field--full">
+              <div className="admin-form__row admin-form__row--price admin-field--full">
                 <label className="admin-field">
-                  <span className="admin-label">Cost ($)</span>
+                  <span className="admin-label">Price ($)</span>
                   <input
                     className="admin-input"
-                    name="cost"
-                    value={formData.cost}
+                    name="price"
+                    value={formData.price}
                     onChange={handleFormChange}
                     type="number"
                     step="0.01"
+                    min="0"
                   />
                 </label>
                 <label className="admin-field">
-                  <span className="admin-label">Markup (%)</span>
+                  <span className="admin-label">Quantity</span>
                   <input
                     className="admin-input"
-                    name="markup"
-                    value={formData.markup}
+                    name="quantity"
+                    value={formData.quantity}
                     onChange={handleFormChange}
                     type="number"
-                    step="0.01"
-                  />
-                </label>
-                <label className="admin-field">
-                  <span className="admin-label">Unit Price ($)</span>
-                  <input
-                    className="admin-input"
-                    value={unitPrice.toFixed(2)}
-                    readOnly
+                    step="1"
+                    min="1"
                   />
                 </label>
               </div>
-
-              <label className="admin-check admin-field--full">
-                <input
-                  type="checkbox"
-                  name="exemptTax"
-                  checked={formData.exemptTax}
-                  onChange={handleFormChange}
-                />
-                <span>Exempt from tax</span>
-              </label>
 
               <label className="admin-field admin-field--full">
                 <span className="admin-label">Service duration</span>

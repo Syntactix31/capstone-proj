@@ -354,6 +354,29 @@ ensures that user is prompted with a warning when there is unsaved changes
     setSelectedId(clientId);
   };
 
+  const handleDeleteClientUI = () => {
+    if (!draft?.id) return;
+
+    const shouldDelete = window.confirm(
+      `Delete ${draft.name || "this client"} from the current UI list? This will not affect the backend.`
+    );
+    if (!shouldDelete) return;
+
+    const currentIndex = clients.findIndex((client) => client.id === draft.id);
+    const remainingClients = clients.filter((client) => client.id !== draft.id);
+    const nextSelectedClient =
+      remainingClients[currentIndex] ||
+      remainingClients[currentIndex - 1] ||
+      remainingClients[0] ||
+      null;
+
+    setClients(remainingClients);
+    setSelectedId(nextSelectedClient?.id ?? null);
+    setDraft(nextSelectedClient);
+    setAlertMessage("Client removed from the current UI list.");
+    setTimeout(() => setAlertMessage(""), 2500);
+  };
+
   return (
     <AdminLayout>
       {alertMessage ? (
@@ -666,6 +689,16 @@ ensures that user is prompted with a warning when there is unsaved changes
                       }
                     />
                   </label>
+                </div>
+                <div className="admin-client-actions">
+                  <button
+                    className="admin-btn admin-btn--danger"
+                    type="button"
+                    onClick={handleDeleteClientUI}
+                    disabled={busy}
+                  >
+                    Delete client
+                  </button>
                 </div>
               </div>
             </>

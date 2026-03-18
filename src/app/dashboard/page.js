@@ -62,6 +62,7 @@ export default function DashboardPage() {
     const [appointments, setAppointments] = useState([]);
     const [clients, setClients] = useState([]);
     const [error, setError] = useState("");
+    const [activeClient, setActiveClient] = useState(null);
 
     // Jiro 
     // Load the dashboard summary data from the protected overview route.
@@ -105,6 +106,7 @@ export default function DashboardPage() {
       [appointments]
     );
     const recentClients = clients.slice(0, 5);
+    const closeClientProfile = () => setActiveClient(null);
     
   return (
     <AdminLayout>
@@ -238,7 +240,11 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   <div className="admin-actions">
-                    <button className="admin-btn admin-btn--small" type="button">
+                    <button
+                      className="admin-btn admin-btn--small"
+                      type="button"
+                      onClick={() => setActiveClient(client)}
+                    >
                       Profile
                     </button>
                   </div>
@@ -250,6 +256,81 @@ export default function DashboardPage() {
             ) : null}
           </article>
           </section>
+          {activeClient ? (
+            <div className="admin-modal">
+              <button
+                className="admin-modal__backdrop"
+                onClick={closeClientProfile}
+                aria-label="Close client profile"
+                type="button"
+              />
+              <div className="admin-modal__content" role="dialog" aria-modal="true">
+                <div className="admin-modal__header">
+                  <div>
+                    <p className="admin-kicker">Client Profile</p>
+                    <h2 className="admin-title">{activeClient.name || "Client"}</h2>
+                    <p className="admin-subtitle">{activeClient.id}</p>
+                  </div>
+                  <button
+                    className="admin-btn admin-btn--ghost admin-btn--small"
+                    onClick={closeClientProfile}
+                    type="button"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="admin-modal__grid">
+                  <div>
+                    <div className="admin-muted">Email</div>
+                    <div className="admin-strong">{activeClient.email || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="admin-muted">Phone</div>
+                    <div className="admin-strong">{formatPhone(activeClient.phone)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-muted">Last Visit</div>
+                    <div className="admin-strong">
+                      {activeClient.updatedAt ? activeClient.updatedAt.slice(0, 10) : "N/A"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="admin-muted">Status</div>
+                    <span className={STATUS_CLASS.Active}>Active</span>
+                  </div>
+                  <div className="admin-modal__full">
+                    <div className="admin-muted">Address</div>
+                    <div className="admin-strong">{activeClient.address || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="admin-muted">City</div>
+                    <div className="admin-strong">{activeClient.city || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="admin-muted">Province</div>
+                    <div className="admin-strong">{activeClient.province || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="admin-muted">Postal Code</div>
+                    <div className="admin-strong">{activeClient.postal || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="admin-muted">Property Type</div>
+                    <div className="admin-strong">{activeClient.propertyType || "—"}</div>
+                  </div>
+                  <div className="admin-modal__full">
+                    <div className="admin-muted">Notes</div>
+                    <div className="admin-strong">{activeClient.notes || "—"}</div>
+                  </div>
+                  <div className="admin-modal__full">
+                    <div className="admin-muted">Additional Instructions</div>
+                    <div className="admin-strong">{activeClient.additionalInstructions || "—"}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
     </AdminLayout>
   );
 }
