@@ -29,7 +29,7 @@ export default function QuoteClient() {
     .map(slug => services[slug])
     .filter(s => !!s);
 
-  // Form state - unchanged structure
+
   const [formData, setFormData] = useState({
     client: { name: "", address: "", email: "", phone: "" },
     project: {
@@ -316,7 +316,7 @@ export default function QuoteClient() {
       const messageHTML = `
         <div style="max-width:600px;margin:auto;background:#fff;font-family:arial,sans-serif;color:#333;">
           <div style="border-top:6px solid #458500;padding:16px;">
-            <img src="https://scontent.fyyc2-1.fna.fbcdn.net/v/t39.30808-6/492498142_122104359134841590_6452344028794744127_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=1d70fc&_nc_ohc=2jCzUB78h3gQ7kNvwHIaWH3&_nc_oc=AdmHrrQZmAy0lo2w7Ngee7oxcedxT30nXsxCTtRUtBD2RgQHF0UF3s3eArYhkhM03YzF7HNn_VMFt1pyfvJVQfYo&_nc_zt=23&_nc_ht=scontent.fyyc2-1.fna&_nc_gid=g-SJa0Qr9HYeBg_-KBdojw&_nc_ss=8&oh=00_Afw8ZV_qWzCt3YNkYywhhqtExkYxNGj7m24PmeXPWNnDkw&oe=69AD99B5" style="height:40px;vertical-align:middle;margin-right:8px;">
+            <img src="https://scontent.fyyc6-1.fna.fbcdn.net/v/t39.30808-6/492498142_122104359134841590_6452344028794744127_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=1d70fc&_nc_ohc=nQ6oTBOfQOoQ7kNvwGpaTf_&_nc_oc=AdqsfsWD6VMtlGEjHfdPSqg754ub3LnSBc52dZ4wzAsxkJOuJzAqmSexJTZn2-yvn1k&_nc_zt=23&_nc_ht=scontent.fyyc6-1.fna&_nc_gid=MoLi2T7xSIyi9hnDRaNHAQ&_nc_ss=8&oh=00_AfwwcKLciGL7WbNPWyzsi6l14JUR6_33Cf-nkAZNylYGlw&oe=69C0B775" style="height:40px;vertical-align:middle;margin-right:8px;">
             <a href="https://landscape-craftsmen.vercel.app/" style="text-decoration:none;font-weight:bold;color:#333;">Landscape Craftsmen</a>
             <span style="font-size:16px;vertical-align:middle;border-left:1px solid #333;padding-left:8px;"><strong>New Quote Request</strong></span>
           </div>
