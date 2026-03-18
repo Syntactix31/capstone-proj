@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../lib/auth/server";
 import { listBookings } from "../../../lib/db/bookings";
 
+// Return booking data for the admin appointments page.
 export async function GET(req) {
   try {
     const auth = requireAdmin(req);

@@ -2,14 +2,17 @@ import { randomUUID } from "node:crypto";
 import { ensureDatabaseSchema } from "./schema.js";
 import { getSql } from "./client.js";
 
+// Return timestamps in a consistent ISO format for inserts and updates.
 function nowIso() {
   return new Date().toISOString();
 }
 
+// Keep booking status values limited to the ones the app supports.
 function normalizeStatus(status) {
   return status === "cancelled" ? "cancelled" : "confirmed";
 }
 
+// Format stored timestamps into Edmonton-local date/time strings for the UI.
 function formatEdmontonParts(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { date: "", time: "" };
@@ -30,6 +33,7 @@ function formatEdmontonParts(iso) {
   return { date, time };
 }
 
+// Convert joined booking rows into the object shape used by pages and routes.
 function mapBookingRow(row) {
   const pretty = formatEdmontonParts(row.start_at);
   return {
@@ -54,6 +58,7 @@ function mapBookingRow(row) {
   };
 }
 
+// Shared helper for "find one booking" queries.
 async function fetchBookingByWhere(whereSql) {
   await ensureDatabaseSchema();
   const sql = getSql();
@@ -61,6 +66,7 @@ async function fetchBookingByWhere(whereSql) {
   return rows[0] ? mapBookingRow(rows[0]) : null;
 }
 
+// Save a new booking record after the calendar event has been created.
 export async function createBooking({
   clientId,
   propertyId = null,
@@ -115,6 +121,7 @@ export async function createBooking({
   return findBookingById(row.id);
 }
 
+// Find a booking by its internal DB ID.
 export async function findBookingById(id) {
   return fetchBookingByWhere((sql) => sql`
     SELECT
@@ -130,6 +137,7 @@ export async function findBookingById(id) {
   `);
 }
 
+// Find a booking by the Google Calendar event ID linked to it.
 export async function findBookingByGoogleEventId(eventId) {
   return fetchBookingByWhere((sql) => sql`
     SELECT
@@ -145,6 +153,7 @@ export async function findBookingByGoogleEventId(eventId) {
   `);
 }
 
+// Load bookings for admin views, with cancelled ones optional.
 export async function listBookings({ includeCancelled = false } = {}) {
   await ensureDatabaseSchema();
   const sql = getSql();
@@ -177,6 +186,7 @@ export async function listBookings({ includeCancelled = false } = {}) {
   return rows.map(mapBookingRow);
 }
 
+// Return booked time ranges for one day so the frontend can disable slots.
 export async function listBusyIntervalsForDate(date) {
   await ensureDatabaseSchema();
   const sql = getSql();
@@ -195,6 +205,7 @@ export async function listBusyIntervalsForDate(date) {
   }));
 }
 
+// Update the stored booking that matches a Google Calendar event.
 export async function updateBookingByGoogleEventId(eventId, patch) {
   await ensureDatabaseSchema();
   const sql = getSql();

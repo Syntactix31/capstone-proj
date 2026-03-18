@@ -2,6 +2,7 @@ import { getSql } from "./client.js";
 
 let schemaPromise = null;
 
+// Make sure the required tables/indexes exist before the app uses the DB.
 export async function ensureDatabaseSchema() {
   if (!schemaPromise) {
     schemaPromise = (async () => {

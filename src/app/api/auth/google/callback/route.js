@@ -5,6 +5,7 @@ import { getGoogleOAuthClientId, getGoogleOAuthClientSecret } from "../../../../
 
 const OAUTH_STATE_COOKIE = "lc_google_oauth_state";
 
+// Build the callback URL used for this environment/host.
 function getRedirectUri(req) {
   return (
     process.env.GOOGLE_OAUTH_REDIRECT_URI ||
@@ -12,6 +13,7 @@ function getRedirectUri(req) {
   );
 }
 
+// Exchange the Google auth code for tokens after the user returns from Google.
 async function exchangeCodeForTokens({ code, redirectUri }) {
   const clientId = getGoogleOAuthClientId();
   const clientSecret = getGoogleOAuthClientSecret();
@@ -40,6 +42,7 @@ async function exchangeCodeForTokens({ code, redirectUri }) {
   return response.json();
 }
 
+// Load the Google account profile tied to the access token.
 async function fetchGoogleUserInfo(accessToken) {
   const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -48,6 +51,7 @@ async function fetchGoogleUserInfo(accessToken) {
   return response.json();
 }
 
+// Finish Google sign-in, create/update the user, and set the session cookie.
 export async function GET(req) {
   try {
     const url = new URL(req.url);

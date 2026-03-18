@@ -3,6 +3,7 @@ import { verifyPassword } from "../../../lib/auth/passwords";
 import { findUserByEmail, normalizeEmail } from "../../../lib/auth/users";
 import { setAuthCookie } from "../../../lib/auth/server";
 
+// Sign in an existing local account and return a session cookie.
 export async function POST(req) {
   try {
     const body = await req.json();

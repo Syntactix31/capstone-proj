@@ -3,10 +3,12 @@ import { ensureDatabaseSchema } from "./schema.js";
 import { getSql } from "./client.js";
 import { normalizeEmail } from "./users.js";
 
+// Return timestamps in a consistent ISO format for inserts and updates.
 function nowIso() {
   return new Date().toISOString();
 }
 
+// Flatten joined client/property rows into one UI-friendly object.
 function mapClientRow(row) {
   return {
     id: row.client_id,
@@ -26,6 +28,7 @@ function mapClientRow(row) {
   };
 }
 
+// Get one client and their newest property record by email.
 async function fetchClientJoinedByEmail(email) {
   await ensureDatabaseSchema();
   const sql = getSql();
@@ -55,6 +58,7 @@ async function fetchClientJoinedByEmail(email) {
   return rows[0] ? mapClientRow(rows[0]) : null;
 }
 
+// Load all clients for the admin page, including their latest property info.
 export async function listClients() {
   await ensureDatabaseSchema();
   const sql = getSql();
@@ -88,6 +92,7 @@ export async function listClients() {
   return rows.map(mapClientRow);
 }
 
+// Insert a client or update the matching email if it already exists.
 export async function upsertClient({
   name,
   email,
@@ -138,6 +143,7 @@ export async function upsertClient({
   return fetchClientJoinedByEmail(normalizedEmail);
 }
 
+// Insert or update a job-site/property record for a client.
 export async function upsertClientProperty({
   clientId,
   address,
@@ -193,6 +199,7 @@ export async function upsertClientProperty({
   return property ? { id: property.id } : null;
 }
 
+// Update both the client row and the related property details when needed.
 export async function updateClient(clientId, patch) {
   await ensureDatabaseSchema();
   const sql = getSql();

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { listBusyIntervalsForDate } from "../../../lib/db/bookings";
 
+// Return booked time ranges for a selected day so the UI can disable those slots.
 export async function POST(req) {
   try {
     const { date } = await req.json();

@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 
+// Build an authenticated Google Calendar client for server-side booking actions.
 export async function getCalendarClient() {
   const email = process.env.GOOGLE_CLIENT_EMAIL;
   const key = process.env.GOOGLE_PRIVATE_KEY;

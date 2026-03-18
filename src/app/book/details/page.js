@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../../components/Navbar.js";
 import Footer from "../../components/Footer.js";
 
+// Services that can be attached to a booking.
 const SERVICE_OPTIONS = [
   { id: "fence", name: "Fence Installation", duration: "1-2 days" },
   { id: "deck-railing", name: "Deck & Railing", duration: "3-5 days" },
@@ -14,6 +15,7 @@ const SERVICE_OPTIONS = [
   { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2-6 hrs" },
 ];
 
+// Format the selected date so the summary card is easier to read.
 function formatPrettyDate(dateStr) {
   if (!dateStr) return "";
   const d = new Date(`${dateStr}T00:00:00`);
@@ -28,6 +30,7 @@ function formatPrettyDate(dateStr) {
   }).format(d);
 }
 
+// Collect the user's personal/job-site details before creating the booking.
 function DetailsContent() {
   const router = useRouter();
   const params = useSearchParams();
@@ -49,6 +52,7 @@ function DetailsContent() {
     return `${pretty}, at ${time}`;
   })();
 
+  // Send the selected service/date/time plus the form fields to the booking API.
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -251,6 +255,7 @@ function DetailsContent() {
   );
 }
 
+// Wrap the page in Suspense because it reads search params on the client.
 export default function DetailsPage() {
   return (
     <Suspense fallback={<div>Loading booking details...</div>}>

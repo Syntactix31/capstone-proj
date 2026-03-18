@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../components/Navbar.js";
 import Footer from "../components/Footer.js";
 
+// Map backend OAuth error codes to clearer messages for the UI.
 const OAUTH_ERROR_MESSAGES = {
   access_denied: "Google sign-in was canceled.",
   invalid_google_state: "Google sign-in expired or host mismatch. Start sign-in again from this same URL.",
@@ -16,6 +17,7 @@ const OAUTH_ERROR_MESSAGES = {
   google_signin_failed: "Google sign-in failed. Please try again.",
 };
 
+// Handles both local sign-in and local account creation.
 function LoginPageContent() {
   const [view, setView] = useState("signin");
   const [busy, setBusy] = useState(false);
@@ -23,6 +25,7 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // Read any Google OAuth error from the URL and show it in the form.
   useEffect(() => {
     const oauthError = searchParams.get("error");
     if (oauthError) {
@@ -35,6 +38,7 @@ function LoginPageContent() {
     }
   }, [searchParams]);
 
+  // Submit the local sign-in form and redirect based on the returned role.
   async function handleSignIn(event) {
     event.preventDefault();
     setError("");
@@ -65,6 +69,7 @@ function LoginPageContent() {
     }
   }
 
+  // Submit the local signup form and create an account.
   async function handleSignUp(event) {
     event.preventDefault();
     setError("");
@@ -322,6 +327,7 @@ function LoginPageContent() {
   );
 }
 
+// Wrap the page in Suspense because it reads search params on the client.
 export default function LoginPage() {
   return (
     <Suspense fallback={null}>

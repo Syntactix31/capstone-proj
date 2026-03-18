@@ -4,9 +4,11 @@ import { useMemo, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
+// Lets users pick one or more services before booking or requesting a quote.
 export default function ClientServices() {
   const searchParams = useSearchParams();
   const initialServicesParam = searchParams.get("service");
+  // Build the initial selected services list from the URL when arriving from a link.
   const initialSelected = useMemo(() => {
     if (!initialServicesParam) return [];
     return initialServicesParam.split(",").filter(Boolean);
@@ -14,6 +16,7 @@ export default function ClientServices() {
 
   const [selectedSlugs, setSelectedSlugs] = useState(initialSelected);
 
+  // Services shown as selectable cards on the page.
   const services = useMemo(() => [
     {
       slug: "fence",
@@ -42,6 +45,7 @@ export default function ClientServices() {
     },
   ], []);
 
+  // Add or remove one service from the current selection.
   const toggleSelect = useCallback((slug) => {
     setSelectedSlugs((prev) => {
       if (prev.includes(slug)) {
@@ -51,6 +55,7 @@ export default function ClientServices() {
     });
   }, []);
 
+  // Carry the selected services forward into the booking and quote flows.
   const serviceUrls = useMemo(() => {
     const params = selectedSlugs.length > 0 
       ? `service=${selectedSlugs.join(",")}` 

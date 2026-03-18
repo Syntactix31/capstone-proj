@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../lib/auth/server";
 import { listClients, updateClient, upsertClient } from "../../../lib/db/clients";
 
+// Load clients for the admin client management page.
 export async function GET(req) {
   const auth = requireAdmin(req);
   if (auth.error) return auth.error;
@@ -15,6 +16,7 @@ export async function GET(req) {
   }
 }
 
+// Create a new client record from the admin page.
 export async function POST(req) {
   const auth = requireAdmin(req);
   if (auth.error) return auth.error;
@@ -49,6 +51,7 @@ export async function POST(req) {
   }
 }
 
+// Update an existing client from the admin page.
 export async function PATCH(req) {
   const auth = requireAdmin(req);
   if (auth.error) return auth.error;

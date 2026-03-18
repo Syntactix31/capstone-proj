@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 
+// Services that can be attached to a booking.
 const SERVICE_OPTIONS = [
   { id: "fence", name: "Fence Installation", duration: "1-2 days" },
   { id: "deck-railing", name: "Deck & Railing", duration: "3-5 days" },
@@ -13,12 +14,14 @@ const SERVICE_OPTIONS = [
   { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2-6 hrs" },
 ];
 
+// Half-hour appointment slots shown in the picker.
 const TIME_SLOTS = [
   "9:00 am","9:30 am","10:00 am","10:30 am","11:00 am","11:30 am",
   "12:00 pm","12:30 pm","1:00 pm","1:30 pm","2:00 pm","2:30 pm",
   "3:00 pm","3:30 pm",
 ];
 
+// Convert a Date object into a YYYY-MM-DD string.
 function ymd(dateObj) {
   const y = dateObj.getFullYear();
   const m = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -26,6 +29,7 @@ function ymd(dateObj) {
   return `${y}-${m}-${d}`;
 }
 
+// Format a picked date for user-facing display.
 function prettyDate(dateObj) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Edmonton",
@@ -36,6 +40,7 @@ function prettyDate(dateObj) {
   }).format(dateObj);
 }
 
+// Format the current calendar month heading.
 function monthTitle(dateObj) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Edmonton",
@@ -44,12 +49,14 @@ function monthTitle(dateObj) {
   }).format(dateObj);
 }
 
+// Start from local midnight so day comparisons stay cleaner.
 function startOfDayLocal() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
+// Turn a selected day and slot label into a real Date object.
 function makeDateFromYmdAndSlot(dateStr, slot) {
   const m = String(slot).trim().match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
   if (!m) return null;
@@ -70,10 +77,12 @@ function makeDateFromYmdAndSlot(dateStr, slot) {
   return new Date(`${dateStr}T${hhStr}:${mmStr}:00-07:00`);
 }
 
+// Check whether two time ranges overlap.
 function overlaps(aStart, aEnd, bStart, bEnd) {
   return aStart < bEnd && aEnd > bStart;
 }
 
+// Main booking time picker used for both new bookings and reschedules.
 function BookTimeInner() {
   const params = useSearchParams();
   const router = useRouter();
@@ -128,6 +137,7 @@ function BookTimeInner() {
     return cells;
   }, [monthCursor]);
 
+  // Load busy intervals from the backend whenever the selected date changes.
   useEffect(() => {
     let ignore = false;
 
@@ -166,6 +176,7 @@ function BookTimeInner() {
     };
   }, [selectedDateStr]);
 
+  // Mark slots as disabled if they are in the past or overlap an existing booking.
   const disabledSlots = useMemo(() => {
     const disabled = new Set();
 
@@ -201,6 +212,7 @@ function BookTimeInner() {
     return disabled;
   }, [busyIntervals, selectedDateStr]);
 
+  // Continue to either the details step or the reschedule route.
   const onConfirm = async () => {
     if (!selectedDateStr || !selectedTime) {
       alert("Please choose a date and time first.");
@@ -461,6 +473,7 @@ function BookTimeInner() {
   );
 }
 
+// Wrap the page in Suspense because it reads search params on the client.
 export default function BookTimePage() {
   return (
     <Suspense fallback={<div style={{ padding: 20 }}>Loading...</div>}>

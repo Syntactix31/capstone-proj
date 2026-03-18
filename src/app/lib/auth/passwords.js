@@ -3,6 +3,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 const SALT_BYTES = 16;
 const KEY_LENGTH = 64;
 
+// Hash a password with scrypt and a random salt before storing it.
 export function hashPassword(password) {
   const normalized = String(password || "");
   const salt = randomBytes(SALT_BYTES);
@@ -10,6 +11,7 @@ export function hashPassword(password) {
   return `s2$${salt.toString("base64url")}$${derived.toString("base64url")}`;
 }
 
+// Recreate the stored hash and compare it safely during login.
 export function verifyPassword(password, encodedHash) {
   try {
     const normalized = String(password || "");
@@ -27,6 +29,7 @@ export function verifyPassword(password, encodedHash) {
   }
 }
 
+// Basic password strength check used during signup.
 export function isStrongPassword(password) {
   const value = String(password || "");
   if (value.length < 12) return false;

@@ -4,6 +4,7 @@ import { getGoogleOAuthClientId } from "../../../../lib/auth/googleOAuth";
 
 const OAUTH_STATE_COOKIE = "lc_google_oauth_state";
 
+// Build the callback URL used for this environment/host.
 function getRedirectUri(req) {
   return (
     process.env.GOOGLE_OAUTH_REDIRECT_URI ||
@@ -11,6 +12,7 @@ function getRedirectUri(req) {
   );
 }
 
+// Start the Google OAuth flow and save a state token for security.
 export async function GET(req) {
   const clientId = getGoogleOAuthClientId();
   if (!clientId) {

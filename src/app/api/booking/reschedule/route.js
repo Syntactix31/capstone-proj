@@ -4,6 +4,7 @@ import { getGmailTransporter } from "../../../lib/gmail";
 import { findBookingByGoogleEventId, updateBookingByGoogleEventId } from "../../../lib/db/bookings";
 import { upsertClientProperty } from "../../../lib/db/clients";
 
+// Turn a "9:30 am" style label into numeric hour/minute values.
 function parseTime12h(timeStr) {
   const match = String(timeStr || "")
     .trim()
@@ -25,6 +26,7 @@ function parseTime12h(timeStr) {
   return { hours, minutes };
 }
 
+// Build a real Date object from the selected booking date/time.
 function buildEdmontonDate(dateStr, timeStr) {
   const t = parseTime12h(timeStr);
   if (!t) return null;
@@ -38,6 +40,7 @@ function buildEdmontonDate(dateStr, timeStr) {
   return new Date(`${yyyyMmDd}T${hh}:${mm}:00-07:00`);
 }
 
+// Format appointment dates nicely for reschedule emails.
 function formatPrettyDate(dateObj) {
   return dateObj.toLocaleString("en-CA", {
     timeZone: "America/Edmonton",
@@ -50,6 +53,7 @@ function formatPrettyDate(dateObj) {
   });
 }
 
+// Shared branding values for the booking emails.
 function brand() {
   return {
     name: "Landscape Craftsmen",
@@ -59,6 +63,7 @@ function brand() {
   };
 }
 
+// Escape user input before placing it inside HTML email markup.
 function escapeHtml(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -68,6 +73,7 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
+// Outer HTML layout shared by the reschedule emails.
 function emailShell({ title, preheader, bodyHtml }) {
   const b = brand();
 
@@ -167,6 +173,7 @@ function emailShell({ title, preheader, bodyHtml }) {
 </html>`;
 }
 
+// Reusable table row for reschedule email details.
 function row(label, value) {
   return `
   <tr>
@@ -179,6 +186,7 @@ function row(label, value) {
   </tr>`;
 }
 
+// Reusable status pill used in the reschedule emails.
 function pill(text) {
   const b = brand();
   return `<span style="display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(22,163,74,0.10); color:${b.primary}; font-weight:700; font-size:12px;">${escapeHtml(
@@ -186,6 +194,7 @@ function pill(text) {
   )}</span>`;
 }
 
+// Customer reschedule email content.
 function rescheduleEmailCustomer({ firstName, service, startPretty }) {
   const bodyHtml = `
     <div style="font-size:14px; color:#374151; margin:0 0 14px 0;">
@@ -211,6 +220,7 @@ function rescheduleEmailCustomer({ firstName, service, startPretty }) {
   });
 }
 
+// Owner reschedule email content.
 function rescheduleEmailOwner({ fullName, email, service, startPretty }) {
   const bodyHtml = `
     <div style="font-size:14px; color:#374151; margin:0 0 14px 0;">
@@ -232,6 +242,7 @@ function rescheduleEmailOwner({ fullName, email, service, startPretty }) {
   });
 }
 
+// Move the booking to a new time in Google Calendar and Postgres, then email updates.
 export async function POST(req) {
   try {
     const { eventId, newDate, newTime } = await req.json();

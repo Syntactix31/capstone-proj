@@ -3,10 +3,12 @@ import { hashPassword, isStrongPassword } from "../../../lib/auth/passwords";
 import { createUser, findUserByEmail, normalizeEmail, resolveRoleForEmail } from "../../../lib/auth/users";
 import { setAuthCookie } from "../../../lib/auth/server";
 
+// Reuse one helper for simple 400 validation responses.
 function badRequest(message) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
+// Create a local account, then sign the user in right away.
 export async function POST(req) {
   try {
     const body = await req.json();

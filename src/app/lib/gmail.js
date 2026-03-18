@@ -5,6 +5,7 @@ import nodemailer from "nodemailer";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Create the reusable Gmail transporter for booking emails.
 export function getGmailTransporter() {
   return nodemailer.createTransport({
     service: "gmail",
@@ -15,6 +16,7 @@ export function getGmailTransporter() {
   });
 }
 
+// Send a branded HTML booking email with the company logo attached inline.
 export async function sendBookingEmail(htmlContent, toEmail) {
   const transporter = getGmailTransporter();
 
