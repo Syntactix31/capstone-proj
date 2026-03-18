@@ -3,6 +3,7 @@ import { requireAdmin } from "../../../lib/auth/server";
 import { listBookings } from "../../../lib/db/bookings";
 import { listClients } from "../../../lib/db/clients";
 
+// Return the summary data shown on the main admin dashboard page.
 export async function GET(req) {
   const auth = requireAdmin(req);
   if (auth.error) return auth.error;

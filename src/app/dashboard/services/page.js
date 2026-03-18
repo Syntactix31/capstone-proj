@@ -53,6 +53,7 @@ const SERVICES = [
   },
 ];
 
+// Admin UI for managing service cards/details.
 export default function AdminServicesPage() {
   const [services, setServices] = useState(SERVICES);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,6 +69,7 @@ export default function AdminServicesPage() {
     durationUnit: "hours",
   });
 
+  // Save service edits locally so the admin UI keeps its state between refreshes.
   useEffect(() => {
     if (typeof window === "undefined") return;
     localStorage.setItem("admin_services", JSON.stringify(services));
@@ -82,6 +84,7 @@ export default function AdminServicesPage() {
   const markupValue = Number.parseFloat(formData.markup || "0") || 0;
   const unitPrice = costValue * (1 + markupValue / 100);
 
+  // Update whichever field changed in the service form.
   const handleFormChange = (event) => {
     const { name, value, type, checked } = event.target;
     setFormData((prev) => ({
@@ -90,6 +93,7 @@ export default function AdminServicesPage() {
     }));
   };
 
+  // Reset the form back to its default "new service" state.
   const handleReset = () => {
     setFormData({
       name: "",
@@ -103,6 +107,7 @@ export default function AdminServicesPage() {
     setSelectedServiceId(null);
   };
 
+  // Either update an existing service or create a new one in local state.
   const handleSubmit = (event) => {
     event.preventDefault();
     const formattedDuration = `${formData.durationValue} ${formData.durationUnit}`;

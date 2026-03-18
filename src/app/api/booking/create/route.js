@@ -4,6 +4,7 @@ import { getGmailTransporter } from "../../../lib/gmail";
 import { createBooking } from "../../../lib/db/bookings";
 import { upsertClient, upsertClientProperty } from "../../../lib/db/clients";
 
+// Turn a "9:30 am" style label into numeric hour/minute values.
 function parseTime12h(timeStr) {
   const match = String(timeStr || "")
     .trim()
@@ -25,6 +26,7 @@ function parseTime12h(timeStr) {
   return { hours, minutes };
 }
 
+// Build a real Date object from the selected booking date/time.
 function buildEdmontonDate(dateStr, timeStr) {
   const t = parseTime12h(timeStr);
   if (!t) return null;
@@ -38,6 +40,7 @@ function buildEdmontonDate(dateStr, timeStr) {
   return new Date(`${yyyyMmDd}T${hh}:${mm}:00-07:00`);
 }
 
+// Format appointment dates nicely for customer/owner emails.
 function formatPrettyDate(dateObj) {
   return dateObj.toLocaleString("en-CA", {
     timeZone: "America/Edmonton",
@@ -50,6 +53,7 @@ function formatPrettyDate(dateObj) {
   });
 }
 
+// Shared branding values for the booking emails.
 function brand() {
   return {
     name: "Landscape Craftsmen",
@@ -59,6 +63,7 @@ function brand() {
   };
 }
 
+// Escape user input before placing it inside HTML email markup.
 function escapeHtml(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -68,6 +73,7 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
+// Outer HTML layout shared by the booking emails.
 function emailShell({ title, preheader, bodyHtml }) {
   const b = brand();
 
@@ -168,6 +174,7 @@ function emailShell({ title, preheader, bodyHtml }) {
 </html>`;
 }
 
+// Reusable table row for booking email details.
 function row(label, value) {
   return `
   <tr>
@@ -180,6 +187,7 @@ function row(label, value) {
   </tr>`;
 }
 
+// Reusable status pill used in the booking emails.
 function pill(text, tone = "success") {
   const b = brand();
   const styles =
@@ -191,6 +199,7 @@ function pill(text, tone = "success") {
   )}</span>`;
 }
 
+// Customer confirmation email content.
 function emailTemplateCustomer({ firstName, service, startPretty, address }) {
   const bodyHtml = `
     <div style="font-size:14px; color:#374151; margin:0 0 14px 0;">
@@ -217,6 +226,7 @@ function emailTemplateCustomer({ firstName, service, startPretty, address }) {
   });
 }
 
+// Owner notification email content.
 function emailTemplateOwner({
   firstName,
   lastName,
@@ -248,6 +258,7 @@ function emailTemplateOwner({
   });
 }
 
+// Create the booking across Google Calendar, Postgres, and email notifications.
 export async function POST(req) {
   try {
     const body = await req.json();

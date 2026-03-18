@@ -63,7 +63,8 @@ export default function DashboardPage() {
     const [clients, setClients] = useState([]);
     const [error, setError] = useState("");
 
-    // jiro
+    // Jiro 
+    // Load the dashboard summary data from the protected overview route.
     useEffect(() => {
       let alive = true;
 

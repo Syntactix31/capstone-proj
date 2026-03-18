@@ -3,6 +3,7 @@ import { getCalendarClient } from "../../../lib/googleCalendar";
 import { getGmailTransporter } from "../../../lib/gmail";
 import { findBookingByGoogleEventId, updateBookingByGoogleEventId } from "../../../lib/db/bookings";
 
+// Format appointment dates nicely for cancellation emails.
 function formatPrettyDate(dateObj) {
   return dateObj.toLocaleString("en-CA", {
     timeZone: "America/Edmonton",
@@ -15,6 +16,7 @@ function formatPrettyDate(dateObj) {
   });
 }
 
+// Shared branding values for the booking emails.
 function brand() {
   return {
     name: "Landscape Craftsmen",
@@ -24,6 +26,7 @@ function brand() {
   };
 }
 
+// Escape user input before placing it inside HTML email markup.
 function escapeHtml(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -33,6 +36,7 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
+// Outer HTML layout shared by the cancellation emails.
 function emailShell({ title, preheader, bodyHtml }) {
   const b = brand();
 
@@ -132,6 +136,7 @@ function emailShell({ title, preheader, bodyHtml }) {
 </html>`;
 }
 
+// Reusable table row for cancellation email details.
 function row(label, value) {
   return `
   <tr>
@@ -144,12 +149,14 @@ function row(label, value) {
   </tr>`;
 }
 
+// Reusable status pill used in the cancellation emails.
 function pill(text) {
   return `<span style="display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(239,68,68,0.12); color:#991b1b; font-weight:700; font-size:12px;">${escapeHtml(
     text
   )}</span>`;
 }
 
+// Customer cancellation email content.
 function cancelEmailCustomer({ firstName, service, startPretty }) {
   const bodyHtml = `
     <div style="font-size:14px; color:#374151; margin:0 0 14px 0;">
@@ -175,6 +182,7 @@ function cancelEmailCustomer({ firstName, service, startPretty }) {
   });
 }
 
+// Owner cancellation email content.
 function cancelEmailOwner({ fullName, email, service, startPretty }) {
   const bodyHtml = `
     <div style="font-size:14px; color:#374151; margin:0 0 14px 0;">
@@ -196,6 +204,7 @@ function cancelEmailOwner({ fullName, email, service, startPretty }) {
   });
 }
 
+// Cancel the booking in Google Calendar, update Postgres, and send emails.
 export async function POST(req) {
   try {
     const { eventId } = await req.json();

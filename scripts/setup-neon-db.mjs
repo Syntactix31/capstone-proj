@@ -3,6 +3,7 @@ import { ensureDatabaseSchema } from "../src/app/lib/db/schema.js";
 
 const { loadEnvConfig } = nextEnv;
 
+// Load env variables and make sure the Neon/Postgres schema exists.
 async function main() {
   loadEnvConfig(process.cwd());
   await ensureDatabaseSchema();

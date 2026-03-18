@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 
+// Services that can be attached to a booking.
 const SERVICE_OPTIONS = [
   { id: "fence", name: "Fence Installation", duration: "1-2 days" },
   { id: "deck-railing", name: "Deck & Railing", duration: "3-5 days" },
@@ -14,6 +15,7 @@ const SERVICE_OPTIONS = [
   { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2-6 hrs" },
 ];
 
+// Format the final booked day for the confirmation screen.
 function prettyDay(dateStr) {
   if (!dateStr) return "Date not set";
   const d = new Date(`${dateStr}T00:00:00`);
@@ -28,6 +30,7 @@ function prettyDay(dateStr) {
   }).format(d);
 }
 
+// Final booking screen that also allows cancel/reschedule actions.
 function ConfirmInner() {
   const params = useSearchParams();
   const router = useRouter();
@@ -55,6 +58,7 @@ function ConfirmInner() {
 
   const [busy, setBusy] = useState(false);
 
+  // Let the customer cancel the booking from the confirmation page.
   const onCancel = async () => {
     if (!eventId) {
       alert("Missing eventId.");
@@ -154,6 +158,7 @@ function ConfirmInner() {
   );
 }
 
+// Wrap the page in Suspense because it reads search params on the client.
 export default function ConfirmPage() {
   return (
     <Suspense fallback={<div style={{ padding: 20 }}>Loading...</div>}>

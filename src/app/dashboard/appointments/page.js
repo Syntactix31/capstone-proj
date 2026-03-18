@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
 
+
 const SERVICES = [
   { id: "fence", name: "Fence Installation", active: true },
   { id: "deck-railing", name: "Deck & Railing", active: true },
@@ -11,9 +12,11 @@ const SERVICES = [
   { id: "trees-shrubs", name: "Trees and Shrubs", active: true },
 ];
 
+
 const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
 };
+
 
 function prettyServiceName(serviceIdOrName) {
   const hit =
@@ -22,6 +25,7 @@ function prettyServiceName(serviceIdOrName) {
   return hit?.name || String(serviceIdOrName || "Appointment");
 }
 
+// Convert 12-hour times into 24-hour times for comparisons/layout math.
 function to24h(time12h) {
   // "9:30 AM" -> "09:30"
   const m = String(time12h || "")
@@ -36,6 +40,7 @@ function to24h(time12h) {
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
+// Convert 24-hour times back into 12-hour display labels.
 function to12h(time24) {
   // "14:30" -> "2:30 PM"
   const [hhRaw, mmRaw] = String(time24 || "").split(":");
@@ -47,6 +52,7 @@ function to12h(time24) {
   return `${h12}:${String(mm).padStart(2, "0")} ${mer}`;
 }
 
+// Main admin scheduling page for viewing, creating, cancelling, and rescheduling bookings.
 export default function AdminAppointmentsPage() {
   const [appointments, setAppointments] = useState([]); // from Google Calendar
   const [loading, setLoading] = useState(true);
@@ -85,8 +91,8 @@ export default function AdminAppointmentsPage() {
 
   const calendarScrollRef = useRef(null);
 
-  // Pull from Google Calendar (via API in /api/admin/appointments)
   // jiro
+  // Load the current booking list for the calendar and booked-appointments views.
   async function refreshAppointments() {
     setLoading(true);
     setError("");
@@ -128,10 +134,12 @@ export default function AdminAppointmentsPage() {
     }
   }
 
+  // Keep "now" up to date so the calendar can show the current time position.
   useEffect(() => {
     refreshAppointments();
   }, []);
 
+  // Check screen size so the calendar can switch to tighter mobile behavior.
   useEffect(() => {
     const tick = () => setNow(new Date());
     const interval = setInterval(tick, 60 * 1000);
@@ -384,6 +392,7 @@ export default function AdminAppointmentsPage() {
 
   // Admin actions that actually change Google Calendar
   // functions implemented by jiro
+  // Cancel an appointment through the backend and refresh the page data.
   async function cancelOnServer(eventId) {
     const ok = window.confirm("Cancel this appointment? This removes it from Google Calendar and sends cancel emails.");
     if (!ok) return false;
@@ -411,6 +420,7 @@ export default function AdminAppointmentsPage() {
     }
   }
 
+  // Reschedule an existing appointment through the backend.
   async function rescheduleOnServer(eventId, newDate, newTime) {
     setBusy(true);
     try {
@@ -435,6 +445,7 @@ export default function AdminAppointmentsPage() {
     }
   }
 
+  // Create a brand-new appointment through the backend.
   async function createOnServer(payload) {
     setBusy(true);
     try {
@@ -459,7 +470,7 @@ export default function AdminAppointmentsPage() {
     }
   }
 
-  /* appointment details modal
+    /* appointment details modal
     appt - the appointment selected
     source - the source from where handleDetails is called upon
     (booked component, or from the calendar
@@ -468,7 +479,7 @@ export default function AdminAppointmentsPage() {
     setActiveAppointment(appt);
     setDetailSource(source);
   };
-  /* if the user selected an appointment through the booked component
+    /* if the user selected an appointment through the booked component
   instead of the calendar then closing that modal ensures that the "booked" appointments
   modal is shown again 
   
@@ -509,7 +520,7 @@ export default function AdminAppointmentsPage() {
   firstName gets the first part of the array > if array is empty then it uses "" as the fallback
   lastName uses slice to remove the first part, or starting at the first (1) index which is the second part of the name
   */
-
+ 
   const openEditForm = (appt) => {
     setEditingId(appt.eventId);
     const nameParts = String(appt.client || "").trim().split(" ");
@@ -533,6 +544,7 @@ export default function AdminAppointmentsPage() {
   then update the field that has been changed */
   const closeForm = () => setIsFormOpen(false);
 
+  // Update the controlled form fields as the admin types/selects values.
   const handleFormChange = (event) => {
     const { name, value } = event.target;
     setFormState((prev) => ({ ...prev, [name]: value }));

@@ -2,14 +2,17 @@ import { randomUUID } from "node:crypto";
 import { ensureDatabaseSchema } from "./schema.js";
 import { getSql } from "./client.js";
 
+// Return timestamps in a consistent ISO format for inserts and updates.
 function nowIso() {
   return new Date().toISOString();
 }
 
+// Normalize emails so lookups and uniqueness checks stay consistent.
 export function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
 
+// Read the list of admin emails from env and normalize them.
 export function getAdminEmails() {
   return String(process.env.ADMIN_EMAILS || "")
     .split(",")
@@ -17,12 +20,14 @@ export function getAdminEmails() {
     .filter(Boolean);
 }
 
+// Decide whether a user should be treated as an admin or a regular client.
 export function resolveRoleForEmail(email) {
   const normalized = normalizeEmail(email);
   if (!normalized) return "client";
   return getAdminEmails().includes(normalized) ? "admin" : "client";
 }
 
+// Convert raw DB column names into the object shape used by the app.
 function mapUser(row) {
   if (!row) return null;
   return {
@@ -38,6 +43,7 @@ function mapUser(row) {
   };
 }
 
+// Find one user by email for login and OAuth flows.
 export async function findUserByEmail(email) {
   const normalized = normalizeEmail(email);
   if (!normalized) return null;
@@ -53,6 +59,7 @@ export async function findUserByEmail(email) {
   return mapUser(user);
 }
 
+// Create a new user record in Postgres.
 export async function createUser({
   email,
   name,
@@ -103,6 +110,7 @@ export async function createUser({
   return mapUser(user);
 }
 
+// Update an existing user while keeping unchanged fields intact.
 export async function updateUser(userId, patch) {
   await ensureDatabaseSchema();
   const sql = getSql();

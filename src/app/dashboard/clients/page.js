@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/app/components/AdminLayout.js";
 
+// Admin page for viewing, editing, and creating client records.
 export default function AdminClientsPage() {
   const [clients, setClients] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -30,6 +31,7 @@ export default function AdminClientsPage() {
   const [phoneFocused, setPhoneFocused] = useState(false);
 
   // Implemented by jiro
+  // Load client records from the protected admin route.
   useEffect(() => {
     let alive = true;
 
@@ -78,7 +80,7 @@ export default function AdminClientsPage() {
     setPhoneFocused(false);
   }, [selectedClient]);
 
-  /*Field formatting + input rules
+    /*Field formatting + input rules
 
   */
   const normalizePhone = (value) => String(value || "").replace(/\D/g, ""); // takes the value or empty, '\D' replaces all non digit chars
@@ -240,7 +242,8 @@ hasUnsavedChange becomes true if ^^ is true
   };
 
 
-  // jiro
+  // Jiro
+  // Save a new or existing client through the protected admin API.
   const handleSave = async () => {
     if (!canSave) {
       const now = Date.now();
@@ -297,10 +300,7 @@ hasUnsavedChange becomes true if ^^ is true
     }
   };
 
-  /*
-  adding client functionality
-  includes click throttling
-  */
+  // Create a new draft client row while preventing spam clicks/duplicate empty drafts.
   const handleAddClient = () => {
     const now = Date.now(); // gets time in milliseconds
     if (now - lastAddAt < 3000) return; // 3 second delay before clicking add new client btn
