@@ -7,28 +7,40 @@ export default function AdminUploadPage() {
   const [files, setFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
 
+  // In your AdminUploadPage component
   async function handleUpload(e) {
-    //adding multiple files into the upload handler
-    const selectedFiles = e.target.files;
+    const selectedFiles = Array.from(e.target.files);
     if (selectedFiles.length === 0) return;
 
     setUploading(true);
 
+    const uploadedFiles = [];
+    
     for (const file of selectedFiles) {
-        const formData = new FormData();
-        formData.append("file", file);
-        
-        await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+      const formData = new FormData();
+      formData.append('file', file);
 
-        //add files to preview list
-        setFiles((prev) => [...prev, file]);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      
+      if (data.url) {
+        uploadedFiles.push({
+          name: file.name,
+          url: data.url,
+          type: file.type.startsWith('video/') ? 'video' : 'image'
+        });
+      }
     }
+
+    setFiles(prev => [...prev, ...uploadedFiles]);
     setUploading(false);
-    alert("Uploads complete!");
+    alert(`${uploadedFiles.length} files uploaded!`);
   }
+
 
   return (
     <AdminLayout>

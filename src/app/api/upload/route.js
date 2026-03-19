@@ -1,44 +1,29 @@
-import { writeFile } from "fs/promises";
-import path from "path";
+import { put } from '@vercel/blob';
+import { NextResponse } from 'next/server';
 
 export async function POST(req) {
-  const data = await req.formData();
-  const file = data.get("file");
+  try {
+    const formData = await req.formData();
+    const file = formData.get('file');
 
-  if (!file) {
-    return Response.json({ error: "No file uploaded" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    }
+
+    // Upload to vercel blob storage
+    const newBlob = await put(file.name, file, {
+      access: 'public',
+      addRandomSuffix: true,
+    });
+
+    return NextResponse.json({ 
+      url: newBlob.url,
+      pathname: newBlob.pathname 
+    });
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  // Create unique filename
-  const fileName = `${Date.now()}-${file.name}`;
-
-  // Save to public/projects
-  const filePath = path.join(process.cwd(), "public/projects", fileName);
-
-  await writeFile(filePath, buffer);
-
-  return Response.json({
-    url: `/projects/${fileName}`, 
-  });
 }
-
-
-// Code to work on
-// import { list } from "@vercel/blob";
- 
-// export async function GET() {
-//   const { blobs } = await list();
- 
-//   const media = blobs.map((b) => ({
-//     src: b.url,
-//     type: b.pathname.endsWith(".mp4") ? "video" : "image"
-//   }));
- 
-//   return Response.json(media);
-// }
 
 
 
