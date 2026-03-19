@@ -29,7 +29,7 @@ function mapClientRow(row) {
 }
 
 // Get one client and their newest property record by email.
-async function fetchClientJoinedByEmail(email) {
+export async function fetchClientJoinedByEmail(email) {
   await ensureDatabaseSchema();
   const sql = getSql();
   const rows = await sql`
