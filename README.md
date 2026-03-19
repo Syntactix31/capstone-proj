@@ -76,6 +76,8 @@ npm install @emailjs/browser
 npm install resend
 # and
 npm install @neondatabase/serverless
+# and
+npm install @vercel/blob
 ```
 
 Run the Production Build:
