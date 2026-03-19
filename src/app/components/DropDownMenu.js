@@ -60,6 +60,7 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
         <Link href="/projects" onClick={onClose}>Projects</Link>
         <Link href="/quote" onClick={onClose}>Get A Quote</Link>
         <Link href="/book" onClick={onClose}>Book An Appointment</Link>
+        {user?.role === "client" && <Link href="/client-dashboard" onClick={onClose}>Your Dashboard</Link>}
         {user?.role === "admin" && <Link href="/dashboard" onClick={onClose}>Admin</Link>}
         {user ? (
           <button type="button" onClick={handleLogout} disabled={busy}>
