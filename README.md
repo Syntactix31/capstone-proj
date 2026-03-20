@@ -78,6 +78,8 @@ npm install resend
 npm install @neondatabase/serverless
 # and
 npm install @vercel/blob
+# and
+npm install busboy
 ```
 
 Run the Production Build:
