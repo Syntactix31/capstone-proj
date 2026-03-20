@@ -27,6 +27,12 @@ export default function AdminEstimatesDashboard() {
   });
 
   // =========================
+  // FILE ATTACHMENT STATE
+  // =========================
+  const [pdfFile, setPdfFile] = useState(null);
+  const [pdfName, setPdfName] = useState("");
+
+  // =========================
   // FETCH ESTIMATES
   // =========================
   async function fetchEstimates() {
@@ -64,12 +70,49 @@ export default function AdminEstimatesDashboard() {
   // =========================
   async function createEstimate() {
     setBusy(true);
-    await fetch("/api/admin/estimates/create", {
-      method: "POST",
-      body: JSON.stringify(formState),
+    try {
+      const priceRaw = String(formState.price || "").trim();
+    if (!priceRaw) {
+      alert("Please enter a price.");
+      setBusy(false);
+      return;
+    }
+
+    const sanitizedPrice = priceRaw.replace(/[^0-9.\-]/g, "");
+    if (!sanitizedPrice || Number.isNaN(Number(sanitizedPrice))) {
+      alert("Please enter a valid numeric price.");
+      setBusy(false);
+      return;
+    }
+
+    const formData = new FormData();
+    Object.entries(formState).forEach(([key, value]) => {
+      const valueStr = key === "price" ? sanitizedPrice : String(value);
+      formData.append(key, valueStr);
     });
-    await fetchEstimates();
-    setBusy(false);
+
+    if (pdfFile) {
+      formData.append("pdf", pdfFile);
+    }
+
+      const res = await fetch("/api/admin/estimates/create", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Create estimate failed:", res.status, text);
+        throw new Error("Failed to create estimate");
+      }
+
+
+      await fetchEstimates();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function deleteEstimate(id) {
@@ -88,10 +131,35 @@ export default function AdminEstimatesDashboard() {
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handlePdfChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("application/pdf")) {
+      alert("Please upload a PDF file.");
+      return;
+    }
+    setPdfFile(file);
+    setPdfName(file.name);
+  };
+
   const openForm = (estimate = null) => {
     if (estimate) {
       setEditingId(estimate.id);
-      setFormState(estimate);
+      setFormState({
+        client: estimate.client,
+        email: estimate.email || "",
+        service: estimate.service,
+        price: String(estimate.price),
+        status: estimate.status,
+        notes: estimate.notes || "",
+      });
+      // If estimate has a PDF, show the attached name but don’t restore the file
+      if (estimate.pdfName) {
+        setPdfName(estimate.pdfName);
+      } else {
+        setPdfName("");
+      }
+      setPdfFile(null);
     } else {
       setEditingId(null);
       setFormState({
@@ -102,6 +170,8 @@ export default function AdminEstimatesDashboard() {
         status: "Pending",
         notes: "",
       });
+      setPdfFile(null);
+      setPdfName("");
     }
     setIsFormOpen(true);
   };
@@ -109,10 +179,18 @@ export default function AdminEstimatesDashboard() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const formData = new FormData();
+    Object.entries(formState).forEach(([key, value]) => {
+      formData.append(key, String(value));
+    });
+    if (pdfFile) {
+      formData.append("pdf", pdfFile);
+    }
+
     if (editingId) {
       await fetch(`/api/admin/estimates/${editingId}`, {
         method: "PUT",
-        body: JSON.stringify(formState),
+        body: formData,
       });
     } else {
       await createEstimate();
@@ -128,7 +206,6 @@ export default function AdminEstimatesDashboard() {
   return (
     <AdminLayout>
       <div className="admin-appointments">
-
         {/* HEADER */}
         <section className="admin-hero">
           <div>
@@ -194,6 +271,19 @@ export default function AdminEstimatesDashboard() {
                   </span>
 
                   <div className="admin-table-actions">
+                    {/* PDF view */}
+                    {e.pdfUrl && (
+                      <a
+                        href={e.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="admin-btn admin-btn--ghost"
+                        style={{ marginRight: "0.5rem" }}
+                      >
+                        View PDF
+                      </a>
+                    )}
+
                     <button
                       className="admin-btn admin-btn--ghost"
                       onClick={() => openForm(e)}
@@ -279,8 +369,40 @@ export default function AdminEstimatesDashboard() {
                 className="admin-input"
               />
 
-              <button className="admin-btn admin-btn--primary" type="submit">
-                Save
+              {/* FILE ATTACHMENT */}
+              <div className="admin-input-group">
+                <label className="admin-label">
+                  Proposal Estimate PDF (optional)
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handlePdfChange}
+                  className="admin-input"
+                />
+                {pdfName && (
+                  <div className="admin-muted">
+                    Attached: {pdfName}{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPdfFile(null);
+                        setPdfName("");
+                      }}
+                      className="admin-link"
+                    >
+                      remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <button
+                className="admin-btn admin-btn--primary"
+                type="submit"
+                disabled={busy}
+              >
+                {editingId ? "Update" : "Create"} Estimate
               </button>
             </form>
           </div>

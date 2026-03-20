@@ -16,6 +16,8 @@ export default function ClientDashboardPage() {
   const [payments, setPayments] = useState([]);
   const [error, setError] = useState("");
 
+  const [userName, setUserName] = useState("");
+
   useEffect(() => {
     let mounted = true;
 
@@ -26,7 +28,7 @@ export default function ClientDashboardPage() {
 
         if (!mounted) return;
         if (!res.ok) {
-          setError(data?.error || "Failed to load client data.");
+          setError(data?.error || "Failed to load client data. Please contact support to get set up with a client account and added to our client system.");
           return;
         }
 
@@ -36,13 +38,33 @@ export default function ClientDashboardPage() {
       } catch (err) {
         console.error(err);
         if (!mounted) return;
-        setError("Failed to load client data.");
+        setError("Failed to load client data. Please contact support to get set up with a client account and added to our client system.");
       }
     }
 
     loadClientOverview();
     return () => {
       mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUser() {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+        if (data?.user?.name) setUserName(data.user.name);
+      } catch {
+        // ignore
+      }
+    }
+
+    loadUser();
+    return () => {
+      active = false;
     };
   }, []);
 
@@ -58,7 +80,9 @@ export default function ClientDashboardPage() {
       <section className="client-hero">
         <div>
           <p className="client-kicker">Client Dashboard</p>
-          <h1 className="client-title">Welcome Back</h1>
+            {userName ? (
+              <h1 className="client-title">Welcome Back {userName}!</h1>
+            ) : null}
           <p className="client-subtitle">
             Here’s a quick summary of your projects, estimates, and recent payments.
           </p>
@@ -156,4 +180,20 @@ export default function ClientDashboardPage() {
     </ClientLayout>
   );
 }
+
+
+
+// Add this to the estimate page so clients can access the pdf
+
+{/* inside your estimates table or details view */}
+// {e.pdfUrl && (
+//   <a
+//     href={e.pdfUrl}
+//     target="_blank"
+//     rel="noopener noreferrer"
+//     className="admin-link"
+//   >
+//     View Proposal PDF
+//   </a>
+// )}
 
