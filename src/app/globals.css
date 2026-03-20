@@ -1371,8 +1371,8 @@ body {
   height: 36px;
   border-radius: 999px;
   border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #111827;
+  background: #477a40;
+  color: #ffffff;
   display: none;
   align-items: center;
   justify-content: center;
@@ -3477,7 +3477,7 @@ body {
 }
 
 
-
+  
 
 
 /* ===== CLIENT DASHBOARD MAJOR FIXES NEEDED ===== */

@@ -76,6 +76,22 @@ export async function ensureDatabaseSchema() {
         CREATE INDEX IF NOT EXISTS bookings_status_start_at_idx
         ON bookings (status, start_at)
       `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS estimates (
+          id text PRIMARY KEY,
+          client_id text NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
+          title text NOT NULL,
+          service text NOT NULL,
+          price numeric NOT NULL,
+          status text NOT NULL DEFAULT 'Pending',
+          notes text NOT NULL DEFAULT '',
+          pdf_url text,
+          pdf_name text,
+          created_at timestamptz NOT NULL,
+          updated_at timestamptz NOT NULL
+        )
+      `;      
     })().catch((error) => {
       schemaPromise = null;
       throw error;

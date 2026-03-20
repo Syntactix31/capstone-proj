@@ -15,6 +15,7 @@
     "@vercel/blob": "^2.3.1",
     "all": "^0.0.0",
     "axios": "^1.13.5",
+    "busboy": "^1.6.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "googleapis": "^171.4.0",
