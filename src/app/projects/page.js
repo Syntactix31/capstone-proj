@@ -97,19 +97,19 @@ export default function ProjectsPage() {
 
   // On mount, fetch media list from API
   useEffect(() => {
-  async function loadMedia() {
-    const res = await fetch("/api/ScanMedia");
-    const data = await res.json();
-    setMedia(data);
-  }
-
-  loadMedia();
+    async function fetchMedia() {
+      const res = await fetch(`/api/ScanMedia?cache=${Date.now()}`);
+      const data = await res.json();
+      setMedia(data);
+    }
+    fetchMedia();
   }, []);
 
   const [activeIndex, setActiveIndex] = useState(null);
   const visibleMedia = media.slice(0, 23);
   const closeModal = () => setActiveIndex(null);
  
+
   const showPrev = () => {
     setActiveIndex((prev) => {
       if (prev === null) return prev;
@@ -137,6 +137,7 @@ export default function ProjectsPage() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeIndex]);
+
  
   return (
     <div className="projectsPage">
@@ -158,7 +159,8 @@ export default function ProjectsPage() {
       <section className="projectsSection">
         <div className="collageWrap">
           <div className="collage">
-            {visibleMedia.slice(0, 23).map((item, i) => (
+            {/* Removed .slice(0,23) from map */}
+            {visibleMedia.map((item, i) => (
               <Tile
                 key={i}
                 src={item.src}
