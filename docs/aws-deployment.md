@@ -50,6 +50,7 @@ Copy these into Elastic Beanstalk environment properties:
 - `RESEND_FROM_EMAIL`
 - `QUOTE_TO_EMAIL`
 - `SERP_API_KEY`
+- `PDF_READ_WRITE_TOKEN`
 
 ## Monitoring and scalability follow-up
 
