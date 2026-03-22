@@ -84,23 +84,10 @@ export default function AdminClientsPage() {
 
   */
   const normalizePhone = (value) => String(value || "").replace(/\D/g, ""); // takes the value or empty, '\D' replaces all non digit chars
-  const normalizePostal = (value) => // Converts all chars to upercase, '^' which = NOT, so anything that isn't a letter or digt is removed
-    String(value || "")
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "")
-      .slice(0, 6);
   const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/; // valid email pattern rules
   const EMAIL_PATTERN = String.raw`^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`; // string format
   const isValidEmail = (value) => EMAIL_REGEX.test(String(value || "").toLowerCase().trim()); // tests the input if it matches the email pattern
   const isValidPhone = (value) => /^\d{10}$/.test(normalizePhone(value)); // digits only must equal to 10
-  const isValidPostal = (value) => /^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(normalizePostal(value)); // postal code rules
-  const formatPostalDisplay = (value) => {
-    const raw = normalizePostal(value);
-    if (!raw) return ""; // no postal code then returns string empty
-    const head = raw.slice(0, 3); // takes first 3 chars
-    const tail = raw.slice(3); // takes last 3 chars
-    return tail ? `${head} ${tail}` : head; // if there isn't tail (last 3 chars) then return only the first 3
-  };
   /*
   Ensures that the phone number is exactly 10 digits and if it isn't then string is returned empty
   then phone number formatting (xxx)-xxx-xxxx
@@ -126,8 +113,6 @@ export default function AdminClientsPage() {
         ? formatPhoneDisplay(draft.phone)
         : draft.phone;
 
-  const postalDisplayValue = !draft ? "" : formatPostalDisplay(draft.postal);
-
 /*
 Checks the client forms if there is any unsaved changes
 checks if input draft isn't equal to the selectedClient's saved info
@@ -142,7 +127,6 @@ hasUnsavedChange becomes true if ^^ is true
       String(draft.address || "") !== String(selectedClient.address || "") ||
       String(draft.city || "") !== String(selectedClient.city || "") ||
       String(draft.province || "") !== String(selectedClient.province || "") ||
-      normalizePostal(draft.postal) !== normalizePostal(selectedClient.postal) || // removes the formatting before checking
       String(draft.propertyType || "") !== String(selectedClient.propertyType || "") ||
       String(draft.notes || "") !== String(selectedClient.notes || "") ||
       String(draft.additionalInstructions || "") !== String(selectedClient.additionalInstructions || "")
@@ -195,7 +179,6 @@ hasUnsavedChange becomes true if ^^ is true
     isValidEmail(draft?.email) &&
     isValidPhone(draft?.phone) &&
     Boolean(draft?.address?.trim()) &&
-    isValidPostal(draft?.postal) &&
     Boolean(draft?.propertyType?.trim());
 
   // can add a new client if theres no input draft or if you can save
@@ -209,11 +192,10 @@ hasUnsavedChange becomes true if ^^ is true
     const email = String(client.email || "").trim();
     const phone = normalizePhone(client.phone || "");
     const address = String(client.address || "").trim();
-    const postal = String(client.postal || "").trim();
     const notes = String(client.notes || "").trim();
     const extra = String(client.additionalInstructions || "").trim();
     // turns the strings to booleans then flips it. If theres a value in the input then boolean is false
-    return !name && !email && !phone && !address && !postal && !notes && !extra; // returns true only if every field is empty
+    return !name && !email && !phone && !address && !notes && !extra; // returns true only if every field is empty
   }; 
 
 
@@ -326,7 +308,6 @@ hasUnsavedChange becomes true if ^^ is true
       city: "Calgary",
       province: "Alberta",
       address: "",
-      postal: "",
       propertyType: "House",
       notes: "",
       additionalInstructions: "",
@@ -432,7 +413,6 @@ ensures that user is prompted with a warning when there is unsaved changes
                         city: "Calgary",
                         province: "Alberta",
                         address: "",
-                        postal: "",
                         propertyType: "House",
                         notes: "",
                         additionalInstructions: "",
@@ -585,7 +565,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                       onFocus={() => setPhoneFocused(true)}
                       onBlur={() => setPhoneFocused(false)}
                       onChange={(event) => {
-                        const digits = normalizePhone(event.target.value);
+                        const digits = normalizePhone(event.target.value).slice(0, 10);
                         setDraft((current) => ({ ...current, phone: digits }));
                       }}
                     />
@@ -642,22 +622,6 @@ ensures that user is prompted with a warning when there is unsaved changes
                         setDraft((current) => ({ ...current, province: event.target.value }))
                       }
                     />
-                  </label>
-                  <label className="admin-field">
-                    <span className="admin-label">Postal code</span>
-                    <input
-                      className="admin-input"
-                      value={postalDisplayValue}
-                      pattern="^[A-Za-z]\\d[A-Za-z]\\s?\\d[A-Za-z]\\d$"
-                      title="Use format X1X 1X1"
-                      onChange={(event) => {
-                        const normalized = normalizePostal(event.target.value);
-                        setDraft((current) => ({ ...current, postal: normalized }));
-                      }}
-                    />
-                    {draft.postal && !isValidPostal(draft.postal) ? (
-                      <p className="admin-error">Use format X1X 1X1.</p>
-                    ) : null}
                   </label>
                   <label className="admin-field">
                     <span className="admin-label">Property type</span>

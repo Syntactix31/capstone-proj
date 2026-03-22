@@ -401,10 +401,6 @@ export default function DashboardPage() {
                     <div className="admin-strong">{activeClient.province || "—"}</div>
                   </div>
                   <div>
-                    <div className="admin-muted">Postal Code</div>
-                    <div className="admin-strong">{activeClient.postal || "—"}</div>
-                  </div>
-                  <div>
                     <div className="admin-muted">Property Type</div>
                     <div className="admin-strong">{activeClient.propertyType || "—"}</div>
                   </div>
@@ -423,3 +419,4 @@ export default function DashboardPage() {
     </AdminLayout>
   );
 }
+

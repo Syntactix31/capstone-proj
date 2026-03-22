@@ -930,6 +930,15 @@ body {
   transform: none;
 }
 
+.calendar-day--disabled,
+.calendar-day--disabled:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
 @media (max-width: 600px) {
   .calendar-grid {
     gap: 6px; /* 🔥 Tighter gaps */
@@ -1615,7 +1624,7 @@ body {
 
 .admin-table-row {
   display: grid;
-  grid-template-columns: 0.8fr 1.3fr 1fr 0.9fr 1fr;
+  grid-template-columns: 0.8fr 1.3fr 1fr 0.9fr 0.7fr 1.1fr;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
@@ -1631,6 +1640,18 @@ body {
   font-weight: 700;
   color: #6b7280;
   text-transform: uppercase;
+}
+
+.admin-table-head > :last-child {
+  justify-self: end;
+  text-align: right;
+}
+
+.admin-table-row > .admin-actions {
+  justify-self: end;
+  justify-content: flex-end;
+  align-items: center;
+  text-align: right;
 }
 
 .admin-table-actions {

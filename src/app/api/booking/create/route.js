@@ -4,6 +4,10 @@ import { getGmailTransporter } from "../../../lib/gmail";
 import { createBooking } from "../../../lib/db/bookings";
 import { upsertClient, upsertClientProperty } from "../../../lib/db/clients";
 
+function normalizePhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
 // Turn a "9:30 am" style label into numeric hour/minute values.
 function parseTime12h(timeStr) {
   const match = String(timeStr || "")
@@ -270,12 +274,19 @@ export async function POST(req) {
       firstName,
       lastName,
       email,
+      phone,
       address,
       notes,
     } = body;
 
-    if (!date || !time || !email || !firstName || !lastName || !service) {
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!date || !time || !email || !firstName || !lastName || !service || !normalizedPhone) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (!/^\d{10}$/.test(normalizedPhone)) {
+      return NextResponse.json({ error: "Phone number must be 10 digits." }, { status: 400 });
     }
 
     const start = buildEdmontonDate(date, time);
@@ -312,6 +323,7 @@ export async function POST(req) {
         description: [
           `Name: ${firstName} ${lastName}`,
           `Email: ${email}`,
+          `Phone: ${normalizedPhone}`,
           `Address: ${address || "N/A"}`,
           `Notes: ${notes || "None"}`,
         ].join("\n"),
@@ -321,6 +333,7 @@ export async function POST(req) {
             firstName: String(firstName || ""),
             lastName: String(lastName || ""),
             email: String(email || ""),
+            phone: String(normalizedPhone || ""),
             address: String(address || ""),
             notes: String(notes || ""),
             date: String(date || ""),
@@ -342,6 +355,7 @@ export async function POST(req) {
     const client = await upsertClient({
       name: `${firstName} ${lastName}`.trim(),
       email,
+      phone: normalizedPhone,
     });
     const property = await upsertClientProperty({
       clientId: client.id,

@@ -41,7 +41,6 @@ export async function ensureDatabaseSchema() {
           address text NOT NULL,
           city text NOT NULL DEFAULT 'Calgary',
           province text NOT NULL DEFAULT 'Alberta',
-          postal text NOT NULL DEFAULT '',
           property_type text NOT NULL DEFAULT 'House',
           additional_instructions text NOT NULL DEFAULT '',
           created_at timestamptz NOT NULL,
