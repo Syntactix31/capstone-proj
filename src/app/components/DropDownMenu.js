@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function DropDownMenu ({ onClose, isAnimatingOut }) {
-  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [user, setUser] = useState(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
 
@@ -17,10 +17,10 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
         const res = await fetch("/api/auth/me", { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
         if (!active) return;
-        setIsSignedIn(Boolean(data?.user));
+        setUser(data?.user || null);
       } catch {
         if (!active) return;
-        setIsSignedIn(false);
+        setUser(null);
       }
     }
 
@@ -49,7 +49,7 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
     }`}>
       
       {/* original width sm:w-80 and mobile w-75 */}
-      <div className="bg-[#477A40] w-74 sm:w-72 h-fit lg:h-90  flex flex-col gap-10 text-white text-center font-semibold p-10 *:hover:scale-105 *:transition-transform *:duration-200 *:active:opacity-50 pointer-events-auto *:active:scale-100 top-outline shadow-2xl z-100">
+      <div className="bg-[#477A40] w-74 sm:w-72 h-fit flex flex-col gap-10 text-white text-center font-semibold p-10 *:hover:scale-105 *:transition-transform *:duration-200 *:active:opacity-50 pointer-events-auto *:active:scale-100 top-outline shadow-2xl z-100">
 
         
         <Link href="/about" className="hidden max-lg:inline" onClick={onClose}>About</Link>
@@ -60,13 +60,14 @@ export default function DropDownMenu ({ onClose, isAnimatingOut }) {
         <Link href="/projects" onClick={onClose}>Projects</Link>
         <Link href="/quote" onClick={onClose}>Get A Quote</Link>
         <Link href="/book" onClick={onClose}>Book An Appointment</Link>
-        <Link href="/dashboard" onClick={onClose}>Admin</Link>
-        {isSignedIn ? (
-          <button type="button" onClick={handleLogout} disabled={busy}>
+        {user?.role === "client" && <Link href="/client" onClick={onClose}>Your Dashboard</Link>}
+        {user?.role === "admin" && <Link href="/dashboard" onClick={onClose}>Admin</Link>}
+        {user ? (
+          <button type="button" onClick={handleLogout} disabled={busy} className="cursor-pointer">
             {busy ? "Logging out..." : "Logout"}
           </button>
         ) : (
-          <Link href="/login" onClick={onClose}>Login</Link>
+          <Link href="/login" onClick={onClose} className="">Login</Link>
         )}
 
       </div>

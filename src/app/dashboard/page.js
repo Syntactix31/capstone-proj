@@ -58,11 +58,63 @@ function formatPhone(phone) {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
+function to24h(time12h) {
+  const match = String(time12h || "")
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return "";
+
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const meridiem = match[3].toUpperCase();
+
+  if (hour === 12) hour = 0;
+  if (meridiem === "PM") hour += 12;
+
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function getAppointmentDate(appointment) {
+  const isoDate = new Date(appointment?.startIso || "");
+  if (!Number.isNaN(isoDate.getTime())) return isoDate;
+
+  const time24 = to24h(appointment?.time);
+  if (!appointment?.date || !time24) return null;
+
+  const fallbackDate = new Date(`${appointment.date}T${time24}:00`);
+  if (Number.isNaN(fallbackDate.getTime())) return null;
+  return fallbackDate;
+}
+
+function getDateParts(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return {
+      month: "TBD",
+      day: "--",
+      weekday: "Date unavailable",
+      full: "Date unavailable",
+    };
+  }
+
+  return {
+    month: date.toLocaleString([], { month: "short" }).toUpperCase(),
+    day: date.toLocaleString([], { day: "2-digit" }),
+    weekday: date.toLocaleString([], { weekday: "long" }),
+    full: date.toLocaleString([], {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }),
+  };
+}
+
 export default function DashboardPage() {
     const [appointments, setAppointments] = useState([]);
     const [clients, setClients] = useState([]);
     const [error, setError] = useState("");
     const [activeClient, setActiveClient] = useState(null);
+    const [now, setNow] = useState(() => new Date());
 
     // Jiro 
     // Load the dashboard summary data from the protected overview route.
@@ -95,6 +147,11 @@ export default function DashboardPage() {
       };
     }, []);
 
+    useEffect(() => {
+      const interval = setInterval(() => setNow(new Date()), 60 * 1000);
+      return () => clearInterval(interval);
+    }, []);
+
     const confirmedCount = appointments.filter((appt) => appt.status === "Confirmed").length;
     const activeServices = SERVICES.filter((service) => service.active).length;
     const activeClients = clients.length;
@@ -102,8 +159,17 @@ export default function DashboardPage() {
       () =>
         appointments
           .filter((appt) => appt.status === "Confirmed")
-          .sort((a, b) => new Date(a.startIso).getTime() - new Date(b.startIso).getTime())[0],
-      [appointments]
+          .map((appt) => ({
+            ...appt,
+            appointmentDate: getAppointmentDate(appt),
+          }))
+          .filter((appt) => appt.appointmentDate && appt.appointmentDate.getTime() >= now.getTime())
+          .sort((a, b) => a.appointmentDate.getTime() - b.appointmentDate.getTime())[0] || null,
+      [appointments, now]
+    );
+    const nextAppointmentDateParts = useMemo(
+      () => getDateParts(nextAppointment?.appointmentDate || nextAppointment?.startIso || `${nextAppointment?.date || ""}T00:00:00`),
+      [nextAppointment]
     );
     const recentClients = clients.slice(0, 5);
     const closeClientProfile = () => setActiveClient(null);
@@ -153,29 +219,56 @@ export default function DashboardPage() {
               </Link>
             </div>
             {nextAppointment ? (
-              <div className="admin-list">
-                <div className="admin-list-row">
-                  <div>
-                    <div className="admin-strong">{nextAppointment.client}</div>
-                    <div className="admin-muted">
-                      {nextAppointment.service}
-                    </div>
+              <div className="dashboard-next-card">
+                <div className="dashboard-next-card__hero">
+                  <div className="dashboard-next-card__date-tile">
+                    <span className="dashboard-next-card__date-month">
+                      {nextAppointmentDateParts.month}
+                    </span>
+                    <span className="dashboard-next-card__date-day">
+                      {nextAppointmentDateParts.day}
+                    </span>
                   </div>
-                  <span className={STATUS_CLASS.Confirmed}>
-                    Scheduled
-                  </span>
-                </div>
-                <div className="admin-list-row">
-                  <div>
-                    <div className="admin-strong">{nextAppointment.date}</div>
-                    <div className="admin-muted">{nextAppointment.time}</div>
+
+                  <div className="dashboard-next-card__hero-copy">
+                    <p className="dashboard-next-card__eyebrow">Confirmed appointment</p>
+                    <h3 className="dashboard-next-card__client">{nextAppointment.client}</h3>
+                    <p className="dashboard-next-card__service">{nextAppointment.service}</p>
                   </div>
-                  <button className="admin-btn admin-btn--small" type="button">
-                    View details
-                  </button>
+
+                  <span className={STATUS_CLASS.Confirmed}>Scheduled</span>
                 </div>
-                <div className="admin-list-row">
-                  <div className="admin-muted">{nextAppointment.address}</div>
+
+                <div className="dashboard-next-card__details">
+                  <div className="dashboard-next-card__detail">
+                    <span className="dashboard-next-card__label">Day</span>
+                    <span className="dashboard-next-card__value">
+                      {nextAppointmentDateParts.weekday}
+                    </span>
+                  </div>
+                  <div className="dashboard-next-card__detail">
+                    <span className="dashboard-next-card__label">Date</span>
+                    <span className="dashboard-next-card__value">
+                      {nextAppointmentDateParts.full}
+                    </span>
+                  </div>
+                  <div className="dashboard-next-card__detail">
+                    <span className="dashboard-next-card__label">Time</span>
+                    <span className="dashboard-next-card__value">{nextAppointment.time}</span>
+                  </div>
+                </div>
+
+                <div className="dashboard-next-card__footer">
+                  <div className="dashboard-next-card__location">
+                    <span className="dashboard-next-card__label">Location</span>
+                    <span className="dashboard-next-card__address">
+                      {nextAppointment.address || "Address not added yet"}
+                    </span>
+                  </div>
+
+                  <Link className="admin-btn" href="/dashboard/appointments">
+                    Open schedule
+                  </Link>
                 </div>
               </div>
             ) : (

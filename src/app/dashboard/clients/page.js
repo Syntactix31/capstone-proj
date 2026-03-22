@@ -447,7 +447,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                   setPendingClientId(null);
                 }}
               >
-                Don't save
+                Don&apos;t save
               </button>
             </div>
           </div>

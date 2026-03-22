@@ -1371,8 +1371,8 @@ body {
   height: 36px;
   border-radius: 999px;
   border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #111827;
+  background: #477a40;
+  color: #ffffff;
   display: none;
   align-items: center;
   justify-content: center;
@@ -1789,6 +1789,130 @@ body {
   border-bottom: none;
 }
 
+.dashboard-next-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(71, 122, 64, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(71, 122, 64, 0.16), transparent 32%),
+    linear-gradient(180deg, #f8fbf6 0%, #ffffff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.dashboard-next-card__hero {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.dashboard-next-card__date-tile {
+  min-width: 78px;
+  padding: 12px 10px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(71, 122, 64, 0.18);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-next-card__date-month {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #477a40;
+}
+
+.dashboard-next-card__date-day {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: #111827;
+}
+
+.dashboard-next-card__hero-copy {
+  min-width: 0;
+}
+
+.dashboard-next-card__eyebrow {
+  margin: 0 0 4px 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.dashboard-next-card__client {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #111827;
+}
+
+.dashboard-next-card__service {
+  margin: 6px 0 0 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.dashboard-next-card__details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-next-card__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid #edf2f7;
+}
+
+.dashboard-next-card__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.dashboard-next-card__value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.dashboard-next-card__footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.dashboard-next-card__location {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dashboard-next-card__address {
+  font-size: 14px;
+  color: #374151;
+}
+
 .admin-modal {
   position: fixed;
   inset: 0;
@@ -1963,9 +2087,13 @@ body {
 
 .admin-calendar__times {
   display: grid;
-  grid-template-rows: repeat(24, var(--calendar-row-height));
+  grid-template-rows: repeat(var(--calendar-row-count, 24), var(--calendar-row-height));
   gap: var(--calendar-row-gap);
   align-content: start;
+  height: calc(
+    var(--calendar-row-count, 24) * var(--calendar-row-height) +
+    (var(--calendar-row-count, 24) - 1) * var(--calendar-row-gap)
+  );
 }
 
 .admin-calendar__time {
@@ -1980,21 +2108,47 @@ body {
   position: relative;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-template-rows: repeat(24, var(--calendar-row-height));
+  grid-template-rows: repeat(var(--calendar-row-count, 24), var(--calendar-row-height));
   gap: var(--calendar-row-gap);
   align-content: start;
   border-radius: 16px;
   background: #f8fafc;
-  padding: 12px;
+  padding: var(--calendar-grid-padding, 12px);
+  overflow: hidden;
+  height: calc(
+    var(--calendar-row-count, 24) * var(--calendar-row-height) +
+    (var(--calendar-row-count, 24) - 1) * var(--calendar-row-gap) +
+    (2 * var(--calendar-grid-padding, 12px))
+  );
 }
 
 .admin-calendar--day .admin-calendar__grid {
   grid-template-columns: 1fr;
 }
 
+.admin-calendar__column-guides {
+  position: absolute;
+  inset: var(--calendar-grid-padding, 12px);
+  display: grid;
+  grid-template-columns: repeat(var(--calendar-visible-columns, 7), minmax(0, 1fr));
+  column-gap: var(--calendar-row-gap);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.admin-calendar__column-guide {
+  border-left: 1px solid #dbe4ee;
+}
+
+.admin-calendar__column-guide.is-first {
+  border-left: none;
+}
+
 .admin-calendar__row {
   border-top: 1px solid #e5e7eb;
   grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;
 }
 
 .admin-calendar__event {
@@ -2008,6 +2162,8 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.35);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+  z-index: 3;
 }
 
 .admin-calendar__week {
@@ -2140,22 +2296,34 @@ body {
   background: #e0f2fe;
 }
 
-.admin-calendar__now {
+.admin-calendar__now-layer {
   position: absolute;
-  left: 12px;
-  right: 12px;
+  left: var(--calendar-grid-padding, 12px);
+  right: var(--calendar-grid-padding, 12px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.admin-calendar__now {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   pointer-events: none;
+  transform: translateY(-50%);
 }
 
 .admin-calendar__now-dot {
+  position: absolute;
   width: 10px;
   height: 10px;
   border-radius: 999px;
   background: #ef4444;
+  top: 50%;
+  margin-left: -5px;
   box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.15);
+  z-index: 1;
+  transform: translateY(-50%);
 }
 
 .admin-calendar__now-line {
@@ -2179,12 +2347,18 @@ body {
   display: grid;
   grid-template-columns: 70px minmax(0, 1fr);
   gap: 12px;
+  align-items: start;
 }
 
 .admin-calendar__scroll {
   max-height: 520px;
   overflow-y: auto;
   padding-right: 6px;
+}
+
+.admin-calendar__times,
+.admin-calendar__grid {
+  align-self: start;
 }
 
 .admin-calendar__scroll::-webkit-scrollbar {
@@ -2269,7 +2443,7 @@ body {
   }
 
   .admin-calendar__grid {
-    padding: 10px;
+    --calendar-grid-padding: 10px;
   }
 
   .admin-calendar__days {
@@ -2321,6 +2495,20 @@ body {
 
   .admin-appointments .admin-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-next-card__hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .dashboard-next-card__details {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-next-card__footer {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .admin-calendar {
@@ -2379,7 +2567,7 @@ body {
 
   .admin-calendar__times {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(24, var(--calendar-row-height));
+    grid-template-rows: repeat(var(--calendar-row-count, 24), var(--calendar-row-height));
     gap: var(--calendar-row-gap);
     align-content: start;
   }
@@ -2432,14 +2620,7 @@ body {
   }
 
   .admin-calendar--compact-week .admin-calendar__grid::after {
-    content: "";
-    position: absolute;
-    top: 12px;
-    bottom: 12px;
-    left: 50%;
-    width: 1px;
-    background: #e2e8f0;
-    pointer-events: none;
+    display: none;
   }
 
   .admin-calendar--day .admin-calendar__scroll {
@@ -3473,5 +3654,318 @@ body {
 @keyframes pulse {
   50% {
     opacity: 0.5;
+  }
+}
+
+
+  
+
+
+/* ===== CLIENT DASHBOARD MAJOR FIXES NEEDED ===== */
+
+.client-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+
+.client-shell {
+  display: flex;
+  flex: 1;
+  background-color: #f8f9fa;
+}
+
+.client-sidebar {
+  width: 280px;
+  background: linear-gradient(135deg, #477A40 0%, #5a8f4c 100%);
+  color: white;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  min-height: 100%;
+  overflow-y: auto;
+}
+
+.client-sidebar-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.client-logo {
+  font-size: 32px;
+  font-weight: bold;
+  color: white;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.client-title-text {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.client-subtitle {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.client-menu {
+  flex: 1;
+}
+
+.client-menu-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  text-decoration: none;
+  color: white;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.client-menu-link:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.client-menu-arrow {
+  font-size: 18px;
+  opacity: 0.8;
+}
+
+.client-sidebar-footer {
+  margin-top: auto;
+}
+
+.client-user {
+  text-align: center;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.client-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.client-btn--logout {
+  background: rgba(255,255,255,0.2);
+  color: white;
+}
+
+.client-btn--logout:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.client-main {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+}
+
+.client-hero {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  margin-bottom: 32px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.client-kicker {
+  color: #477A40;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.client-title {
+  font-size: 36px;
+  font-weight: bold;
+  margin-bottom: 16px;
+  color: #1a1a1a;
+}
+
+.client-subtitle {
+  color: #666;
+  font-size: 18px;
+}
+
+.client-error {
+  color: #dc3545;
+  margin-top: 16px;
+  font-weight: 500;
+}
+
+.client-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.client-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.client-card--stat {
+  text-align: center;
+}
+
+.client-stat-title {
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.client-stat-value {
+  font-size: 48px;
+  font-weight: bold;
+  color: #477A40;
+}
+
+.client-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.client-card--full {
+  grid-column: 1 / -1;
+}
+
+.client-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.client-card-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.client-link {
+  color: #477A40;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.client-link:hover {
+  text-decoration: underline;
+}
+
+.client-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.client-list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.client-strong {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.client-muted {
+  color: #666;
+  font-size: 14px;
+}
+
+.client-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.client-badge--active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.client-badge--pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.client-badge--paid {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.client-table {
+  width: 100%;
+}
+
+.client-table-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.client-table-head {
+  font-weight: 600;
+  color: #666;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 768px) {
+  .client-page {
+    flex-direction: column;
+  }
+  
+  .client-sidebar {
+    width: 100%;
+    padding: 16px;
+  }
+  
+  .client-main {
+    padding: 16px;
+  }
+  
+  .client-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .client-card--full {
+    grid-column: auto;
+  }
+  
+  .client-table-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 }
