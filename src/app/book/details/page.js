@@ -261,8 +261,6 @@ function DetailsContent() {
                   name="phone"
                   type="tel"
                   inputMode="tel"
-                  pattern="^\d{10}$"
-                  title="Enter 10 digits, e.g. 5875550142"
                   className="details-input"
                   value={phoneDisplayValue}
                   onFocus={() => setPhoneFocused(true)}

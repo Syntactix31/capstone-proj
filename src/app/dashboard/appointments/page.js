@@ -694,24 +694,21 @@ export default function AdminAppointmentsPage() {
     }
     // backend
     // If adding, create on server
-    if (!formState.clientId || !formState.service) {
-      alert("Please select a client and service.");
+    if (!formState.clientId) {
+      alert("Please select a client.");
       return;
     }
 
     const { firstName, lastName } = splitClientName(selectedClient?.name);
-    if (!firstName || !lastName || !formState.email) {
-      alert("The selected client needs a full name and email before booking.");
-      return;
-    }
     // backend
     const payload = {
       service: formState.service, // service id (fence, pergola, etc)
       date: formState.date,
       time: formState.time,
-      firstName,
-      lastName,
+      firstName: firstName || selectedClient?.name || "Client",
+      lastName: lastName || "",
       email: formState.email,
+      phone: formState.phone,
       address: formState.address || "",
       notes: formState.notes,
     };
@@ -1361,7 +1358,7 @@ return (
               <button
                 className="admin-btn admin-btn--primary"
                 type="submit"
-                disabled={busy || (!editingId && (!selectedClient || clientsLoading))}
+                disabled={busy}
               >
                 {busy ? "Saving…" : editingId ? "Reschedule" : "Add Appointment"}
               </button>

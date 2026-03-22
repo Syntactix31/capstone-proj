@@ -281,11 +281,11 @@ export async function POST(req) {
 
     const normalizedPhone = normalizePhone(phone);
 
-    if (!date || !time || !email || !firstName || !lastName || !service || !normalizedPhone) {
+    if (!date || !time || !email || !firstName || !service) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    if (!/^\d{10}$/.test(normalizedPhone)) {
+    if (normalizedPhone && !/^\d{10}$/.test(normalizedPhone)) {
       return NextResponse.json({ error: "Phone number must be 10 digits." }, { status: 400 });
     }
 
@@ -323,7 +323,7 @@ export async function POST(req) {
         description: [
           `Name: ${firstName} ${lastName}`,
           `Email: ${email}`,
-          `Phone: ${normalizedPhone}`,
+          `Phone: ${normalizedPhone || "N/A"}`,
           `Address: ${address || "N/A"}`,
           `Notes: ${notes || "None"}`,
         ].join("\n"),
