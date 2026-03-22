@@ -99,7 +99,7 @@ export async function POST(req) {
         ${service},
         ${numericPrice},
         ${status},
-        ${notes || null},
+        ${notes},
         ${pdfUrl || null},
         ${pdfName || null},
         ${now},

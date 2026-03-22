@@ -1615,7 +1615,7 @@ body {
 
 .admin-table-row {
   display: grid;
-  grid-template-columns: 0.8fr 1.3fr 1fr 0.9fr 0.7fr 1.1fr;
+  grid-template-columns: 0.8fr 1.3fr 1fr 0.9fr 1fr;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
@@ -1631,6 +1631,27 @@ body {
   font-weight: 700;
   color: #6b7280;
   text-transform: uppercase;
+}
+
+.admin-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.admin-table-action {
+  min-width: auto;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 480px) {
+  .admin-table-actions {
+    justify-content: flex-start;
+  }
 }
 
 .admin-list {
