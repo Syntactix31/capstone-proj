@@ -1694,8 +1694,8 @@ body {
 }
 
 .admin-btn--danger {
-  border-color: #ef4444;
-  color: #ef4444;
+  background-color: #ef4444;
+  color: #ffffff;
 }
 
 .admin-btn--small {
@@ -1948,7 +1948,6 @@ body {
 
 .admin-modal--scrollable {
   overflow-y: auto;
-  place-items: start center;
 }
 
 .admin-modal__content.admin-modal__content--scrollable {
@@ -2706,6 +2705,10 @@ body {
   .admin-table-row {
     grid-template-columns: 1fr;
     gap: 6px;
+  }
+
+  .admin-table-head {
+    display: none;
   }
 }
 

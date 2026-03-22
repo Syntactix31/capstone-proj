@@ -265,10 +265,6 @@ export default function DashboardPage() {
                       {nextAppointment.address || "Address not added yet"}
                     </span>
                   </div>
-
-                  <Link className="admin-btn" href="/dashboard/appointments">
-                    Open schedule
-                  </Link>
                 </div>
               </div>
             ) : (

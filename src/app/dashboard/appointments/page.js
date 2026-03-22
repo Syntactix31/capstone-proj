@@ -64,6 +64,14 @@ function splitClientName(fullName) {
   };
 }
 
+function getClientFormFields(client) {
+  return {
+    phone: client?.phone || "",
+    email: client?.email || "",
+    address: client?.address || "",
+  };
+}
+
 // Main admin scheduling page for viewing, creating, cancelling, and rescheduling bookings.
 export default function AdminAppointmentsPage() {
   // Core page state: fetched appointments plus loading/error flags.
@@ -89,6 +97,7 @@ export default function AdminAppointmentsPage() {
     clientId: "",
     firstName: "",
     lastName: "",
+    phone: "",
     email: "",
     service: "fence",
     date: "",
@@ -226,6 +235,15 @@ export default function AdminAppointmentsPage() {
   const confirmed = bookedAppointments.length;
 
   const activeServices = useMemo(() => SERVICES.filter((s) => s.active), []);
+  const sortedClients = useMemo(
+    () =>
+      [...clients].sort((a, b) =>
+        String(a?.name || "").localeCompare(String(b?.name || ""), undefined, {
+          sensitivity: "base",
+        })
+      ),
+    [clients]
+  );
   const selectedClient = useMemo(
     () => clients.find((client) => client.id === formState.clientId) || null,
     [clients, formState.clientId]
@@ -594,16 +612,16 @@ export default function AdminAppointmentsPage() {
   ^^ prevents crashing
   */
   const openAddForm = () => {
+    const defaultClient = sortedClients[0] || null;
     setEditingId(null);
     setFormState({
-      clientId: clients[0]?.id ?? "",
+      clientId: defaultClient?.id ?? "",
+      ...getClientFormFields(defaultClient),
       firstName: "",
       lastName: "",
-      email: "",
       service: activeServices[0]?.id ?? "fence",
       date: formatDateKey(new Date()),
       time: "09:00 AM",
-      address: "",
       notes: "",
     });
     setIsFormOpen(true);
@@ -624,6 +642,7 @@ export default function AdminAppointmentsPage() {
       clientId: "",
       firstName,
       lastName,
+      phone: "",
       email: appt.email || "",
       service: appt.serviceId || "fence",
       date: appt.date,
@@ -642,6 +661,15 @@ export default function AdminAppointmentsPage() {
   // Update the controlled form fields as the admin types/selects values.
   const handleFormChange = (event) => {
     const { name, value } = event.target;
+    if (name === "clientId") {
+      const nextClient = clients.find((client) => client.id === value) || null;
+      setFormState((prev) => ({
+        ...prev,
+        clientId: value,
+        ...getClientFormFields(nextClient),
+      }));
+      return;
+    }
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -666,13 +694,13 @@ export default function AdminAppointmentsPage() {
     }
     // backend
     // If adding, create on server
-    if (!selectedClient || !formState.service) {
+    if (!formState.clientId || !formState.service) {
       alert("Please select a client and service.");
       return;
     }
 
-    const { firstName, lastName } = splitClientName(selectedClient.name);
-    if (!firstName || !lastName || !selectedClient.email) {
+    const { firstName, lastName } = splitClientName(selectedClient?.name);
+    if (!firstName || !lastName || !formState.email) {
       alert("The selected client needs a full name and email before booking.");
       return;
     }
@@ -683,8 +711,8 @@ export default function AdminAppointmentsPage() {
       time: formState.time,
       firstName,
       lastName,
-      email: selectedClient.email,
-      address: selectedClient.address || "",
+      email: formState.email,
+      address: formState.address || "",
       notes: formState.notes,
     };
     // backend
@@ -732,9 +760,14 @@ export default function AdminAppointmentsPage() {
   };
 
   useEffect(() => {
-    if (!isFormOpen || editingId || formState.clientId || !clients.length) return;
-    setFormState((prev) => ({ ...prev, clientId: clients[0].id }));
-  }, [clients, editingId, formState.clientId, isFormOpen]);
+    if (!isFormOpen || editingId || formState.clientId || !sortedClients.length) return;
+    const defaultClient = sortedClients[0];
+    setFormState((prev) => ({
+      ...prev,
+      clientId: defaultClient.id,
+      ...getClientFormFields(defaultClient),
+    }));
+  }, [editingId, formState.clientId, isFormOpen, sortedClients]);
 
 return (
     <AdminLayout>
@@ -1216,51 +1249,40 @@ return (
                           {clientsLoading ? "Loading clients..." : "No clients available"}
                         </option>
                       ) : null}
-                      {clients.map((client) => (
+                      {sortedClients.map((client) => (
                         <option key={client.id} value={client.id}>
-                          {client.name} ({client.email})
+                          {client.name}
                         </option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="admin-label" htmlFor="clientName">Full name</label>
+                    <label className="admin-label" htmlFor="clientPhone">Phone</label>
                     <input
-                      id="clientName"
+                      id="clientPhone"
+                      name="phone"
                       className="admin-input"
-                      value={selectedClient?.name || ""}
-                      readOnly
-                      disabled
+                      value={formState.phone}
+                      onChange={handleFormChange}
                     />
                   </div>
 
                   <div>
-                    <label className="admin-label" htmlFor="clientPhone">Phone</label>
-                    <input
-                      id="clientPhone"
-                      className="admin-input"
-                      value={selectedClient?.phone || ""}
-                      readOnly
-                      disabled
-                    />
-                  </div>
-
-                  <div className="admin-modal__full">
                     <label className="admin-label" htmlFor="clientEmail">Email</label>
                     <input
                       id="clientEmail"
+                      name="email"
                       type="email"
                       className="admin-input"
-                      value={selectedClient?.email || ""}
-                      readOnly
-                      disabled
+                      value={formState.email}
+                      onChange={handleFormChange}
                     />
                   </div>
                 </>
               ) : null}
 
-              <div>
+              <div className="admin-modal__full">
                 <label className="admin-label" htmlFor="service">Service</label>
                 <select
                   id="service"
@@ -1317,10 +1339,8 @@ return (
                   id="address"
                   name="address"
                   className="admin-input"
-                  value={editingId ? formState.address : selectedClient?.address || ""}
-                  onChange={editingId ? handleFormChange : undefined}
-                  readOnly={!editingId}
-                  disabled={!editingId}
+                  value={formState.address}
+                  onChange={handleFormChange}
                 />
               </div>
 
