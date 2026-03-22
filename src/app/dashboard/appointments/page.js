@@ -52,22 +52,41 @@ function to12h(time24) {
   return `${h12}:${String(mm).padStart(2, "0")} ${mer}`;
 }
 
+function splitClientName(fullName) {
+  const parts = String(fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return {
+    firstName: parts[0] || "",
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
 // Main admin scheduling page for viewing, creating, cancelling, and rescheduling bookings.
 export default function AdminAppointmentsPage() {
+  // Core page state: fetched appointments plus loading/error flags.
   const [appointments, setAppointments] = useState([]); // from Google Calendar
+  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [clientsLoading, setClientsLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // Detail modal state for the currently selected appointment.
   const [activeAppointment, setActiveAppointment] = useState(null);
   const [detailSource, setDetailSource] = useState(null);
 
+  // Calendar navigation state shared by day/week/month views.
   const [viewMode, setViewMode] = useState("week");
   const [now, setNow] = useState(() => new Date());
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
+  // Form modal state used for both creating and rescheduling appointments.
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formState, setFormState] = useState({
+    clientId: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -139,6 +158,40 @@ export default function AdminAppointmentsPage() {
     refreshAppointments();
   }, []);
 
+  // Load client records for the add-appointment form.
+  useEffect(() => {
+    let alive = true;
+
+    async function refreshClients() {
+      setClientsLoading(true);
+      try {
+        const res = await fetch("/api/admin/clients", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!alive) return;
+
+        if (!res.ok) {
+          setClients([]);
+          setError((current) => current || data?.error || "Failed to load clients.");
+          return;
+        }
+
+        setClients(Array.isArray(data.clients) ? data.clients : []);
+      } catch (e) {
+        console.error(e);
+        if (!alive) return;
+        setClients([]);
+        setError((current) => current || "Failed to load clients.");
+      } finally {
+        if (alive) setClientsLoading(false);
+      }
+    }
+
+    refreshClients();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // Check screen size so the calendar can switch to tighter mobile behavior.
   useEffect(() => {
     const tick = () => setNow(new Date());
@@ -173,9 +226,14 @@ export default function AdminAppointmentsPage() {
   const confirmed = bookedAppointments.length;
 
   const activeServices = useMemo(() => SERVICES.filter((s) => s.active), []);
+  const selectedClient = useMemo(
+    () => clients.find((client) => client.id === formState.clientId) || null,
+    [clients, formState.clientId]
+  );
 
-  const calendarStartHour = 0;
-  const calendarEndHour = 23;
+  // Hour boundaries define the visible scheduling grid for the calendar.
+  const calendarStartHour = 7;
+  const calendarEndHour = 19;
   /* calendar sizing
   - keeps day view taller for readability
   - matches mobile and desktop CSS values
@@ -299,12 +357,15 @@ export default function AdminAppointmentsPage() {
     return dates;
   }, [currentDate]);
 
+  // Convert fetched appointments into positioned calendar events for grid rendering.
   const calendarEvents = useMemo(() => {
     return appointments
       .filter((appt) => appt.status === "Confirmed")
       .map((appt) => {
         const time24 = to24h(appt.time); 
         const hour = Number(time24.split(":")[0] || 0);
+        if (hour < calendarStartHour || hour > calendarEndHour) return null;
+
         const gridRowStart = Math.max(hour - calendarStartHour + 1, 1); // which row the event is positioned from, +1 so calendar starts at row 1
       
         const span = 1;
@@ -318,8 +379,9 @@ export default function AdminAppointmentsPage() {
           span,
           timeLabel: appt.time,
         };
-      });
-  }, [appointments, calendarStartHour]);
+      })
+      .filter(Boolean);
+  }, [appointments, calendarEndHour, calendarStartHour]);
 
   /* day
 - useMemo hook
@@ -338,6 +400,29 @@ export default function AdminAppointmentsPage() {
     return calendarEvents;
   }, [calendarEvents, dayDate, viewMode, weekViewDates]);
 
+  // Keep grid overlays in sync with the number of visible day columns.
+  const calendarColumnCount = useMemo(() => {
+    if (viewMode === "day") return 1;
+    return weekViewDates.length;
+  }, [viewMode, weekViewDates]);
+
+  // Only render the live time marker when today's date is actually visible in the current view.
+  const currentDayColumn = useMemo(() => {
+    const todayKey = formatDateKey(now);
+
+    if (viewMode === "day") {
+      return formatDateKey(dayDate) === todayKey ? 1 : null;
+    }
+
+    if (viewMode === "week") {
+      const idx = weekViewDates.findIndex((date) => formatDateKey(date) === todayKey);
+      return idx === -1 ? null : idx + 1;
+    }
+
+    return null;
+  }, [dayDate, now, viewMode, weekViewDates]);
+
+  // Compute the live "current time" indicator position inside the calendar grid.
   /*line indicator
   - checks the current hour, mnutes
   - then checks if the current hours is less than the calendar start time
@@ -511,6 +596,7 @@ export default function AdminAppointmentsPage() {
   const openAddForm = () => {
     setEditingId(null);
     setFormState({
+      clientId: clients[0]?.id ?? "",
       firstName: "",
       lastName: "",
       email: "",
@@ -533,10 +619,9 @@ export default function AdminAppointmentsPage() {
  
   const openEditForm = (appt) => {
     setEditingId(appt.eventId);
-    const nameParts = String(appt.client || "").trim().split(" ");
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.slice(1).join(" ");
+    const { firstName, lastName } = splitClientName(appt.client);
     setFormState({
+      clientId: "",
       firstName,
       lastName,
       email: appt.email || "",
@@ -560,6 +645,7 @@ export default function AdminAppointmentsPage() {
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Shared submit handler: creates a new booking or reschedules an existing one.
   // runs when the form is submitted
   // preventDefault - preventing the page from refreshing when form is submitted
   const handleFormSubmit = async (event) => {
@@ -580,8 +666,14 @@ export default function AdminAppointmentsPage() {
     }
     // backend
     // If adding, create on server
-    if (!formState.firstName || !formState.lastName || !formState.email || !formState.service) {
-      alert("Please fill first name, last name, email, and service.");
+    if (!selectedClient || !formState.service) {
+      alert("Please select a client and service.");
+      return;
+    }
+
+    const { firstName, lastName } = splitClientName(selectedClient.name);
+    if (!firstName || !lastName || !selectedClient.email) {
+      alert("The selected client needs a full name and email before booking.");
       return;
     }
     // backend
@@ -589,10 +681,10 @@ export default function AdminAppointmentsPage() {
       service: formState.service, // service id (fence, pergola, etc)
       date: formState.date,
       time: formState.time,
-      firstName: formState.firstName,
-      lastName: formState.lastName,
-      email: formState.email,
-      address: formState.address,
+      firstName,
+      lastName,
+      email: selectedClient.email,
+      address: selectedClient.address || "",
       notes: formState.notes,
     };
     // backend
@@ -638,6 +730,11 @@ export default function AdminAppointmentsPage() {
     else next.setMonth(currentDate.getMonth() + direction);
     setCurrentDate(next);
   };
+
+  useEffect(() => {
+    if (!isFormOpen || editingId || formState.clientId || !clients.length) return;
+    setFormState((prev) => ({ ...prev, clientId: clients[0].id }));
+  }, [clients, editingId, formState.clientId, isFormOpen]);
 
 return (
     <AdminLayout>
@@ -831,7 +928,10 @@ return (
 
               {/* Scrollable calendar grid that holds the hour slots and events */}
               <div className="admin-calendar__scroll" ref={calendarScrollRef}>
-                <div className="admin-calendar__scroll-grid">
+                <div
+                  className="admin-calendar__scroll-grid"
+                  style={{ "--calendar-row-count": calendarSlots.length }}
+                >
 
                   {/* Left column showing hour labels */}
                   <div className="admin-calendar__times">
@@ -844,7 +944,24 @@ return (
 
 
                   {/* Main grid where appointment events are positioned */}
-                  <div className="admin-calendar__grid">
+                  <div
+                    className="admin-calendar__grid"
+                    style={{
+                      "--calendar-visible-columns": calendarColumnCount,
+                      "--calendar-grid-padding": `${calendarSizing.padding}px`,
+                    }}
+                  >
+                    {/* Vertical guides keep day columns visually separated. */}
+                    <div className="admin-calendar__column-guides" aria-hidden="true">
+                      {Array.from({ length: calendarColumnCount }, (_, index) => (
+                        <div
+                          key={`calendar-guide-${index + 1}`}
+                          className={`admin-calendar__column-guide ${
+                            index === 0 ? "is-first" : ""
+                          }`}
+                        />
+                      ))}
+                    </div>
 
                     {/* Empty rows representing hourly time slots */}
                     {calendarSlots.map((hour) => (
@@ -852,14 +969,25 @@ return (
                     ))}
 
 
-                    {/* Red line showing the current time position in the calendar */}
-                    {nowIndicator && (
-                      <div className="admin-calendar__now" style={{ top: `${nowIndicator.offset}px` }}>
-                        <span className="admin-calendar__now-dot" />
-                        <span className="admin-calendar__now-line" />
-                        <span className="admin-calendar__now-label">{nowIndicator.label}</span>
+                    {/* Keep the time line full-width, but pin the dot to the boundary before today's visible day column. */}
+                    {nowIndicator && currentDayColumn ? (
+                      <div
+                        className="admin-calendar__now-layer"
+                        style={{ top: `${nowIndicator.offset}px` }}
+                        aria-hidden="true"
+                      >
+                        <div className="admin-calendar__now">
+                          <span
+                            className="admin-calendar__now-dot"
+                            style={{
+                              left: `calc(((100% - (var(--calendar-visible-columns, 7) - 1) * var(--calendar-row-gap)) / var(--calendar-visible-columns, 7) + var(--calendar-row-gap)) * ${Math.max(currentDayColumn - 1, 0)})`,
+                            }}
+                          />
+                          <span className="admin-calendar__now-line" />
+                          <span className="admin-calendar__now-label">{nowIndicator.label}</span>
+                        </div>
                       </div>
-                    )}
+                    ) : null}
 
 
                     {/* Render appointment events inside the grid */}
@@ -1072,38 +1200,61 @@ return (
             <div className="admin-modal__grid">
               {!editingId ? (
                 <>
-                  <div>
-                    <label className="admin-label" htmlFor="firstName">First name</label>
-                    <input
-                      id="firstName"
-                      name="firstName"
-                      className="admin-input"
-                      value={formState.firstName}
-                      onChange={handleFormChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="admin-label" htmlFor="lastName">Last name</label>
-                    <input
-                      id="lastName"
-                      name="lastName"
-                      className="admin-input"
-                      value={formState.lastName}
-                      onChange={handleFormChange}
-                      required
-                    />
-                  </div>
                   <div className="admin-modal__full">
-                    <label className="admin-label" htmlFor="email">Email</label>
+                    <label className="admin-label" htmlFor="clientId">Client</label>
+                    <select
+                      id="clientId"
+                      name="clientId"
+                      className="admin-input"
+                      value={formState.clientId}
+                      onChange={handleFormChange}
+                      required
+                      disabled={clientsLoading || !clients.length}
+                    >
+                      {!clients.length ? (
+                        <option value="">
+                          {clientsLoading ? "Loading clients..." : "No clients available"}
+                        </option>
+                      ) : null}
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.name} ({client.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="admin-label" htmlFor="clientName">Full name</label>
                     <input
-                      id="email"
-                      name="email"
+                      id="clientName"
+                      className="admin-input"
+                      value={selectedClient?.name || ""}
+                      readOnly
+                      disabled
+                    />
+                  </div>
+
+                  <div>
+                    <label className="admin-label" htmlFor="clientPhone">Phone</label>
+                    <input
+                      id="clientPhone"
+                      className="admin-input"
+                      value={selectedClient?.phone || ""}
+                      readOnly
+                      disabled
+                    />
+                  </div>
+
+                  <div className="admin-modal__full">
+                    <label className="admin-label" htmlFor="clientEmail">Email</label>
+                    <input
+                      id="clientEmail"
                       type="email"
                       className="admin-input"
-                      value={formState.email}
-                      onChange={handleFormChange}
-                      required
+                      value={selectedClient?.email || ""}
+                      readOnly
+                      disabled
                     />
                   </div>
                 </>
@@ -1166,8 +1317,10 @@ return (
                   id="address"
                   name="address"
                   className="admin-input"
-                  value={formState.address}
-                  onChange={handleFormChange}
+                  value={editingId ? formState.address : selectedClient?.address || ""}
+                  onChange={editingId ? handleFormChange : undefined}
+                  readOnly={!editingId}
+                  disabled={!editingId}
                 />
               </div>
 
@@ -1185,7 +1338,11 @@ return (
             </div>
 
             <div className="admin-modal__actions">
-              <button className="admin-btn admin-btn--primary" type="submit" disabled={busy}>
+              <button
+                className="admin-btn admin-btn--primary"
+                type="submit"
+                disabled={busy || (!editingId && (!selectedClient || clientsLoading))}
+              >
                 {busy ? "Saving…" : editingId ? "Reschedule" : "Add Appointment"}
               </button>
               <button className="admin-btn admin-btn--ghost" type="button" onClick={closeForm} disabled={busy}>
