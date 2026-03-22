@@ -463,7 +463,7 @@ export default function QuoteClient() {
       <div className="overflow-hidden bg-white min-h-screen flex flex-col">
         <main className="flex-1 flex items-center justify-center px-4 -mt-35">
           <Link 
-            href="/services" 
+            href="/services-quote" 
             className="rounded-2xl bg-[#477a40] px-8 py-4 text-lg font-bold text-white hover:bg-white hover:border-[#477A40] hover:text-[#477A40] hover:scale-105 hover:border-2 transition-all shadow-lg"
           >
             Select a Service First →
@@ -932,7 +932,7 @@ export default function QuoteClient() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full flex items-center justify-center text-center max-h-15 rounded-2xl bg-[#477a40] px-8 py-4 text-xl font-bold text-white hover:cursor-pointer hover:bg-white hover:border-[#477A40] hover:text-[#477A40] hover:scale-105 hover:border-2 active:scale-95 shadow-xl transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center text-center max-h-17 rounded-2xl bg-[#477a40] px-8 py-10 sm:py-6 text-xl font-bold text-white hover:cursor-pointer hover:bg-white hover:border-[#477A40] hover:text-[#477A40] hover:scale-105 hover:border-2 active:scale-95 shadow-xl transition-all disabled:opacity-50"
           >
             {isSubmitting ? "Sending..." : `${selectedServices.length > 1 ? `Send Estimate Request for ${selectedServices.length} Services` : 'Send Estimate Request'}`}
           </button>
