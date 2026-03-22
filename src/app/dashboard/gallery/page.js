@@ -62,7 +62,7 @@ export default function AdminUploadPage() {
     const formData = new FormData();
     formData.append("url", fileUrl); // could also append pathname
 
-    const res = await fetch("/api/deleteMedia", {
+    const res = await fetch("/api/DeleteMedia", {
       method: "POST",
       body: formData,
     });
