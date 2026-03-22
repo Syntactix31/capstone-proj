@@ -2,28 +2,32 @@ import { del } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
+  console.log("🔥 DELETE API HIT");
+
   try {
     const formData = await req.formData();
-    const url = formData.get('url'); // send blob URL instead of file
+    const url = formData.get('url');
 
-    if (!url) {
+    console.log("URL RECEIVED:", url);
+
+    if (!url || typeof url !== "string") {
       return NextResponse.json(
-        { error: 'No URL provided' },
+        { success: false, error: "No valid URL provided" },
         { status: 400 }
       );
     }
 
-    // Delete from Vercel Blob
+    // Delete the file from Vercel Blob
     await del(url);
+
+    console.log("✅ DELETE SUCCESS");
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error("❌ DELETE ERROR:", error);
     return NextResponse.json(
-      { error: error.message },
+      { success: false, error: error.message || "Delete failed" },
       { status: 500 }
     );
   }
 }
-
-
-
