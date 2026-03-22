@@ -4,9 +4,9 @@ import { useEffect, useState, useMemo } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
 
 const STATUS_CLASS = {
-  Approved: "admin-badge admin-badge--active",
-  Rejected: "admin-badge admin-badge--danger",
-  Pending: "admin-badge admin-badge--neutral",
+  Approved: "admin-badge admin-badge--active mb-4 sm:mb-0",
+  Rejected: "admin-badge admin-badge--danger mb-4 sm:mb-0",
+  Pending: "admin-badge admin-badge--neutral mb-4 sm:mb-0",
 };
 
 export default function AdminEstimatesDashboard() {
@@ -68,44 +68,52 @@ export default function AdminEstimatesDashboard() {
   // =========================
   // CRUD ACTIONS
   // =========================
-  async function createEstimate() {
+  async function createOrUpdateEstimate() {
     setBusy(true);
     try {
       const priceRaw = String(formState.price || "").trim();
-    if (!priceRaw) {
-      alert("Please enter a price.");
-      setBusy(false);
-      return;
-    }
+      if (!priceRaw) {
+        alert("Please enter a price.");
+        return;
+      }
 
-    const sanitizedPrice = priceRaw.replace(/[^0-9.\-]/g, "");
-    if (!sanitizedPrice || Number.isNaN(Number(sanitizedPrice))) {
-      alert("Please enter a valid numeric price.");
-      setBusy(false);
-      return;
-    }
+      const sanitizedPrice = priceRaw.replace(/[^0-9.\-]/g, "");
+      if (!sanitizedPrice || Number.isNaN(Number(sanitizedPrice))) {
+        alert("Please enter a valid numeric price.");
+        return;
+      }
 
-    const formData = new FormData();
-    Object.entries(formState).forEach(([key, value]) => {
-      const valueStr = key === "price" ? sanitizedPrice : String(value);
-      formData.append(key, valueStr);
-    });
-
-    if (pdfFile) {
-      formData.append("pdf", pdfFile);
-    }
-
-      const res = await fetch("/api/admin/estimates/create", {
-        method: "POST",
-        body: formData,
+      const formData = new FormData();
+      Object.entries(formState).forEach(([key, value]) => {
+        const valueStr = key === "price" ? sanitizedPrice : String(value);
+        formData.append(key, valueStr);
       });
+
+      if (pdfFile) {
+        formData.append("pdf", pdfFile);
+      }
+
+      let res;
+      if (editingId) {
+        // update
+        res = await fetch(`/api/admin/estimates/${editingId}`, {
+          method: "PUT",
+          body: formData,
+        });
+      } else {
+        // create
+        res = await fetch("/api/admin/estimates/create", {
+          method: "POST",
+          body: formData,
+        });
+      }
 
       if (!res.ok) {
         const text = await res.text();
-        console.error("Create estimate failed:", res.status, text);
-        throw new Error("Failed to create estimate");
+        console.error("Estimate save failed:", res.status, text);
+        alert("Failed to save estimate");
+        return;
       }
-
 
       await fetchEstimates();
     } catch (e) {
@@ -178,26 +186,8 @@ export default function AdminEstimatesDashboard() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const formData = new FormData();
-    Object.entries(formState).forEach(([key, value]) => {
-      formData.append(key, String(value));
-    });
-    if (pdfFile) {
-      formData.append("pdf", pdfFile);
-    }
-
-    if (editingId) {
-      await fetch(`/api/admin/estimates/${editingId}`, {
-        method: "PUT",
-        body: formData,
-      });
-    } else {
-      await createEstimate();
-    }
-
+    await createOrUpdateEstimate();
     setIsFormOpen(false);
-    await fetchEstimates();
   };
 
   // =========================
@@ -264,35 +254,32 @@ export default function AdminEstimatesDashboard() {
                     <div className="admin-muted">{e.service}</div>
                   </div>
 
-                  <div>${e.price}</div>
+                  <div className="admin-numeric">${e.price}</div>
 
-                  <span className={STATUS_CLASS[e.status]}>
-                    {e.status}
-                  </span>
+                  <span className={STATUS_CLASS[e.status]}>{e.status}</span>
 
+                  {/* 4th column: actions */}
                   <div className="admin-table-actions">
-                    {/* PDF view */}
                     {e.pdfUrl && (
                       <a
                         href={e.pdfUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="admin-btn admin-btn--ghost"
-                        style={{ marginRight: "0.5rem" }}
+                        className="admin-btn admin-btn--ghost admin-table-action"
                       >
                         View PDF
                       </a>
                     )}
 
                     <button
-                      className="admin-btn admin-btn--ghost"
+                      className="admin-btn admin-btn--ghost admin-table-action"
                       onClick={() => openForm(e)}
                     >
                       Edit
                     </button>
 
                     <button
-                      className="admin-btn admin-btn--danger"
+                      className="admin-btn admin-btn--danger admin-table-action"
                       onClick={() => deleteEstimate(e.id)}
                     >
                       Delete

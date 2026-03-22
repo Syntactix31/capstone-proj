@@ -34,7 +34,7 @@ export async function GET() {
         service: est.service,
         price: est.price,
         status: est.status,
-        notes: est.notes,
+        notes: est.notes || "",
         pdfName: est.pdf_name,
         pdfUrl: est.pdf_url,
         createdAt: est.created_at,
