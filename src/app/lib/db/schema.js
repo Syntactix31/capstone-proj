@@ -3,6 +3,7 @@ import { getSql } from "./client.js";
 let schemaPromise = null;
 
 // Make sure the required tables/indexes exist before the app uses the DB.
+//Revise time data to not use local machine units
 export async function ensureDatabaseSchema() {
   if (!schemaPromise) {
     schemaPromise = (async () => {
@@ -41,7 +42,6 @@ export async function ensureDatabaseSchema() {
           address text NOT NULL,
           city text NOT NULL DEFAULT 'Calgary',
           province text NOT NULL DEFAULT 'Alberta',
-          postal text NOT NULL DEFAULT '',
           property_type text NOT NULL DEFAULT 'House',
           additional_instructions text NOT NULL DEFAULT '',
           created_at timestamptz NOT NULL,

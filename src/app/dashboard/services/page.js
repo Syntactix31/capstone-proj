@@ -181,7 +181,6 @@ export default function AdminServicesPage() {
     <AdminLayout>
       <section className="admin-hero">
         <div>
-          <p className="admin-kicker">Services</p>
           <h1 className="admin-title">Active services</h1>
           <p className="admin-subtitle">
             Services currently available for booking.
@@ -235,7 +234,6 @@ export default function AdminServicesPage() {
           <form className="admin-modal__content" onSubmit={handleSubmit}>
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">Service setup</p>
                 <h2 className="admin-title">
                   {selectedServiceId ? "Edit service" : "Add a new service"}
                 </h2>
@@ -402,7 +400,6 @@ export default function AdminServicesPage() {
           <div className="admin-modal__content" role="dialog" aria-modal="true">
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">Delete Service</p>
                 <h2 className="admin-title">Are you sure?</h2>
                 <p className="admin-subtitle">
                   This will permanently delete {deleteTarget.name}.

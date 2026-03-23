@@ -82,6 +82,31 @@ function overlaps(aStart, aEnd, bStart, bEnd) {
   return aStart < bEnd && aEnd > bStart;
 }
 
+function hasAvailableSlots(dateStr, busyIntervals) {
+  const intervals = (Array.isArray(busyIntervals) ? busyIntervals : [])
+    .map((i) => {
+      const s = new Date(i.start);
+      const e = new Date(i.end);
+      if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return null;
+      return { s, e };
+    })
+    .filter(Boolean);
+
+  for (const slot of TIME_SLOTS) {
+    const slotStart = makeDateFromYmdAndSlot(dateStr, slot);
+    if (!slotStart || Number.isNaN(slotStart.getTime())) continue;
+
+    const slotEnd = new Date(slotStart.getTime() + 30 * 60 * 1000);
+
+    if (slotStart.getTime() < Date.now()) continue;
+
+    const isBooked = intervals.some((it) => overlaps(slotStart, slotEnd, it.s, it.e));
+    if (!isBooked) return true;
+  }
+
+  return false;
+}
+
 // Main booking time picker used for both new bookings and reschedules.
 function BookTimeInner() {
   const params = useSearchParams();
@@ -117,6 +142,7 @@ function BookTimeInner() {
   const [selectedTime, setSelectedTime] = useState(null);
 
   const [busyIntervals, setBusyIntervals] = useState([]);
+  const [busyIntervalsByDate, setBusyIntervalsByDate] = useState({});
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   const calendarCells = useMemo(() => {
@@ -175,6 +201,53 @@ function BookTimeInner() {
       ignore = true;
     };
   }, [selectedDateStr]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadMonthAvailability() {
+      const visibleDates = calendarCells
+        .filter(Boolean)
+        .map((dateObj) => {
+          const next = new Date(dateObj);
+          next.setHours(0, 0, 0, 0);
+          return next;
+        })
+        .filter((dateObj) => dateObj.getTime() >= today.getTime())
+        .map(ymd);
+
+      if (!visibleDates.length) {
+        if (!ignore) setBusyIntervalsByDate({});
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/booking/availability", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dates: visibleDates }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return;
+
+        if (!ignore) {
+          setBusyIntervalsByDate(
+            data?.busyIntervalsByDate && typeof data.busyIntervalsByDate === "object"
+              ? data.busyIntervalsByDate
+              : {}
+          );
+        }
+      } catch {
+        if (!ignore) setBusyIntervalsByDate({});
+      }
+    }
+
+    loadMonthAvailability();
+    return () => {
+      ignore = true;
+    };
+  }, [calendarCells, today]);
 
   // Mark slots as disabled if they are in the past or overlap an existing booking.
   const disabledSlots = useMemo(() => {
@@ -393,16 +466,22 @@ function BookTimeInner() {
                   const dStart = new Date(d);
                   dStart.setHours(0, 0, 0, 0);
                   const isPast = dStart.getTime() < today.getTime();
+                  const dayBusyIntervals = busyIntervalsByDate[dateStr];
+                  const isUnavailable =
+                    !isPast &&
+                    Array.isArray(dayBusyIntervals) &&
+                    !hasAvailableSlots(dateStr, dayBusyIntervals);
+                  const isDisabled = isPast || isUnavailable;
 
                   return (
                     <button
                       key={dateStr}
                       type="button"
-                      disabled={isPast}
+                      disabled={isDisabled}
                       className={
                         "calendar-day" +
                         (isSelected ? " calendar-day--selected" : "") +
-                        (isPast ? " calendar-day--disabled" : "")
+                        (isDisabled ? " calendar-day--disabled" : "")
                       }
                       onClick={() => setSelectedDateStr(dateStr)}
                       title={prettyDate(d)}

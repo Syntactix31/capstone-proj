@@ -9,6 +9,7 @@ const MENU_ITEMS = [
   { id: "appointments", label: "Appointments", href: "/dashboard/appointments" },
   { id: "services", label: "Services", href: "/dashboard/services" },
   { id: "clients", label: "Clients", href: "/dashboard/clients" },
+  { id: "projects", label: "Projects", href: "/dashboard/projects" },
   { id: "invoices", label: "Invoices", href: "/dashboard/invoices" },
   { id: "estimates", label: "Estimates", href: "/dashboard/estimates" },
   { id: "payments", label: "Payments", href: "/dashboard/payments" },

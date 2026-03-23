@@ -1,4 +1,3 @@
-// src/app/api/admin/estimates/route.js
 import { NextResponse } from "next/server";
 import { getSql } from "../../../lib/db/client";
 
@@ -34,7 +33,7 @@ export async function GET() {
         service: est.service,
         price: est.price,
         status: est.status,
-        notes: est.notes,
+        notes: est.notes || "",
         pdfName: est.pdf_name,
         pdfUrl: est.pdf_url,
         createdAt: est.created_at,
@@ -49,3 +48,6 @@ export async function GET() {
     );
   }
 }
+
+
+

@@ -12,6 +12,8 @@ const SERVICES = [
   { id: "trees-shrubs", name: "Trees and Shrubs", active: true },
 ];
 
+const VISIT_TYPES = ["Estimate", "Design Consultation", "Installation"];
+
 
 const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
@@ -64,6 +66,14 @@ function splitClientName(fullName) {
   };
 }
 
+function getClientFormFields(client) {
+  return {
+    phone: client?.phone || "",
+    email: client?.email || "",
+    address: client?.address || "",
+  };
+}
+
 // Main admin scheduling page for viewing, creating, cancelling, and rescheduling bookings.
 export default function AdminAppointmentsPage() {
   // Core page state: fetched appointments plus loading/error flags.
@@ -89,8 +99,11 @@ export default function AdminAppointmentsPage() {
     clientId: "",
     firstName: "",
     lastName: "",
+    phone: "",
     email: "",
     service: "fence",
+    visitType: "Estimate",
+    durationHours: "1",
     date: "",
     time: "09:00 AM",
     address: "",
@@ -226,6 +239,15 @@ export default function AdminAppointmentsPage() {
   const confirmed = bookedAppointments.length;
 
   const activeServices = useMemo(() => SERVICES.filter((s) => s.active), []);
+  const sortedClients = useMemo(
+    () =>
+      [...clients].sort((a, b) =>
+        String(a?.name || "").localeCompare(String(b?.name || ""), undefined, {
+          sensitivity: "base",
+        })
+      ),
+    [clients]
+  );
   const selectedClient = useMemo(
     () => clients.find((client) => client.id === formState.clientId) || null,
     [clients, formState.clientId]
@@ -265,8 +287,13 @@ export default function AdminAppointmentsPage() {
   // time slot intervals - used for when user wants to create a new appointment and has to choose a timeslot
   const timeSlots = useMemo(() => {
     const slots = [];
-    for (let hour = 0; hour < 24; hour += 1) {
+    const durationHours = Number.parseInt(formState.durationHours || "1", 10) || 1;
+    const latestEndMinutes = calendarEndHour * 60;
+    for (let hour = calendarStartHour; hour <= calendarEndHour; hour += 1) {
       for (let minute = 0; minute < 60; minute += 30) {
+        const slotStartMinutes = hour * 60 + minute;
+        const slotEndMinutes = slotStartMinutes + durationHours * 60;
+        if (slotEndMinutes > latestEndMinutes) continue;
         const period = hour >= 12 ? "PM" : "AM";
         const normalized = hour % 12 === 0 ? 12 : hour % 12;
         const minuteLabel = minute.toString().padStart(2, "0");
@@ -274,7 +301,7 @@ export default function AdminAppointmentsPage() {
       }
     }
     return slots;
-  }, []);
+  }, [calendarEndHour, calendarStartHour, formState.durationHours]);
 
   const weekDays = useMemo(() => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], []);
 
@@ -367,8 +394,15 @@ export default function AdminAppointmentsPage() {
         if (hour < calendarStartHour || hour > calendarEndHour) return null;
 
         const gridRowStart = Math.max(hour - calendarStartHour + 1, 1); // which row the event is positioned from, +1 so calendar starts at row 1
-      
-        const span = 1;
+        const startAt = new Date(appt.startIso || "");
+        const endAt = new Date(appt.endIso || "");
+        const durationMs =
+          !Number.isNaN(startAt.getTime()) &&
+          !Number.isNaN(endAt.getTime()) &&
+          endAt.getTime() > startAt.getTime()
+            ? endAt.getTime() - startAt.getTime()
+            : 60 * 60 * 1000;
+        const span = Math.max(1, Math.round(durationMs / (60 * 60 * 1000)));
 
         const dateObj = new Date(`${appt.date}T00:00:00`);
         const dayIndex = dateObj.getDay();
@@ -594,16 +628,18 @@ export default function AdminAppointmentsPage() {
   ^^ prevents crashing
   */
   const openAddForm = () => {
+    const defaultClient = sortedClients[0] || null;
     setEditingId(null);
     setFormState({
-      clientId: clients[0]?.id ?? "",
+      clientId: defaultClient?.id ?? "",
+      ...getClientFormFields(defaultClient),
       firstName: "",
       lastName: "",
-      email: "",
       service: activeServices[0]?.id ?? "fence",
+      visitType: "Estimate",
+      durationHours: "1",
       date: formatDateKey(new Date()),
       time: "09:00 AM",
-      address: "",
       notes: "",
     });
     setIsFormOpen(true);
@@ -624,8 +660,11 @@ export default function AdminAppointmentsPage() {
       clientId: "",
       firstName,
       lastName,
+      phone: "",
       email: appt.email || "",
       service: appt.serviceId || "fence",
+      visitType: "Estimate",
+      durationHours: "1",
       date: appt.date,
       time: appt.time,
       address: appt.address || "",
@@ -642,6 +681,15 @@ export default function AdminAppointmentsPage() {
   // Update the controlled form fields as the admin types/selects values.
   const handleFormChange = (event) => {
     const { name, value } = event.target;
+    if (name === "clientId") {
+      const nextClient = clients.find((client) => client.id === value) || null;
+      setFormState((prev) => ({
+        ...prev,
+        clientId: value,
+        ...getClientFormFields(nextClient),
+      }));
+      return;
+    }
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -666,25 +714,24 @@ export default function AdminAppointmentsPage() {
     }
     // backend
     // If adding, create on server
-    if (!selectedClient || !formState.service) {
-      alert("Please select a client and service.");
+    if (!formState.clientId) {
+      alert("Please select a client.");
       return;
     }
 
-    const { firstName, lastName } = splitClientName(selectedClient.name);
-    if (!firstName || !lastName || !selectedClient.email) {
-      alert("The selected client needs a full name and email before booking.");
-      return;
-    }
+    const { firstName, lastName } = splitClientName(selectedClient?.name);
     // backend
     const payload = {
       service: formState.service, // service id (fence, pergola, etc)
+      visitType: formState.visitType,
+      durationHours: formState.durationHours,
       date: formState.date,
       time: formState.time,
-      firstName,
-      lastName,
-      email: selectedClient.email,
-      address: selectedClient.address || "",
+      firstName: firstName || selectedClient?.name || "Client",
+      lastName: lastName || "",
+      email: formState.email,
+      phone: formState.phone,
+      address: formState.address || "",
       notes: formState.notes,
     };
     // backend
@@ -732,9 +779,23 @@ export default function AdminAppointmentsPage() {
   };
 
   useEffect(() => {
-    if (!isFormOpen || editingId || formState.clientId || !clients.length) return;
-    setFormState((prev) => ({ ...prev, clientId: clients[0].id }));
-  }, [clients, editingId, formState.clientId, isFormOpen]);
+    if (!isFormOpen || editingId || formState.clientId || !sortedClients.length) return;
+    const defaultClient = sortedClients[0];
+    setFormState((prev) => ({
+      ...prev,
+      clientId: defaultClient.id,
+      ...getClientFormFields(defaultClient),
+    }));
+  }, [editingId, formState.clientId, isFormOpen, sortedClients]);
+
+  useEffect(() => {
+    if (!isFormOpen || editingId || !timeSlots.length) return;
+    if (timeSlots.includes(formState.time)) return;
+    setFormState((prev) => ({
+      ...prev,
+      time: timeSlots[0],
+    }));
+  }, [editingId, formState.time, isFormOpen, timeSlots]);
 
 return (
     <AdminLayout>
@@ -744,7 +805,6 @@ return (
       {/* Hero / page header section showing title, subtitle, and refresh button */}
       <section className="admin-hero">
         <div>
-          <p className="admin-kicker">Appointments</p>
           <h1 className="admin-title">Schedule overview</h1>
           <p className="admin-subtitle">Synced with Google Calendar bookings.</p>
 
@@ -1091,7 +1151,6 @@ return (
           <div className="admin-modal__content" role="dialog" aria-modal="true">
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">Appointment Details</p>
                 <h2 className="admin-title">{activeAppointment.client}</h2>
                 <p className="admin-subtitle">{activeAppointment.eventId}</p>
               </div>
@@ -1184,7 +1243,6 @@ return (
           >
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">{editingId ? "Reschedule Appointment" : "Add Appointment"}</p>
                 <h2 className="admin-title">Appointment details</h2>
               </div>
               <button
@@ -1216,51 +1274,40 @@ return (
                           {clientsLoading ? "Loading clients..." : "No clients available"}
                         </option>
                       ) : null}
-                      {clients.map((client) => (
+                      {sortedClients.map((client) => (
                         <option key={client.id} value={client.id}>
-                          {client.name} ({client.email})
+                          {client.name}
                         </option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="admin-label" htmlFor="clientName">Full name</label>
+                    <label className="admin-label" htmlFor="clientPhone">Phone</label>
                     <input
-                      id="clientName"
+                      id="clientPhone"
+                      name="phone"
                       className="admin-input"
-                      value={selectedClient?.name || ""}
-                      readOnly
-                      disabled
+                      value={formState.phone}
+                      onChange={handleFormChange}
                     />
                   </div>
 
                   <div>
-                    <label className="admin-label" htmlFor="clientPhone">Phone</label>
-                    <input
-                      id="clientPhone"
-                      className="admin-input"
-                      value={selectedClient?.phone || ""}
-                      readOnly
-                      disabled
-                    />
-                  </div>
-
-                  <div className="admin-modal__full">
                     <label className="admin-label" htmlFor="clientEmail">Email</label>
                     <input
                       id="clientEmail"
+                      name="email"
                       type="email"
                       className="admin-input"
-                      value={selectedClient?.email || ""}
-                      readOnly
-                      disabled
+                      value={formState.email}
+                      onChange={handleFormChange}
                     />
                   </div>
                 </>
               ) : null}
 
-              <div>
+              <div className="admin-modal__full">
                 <label className="admin-label" htmlFor="service">Service</label>
                 <select
                   id="service"
@@ -1279,6 +1326,49 @@ return (
                   ))}
                 </select>
               </div>
+
+              {!editingId ? (
+                <>
+                  <div>
+                    <label className="admin-label" htmlFor="visitType">Visit type</label>
+                    <select
+                      id="visitType"
+                      name="visitType"
+                      className="admin-input"
+                      value={formState.visitType}
+                      onChange={handleFormChange}
+                      required
+                    >
+                      {VISIT_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="admin-label" htmlFor="durationHours">Duration</label>
+                    <select
+                      id="durationHours"
+                      name="durationHours"
+                      className="admin-input"
+                      value={formState.durationHours}
+                      onChange={handleFormChange}
+                      required
+                    >
+                      {Array.from({ length: 8 }, (_, idx) => {
+                        const hours = String(idx + 1);
+                        return (
+                          <option key={hours} value={hours}>
+                            {hours} {hours === "1" ? "hour" : "hours"}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </>
+              ) : null}
 
               <div>
                 <label className="admin-label" htmlFor="date">Date</label>
@@ -1317,10 +1407,8 @@ return (
                   id="address"
                   name="address"
                   className="admin-input"
-                  value={editingId ? formState.address : selectedClient?.address || ""}
-                  onChange={editingId ? handleFormChange : undefined}
-                  readOnly={!editingId}
-                  disabled={!editingId}
+                  value={formState.address}
+                  onChange={handleFormChange}
                 />
               </div>
 
@@ -1341,7 +1429,7 @@ return (
               <button
                 className="admin-btn admin-btn--primary"
                 type="submit"
-                disabled={busy || (!editingId && (!selectedClient || clientsLoading))}
+                disabled={busy}
               >
                 {busy ? "Saving…" : editingId ? "Reschedule" : "Add Appointment"}
               </button>
@@ -1364,7 +1452,6 @@ return (
           <div className="admin-modal__content" role="dialog" aria-modal="true">
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">Booked</p>
                 <h2 className="admin-title">Confirmed appointments</h2>
                 <p className="admin-subtitle">All appointments synced from Google Calendar.</p>
               </div>
@@ -1419,7 +1506,6 @@ return (
           <div className="admin-modal__content" role="dialog" aria-modal="true">
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">Cancel Appointment</p>
                 <h2 className="admin-title">Are you sure?</h2>
                 <p className="admin-subtitle">
                   This will remove it from Google Calendar and send cancel emails.

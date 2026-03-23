@@ -19,7 +19,6 @@ function mapClientRow(row) {
     address: row.address || "",
     city: row.city || "Calgary",
     province: row.province || "Alberta",
-    postal: row.postal || "",
     propertyType: row.property_type || "House",
     additionalInstructions: row.additional_instructions || "",
     propertyId: row.property_id || null,
@@ -45,7 +44,6 @@ export async function fetchClientJoinedByEmail(email) {
       p.address,
       p.city,
       p.province,
-      p.postal,
       p.property_type,
       p.additional_instructions
     FROM clients c
@@ -75,7 +73,6 @@ export async function listClients() {
       p.address,
       p.city,
       p.province,
-      p.postal,
       p.property_type,
       p.additional_instructions
     FROM clients c
@@ -149,7 +146,6 @@ export async function upsertClientProperty({
   address,
   city = "Calgary",
   province = "Alberta",
-  postal = "",
   propertyType = "House",
   additionalInstructions = "",
 }) {
@@ -167,7 +163,6 @@ export async function upsertClientProperty({
       address,
       city,
       province,
-      postal,
       property_type,
       additional_instructions,
       created_at,
@@ -179,7 +174,6 @@ export async function upsertClientProperty({
       ${trimmedAddress},
       ${String(city || "Calgary")},
       ${String(province || "Alberta")},
-      ${String(postal || "")},
       ${String(propertyType || "House")},
       ${String(additionalInstructions || "")},
       ${timestamp},
@@ -189,7 +183,6 @@ export async function upsertClientProperty({
     SET
       city = EXCLUDED.city,
       province = EXCLUDED.province,
-      postal = EXCLUDED.postal,
       property_type = EXCLUDED.property_type,
       additional_instructions = EXCLUDED.additional_instructions,
       updated_at = EXCLUDED.updated_at
@@ -246,7 +239,6 @@ export async function updateClient(clientId, patch) {
           address = ${address || currentProperty.address},
           city = ${String(patch.city ?? currentProperty.city ?? "Calgary")},
           province = ${String(patch.province ?? currentProperty.province ?? "Alberta")},
-          postal = ${String(patch.postal ?? currentProperty.postal ?? "")},
           property_type = ${String(patch.propertyType ?? currentProperty.property_type ?? "House")},
           additional_instructions = ${String(
             patch.additionalInstructions ?? currentProperty.additional_instructions ?? "",
@@ -260,7 +252,6 @@ export async function updateClient(clientId, patch) {
         address,
         city: patch.city,
         province: patch.province,
-        postal: patch.postal,
         propertyType: patch.propertyType,
         additionalInstructions: patch.additionalInstructions,
       });
@@ -280,7 +271,6 @@ export async function updateClient(clientId, patch) {
       p.address,
       p.city,
       p.province,
-      p.postal,
       p.property_type,
       p.additional_instructions
     FROM clients c
