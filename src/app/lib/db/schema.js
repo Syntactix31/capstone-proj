@@ -3,6 +3,7 @@ import { getSql } from "./client.js";
 let schemaPromise = null;
 
 // Make sure the required tables/indexes exist before the app uses the DB.
+//Revise time data to not use local machine units
 export async function ensureDatabaseSchema() {
   if (!schemaPromise) {
     schemaPromise = (async () => {

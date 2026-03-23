@@ -15,8 +15,8 @@ const CLIENT_MENU = [
 export default function ClientLayout({ children, sidebarHidden = false }) {
   const router = useRouter();
   const [userName, setUserName] = useState("");
+  const [userInitials, setUserInitials] = useState("LC"); //default which is safe
 
-  // sidebar state – avoid window-dependent logic during server render to prevent hydration mismatches
   const [isSidebarHidden, setIsSidebarHidden] = useState(sidebarHidden);
   const [hasSidebarOverride, setHasSidebarOverride] = useState(false);
 
@@ -24,15 +24,31 @@ export default function ClientLayout({ children, sidebarHidden = false }) {
     ? "admin-shell admin-shell--sidebar-hidden"
     : "admin-shell admin-shell--sidebar-open";
 
+  const getInitials = (fullName) => {
+    if (!fullName) return "LC";
+    
+    const names = fullName.trim().split(/\s+/);
+    if (names.length === 0) return "LC";
+    
+    const firstInitial = names[0][0]?.toUpperCase() || "L";
+    const lastInitial = names[names.length - 1][0]?.toUpperCase() || "C";
+    
+    return firstInitial + lastInitial;
+  };
+
   useEffect(() => {
     let active = true;
 
     async function loadUser() {
       try {
+        // added ,next: { revalidate: 0 } to fix an issue with db stale caching
         const res = await fetch("/api/auth/me", { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
         if (!active) return;
-        if (data?.user?.name) setUserName(data.user.name);
+        if (data?.user?.name) {
+          setUserName(data.user.name);
+          setUserInitials(getInitials(data.user.name));
+        }
       } catch {
         // ignore
       }
@@ -115,12 +131,14 @@ export default function ClientLayout({ children, sidebarHidden = false }) {
           tabIndex={isSidebarHidden ? -1 : 0}
         />
 
-        {/* re-use admin sidebar classes so it visually matches */}
         <aside className="admin-sidebar">
           <div className="admin-sidebar-brand">
-            <span className="admin-sidebar-logo">LC</span>
+            {/* Change the following to allow profile photo uploads */}
+            {/* <span className="admin-sidebar-logo">LC</span> */}
+            <span className="admin-sidebar-logo">{userInitials}</span>
+
             <div>
-              <div className="admin-sidebar-title">Landscape Craftsmen</div>
+              <div className="admin-sidebar-title">{userName}</div>
               <div className="admin-sidebar-subtitle">Client Portal</div>
             </div>
           </div>
@@ -171,4 +189,7 @@ export default function ClientLayout({ children, sidebarHidden = false }) {
     </div>
   );
 }
+
+
+
 
