@@ -12,6 +12,8 @@ const SERVICES = [
   { id: "trees-shrubs", name: "Trees and Shrubs", active: true },
 ];
 
+const VISIT_TYPES = ["Estimate", "Design Consultation", "Installation"];
+
 
 const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
@@ -100,6 +102,8 @@ export default function AdminAppointmentsPage() {
     phone: "",
     email: "",
     service: "fence",
+    visitType: "Estimate",
+    durationHours: "1",
     date: "",
     time: "09:00 AM",
     address: "",
@@ -283,9 +287,13 @@ export default function AdminAppointmentsPage() {
   // time slot intervals - used for when user wants to create a new appointment and has to choose a timeslot
   const timeSlots = useMemo(() => {
     const slots = [];
+    const durationHours = Number.parseInt(formState.durationHours || "1", 10) || 1;
+    const latestEndMinutes = calendarEndHour * 60;
     for (let hour = calendarStartHour; hour <= calendarEndHour; hour += 1) {
       for (let minute = 0; minute < 60; minute += 30) {
-        if (hour === calendarEndHour && minute > 0) continue;
+        const slotStartMinutes = hour * 60 + minute;
+        const slotEndMinutes = slotStartMinutes + durationHours * 60;
+        if (slotEndMinutes > latestEndMinutes) continue;
         const period = hour >= 12 ? "PM" : "AM";
         const normalized = hour % 12 === 0 ? 12 : hour % 12;
         const minuteLabel = minute.toString().padStart(2, "0");
@@ -293,7 +301,7 @@ export default function AdminAppointmentsPage() {
       }
     }
     return slots;
-  }, [calendarEndHour, calendarStartHour]);
+  }, [calendarEndHour, calendarStartHour, formState.durationHours]);
 
   const weekDays = useMemo(() => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], []);
 
@@ -386,8 +394,15 @@ export default function AdminAppointmentsPage() {
         if (hour < calendarStartHour || hour > calendarEndHour) return null;
 
         const gridRowStart = Math.max(hour - calendarStartHour + 1, 1); // which row the event is positioned from, +1 so calendar starts at row 1
-      
-        const span = 1;
+        const startAt = new Date(appt.startIso || "");
+        const endAt = new Date(appt.endIso || "");
+        const durationMs =
+          !Number.isNaN(startAt.getTime()) &&
+          !Number.isNaN(endAt.getTime()) &&
+          endAt.getTime() > startAt.getTime()
+            ? endAt.getTime() - startAt.getTime()
+            : 60 * 60 * 1000;
+        const span = Math.max(1, Math.round(durationMs / (60 * 60 * 1000)));
 
         const dateObj = new Date(`${appt.date}T00:00:00`);
         const dayIndex = dateObj.getDay();
@@ -621,6 +636,8 @@ export default function AdminAppointmentsPage() {
       firstName: "",
       lastName: "",
       service: activeServices[0]?.id ?? "fence",
+      visitType: "Estimate",
+      durationHours: "1",
       date: formatDateKey(new Date()),
       time: "09:00 AM",
       notes: "",
@@ -646,6 +663,8 @@ export default function AdminAppointmentsPage() {
       phone: "",
       email: appt.email || "",
       service: appt.serviceId || "fence",
+      visitType: "Estimate",
+      durationHours: "1",
       date: appt.date,
       time: appt.time,
       address: appt.address || "",
@@ -704,6 +723,8 @@ export default function AdminAppointmentsPage() {
     // backend
     const payload = {
       service: formState.service, // service id (fence, pergola, etc)
+      visitType: formState.visitType,
+      durationHours: formState.durationHours,
       date: formState.date,
       time: formState.time,
       firstName: firstName || selectedClient?.name || "Client",
@@ -766,6 +787,15 @@ export default function AdminAppointmentsPage() {
       ...getClientFormFields(defaultClient),
     }));
   }, [editingId, formState.clientId, isFormOpen, sortedClients]);
+
+  useEffect(() => {
+    if (!isFormOpen || editingId || !timeSlots.length) return;
+    if (timeSlots.includes(formState.time)) return;
+    setFormState((prev) => ({
+      ...prev,
+      time: timeSlots[0],
+    }));
+  }, [editingId, formState.time, isFormOpen, timeSlots]);
 
 return (
     <AdminLayout>
@@ -1296,6 +1326,49 @@ return (
                   ))}
                 </select>
               </div>
+
+              {!editingId ? (
+                <>
+                  <div>
+                    <label className="admin-label" htmlFor="visitType">Visit type</label>
+                    <select
+                      id="visitType"
+                      name="visitType"
+                      className="admin-input"
+                      value={formState.visitType}
+                      onChange={handleFormChange}
+                      required
+                    >
+                      {VISIT_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="admin-label" htmlFor="durationHours">Duration</label>
+                    <select
+                      id="durationHours"
+                      name="durationHours"
+                      className="admin-input"
+                      value={formState.durationHours}
+                      onChange={handleFormChange}
+                      required
+                    >
+                      {Array.from({ length: 8 }, (_, idx) => {
+                        const hours = String(idx + 1);
+                        return (
+                          <option key={hours} value={hours}>
+                            {hours} {hours === "1" ? "hour" : "hours"}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </>
+              ) : null}
 
               <div>
                 <label className="admin-label" htmlFor="date">Date</label>

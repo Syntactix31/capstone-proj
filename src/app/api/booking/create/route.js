@@ -8,6 +8,12 @@ function normalizePhone(value) {
   return String(value || "").replace(/\D/g, "");
 }
 
+function normalizeDurationHours(value) {
+  const parsed = Number.parseInt(String(value || "1"), 10);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.min(Math.max(parsed, 1), 8);
+}
+
 // Turn a "9:30 am" style label into numeric hour/minute values.
 function parseTime12h(timeStr) {
   const match = String(timeStr || "")
@@ -275,11 +281,15 @@ export async function POST(req) {
       lastName,
       email,
       phone,
+      visitType,
+      durationHours,
       address,
       notes,
     } = body;
 
     const normalizedPhone = normalizePhone(phone);
+    const normalizedDurationHours = normalizeDurationHours(durationHours);
+    const normalizedVisitType = String(visitType || "Installation").trim() || "Installation";
 
     if (!date || !time || !email || !firstName || !service) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -298,7 +308,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "Cannot book in the past." }, { status: 400 });
     }
 
-    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const end = new Date(start.getTime() + normalizedDurationHours * 60 * 60 * 1000);
 
     const calendar = await getCalendarClient();
 
@@ -321,15 +331,19 @@ export async function POST(req) {
         summary: `${service} – ${firstName} ${lastName}`,
         location: address || "Calgary, AB",
         description: [
+          `Visit Type: ${normalizedVisitType}`,
           `Name: ${firstName} ${lastName}`,
           `Email: ${email}`,
           `Phone: ${normalizedPhone || "N/A"}`,
+          `Duration: ${normalizedDurationHours} ${normalizedDurationHours === 1 ? "hour" : "hours"}`,
           `Address: ${address || "N/A"}`,
           `Notes: ${notes || "None"}`,
         ].join("\n"),
         extendedProperties: {
           private: {
             service: String(service || ""),
+            visitType: normalizedVisitType,
+            durationHours: String(normalizedDurationHours),
             firstName: String(firstName || ""),
             lastName: String(lastName || ""),
             email: String(email || ""),

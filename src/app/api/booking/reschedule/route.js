@@ -260,8 +260,6 @@ export async function POST(req) {
       return NextResponse.json({ error: "Cannot reschedule into the past." }, { status: 400 });
     }
 
-    const end = new Date(start.getTime() + 60 * 60 * 1000);
-
     const calendar = await getCalendarClient();
 
     const oldEvent = await calendar.events.get({
@@ -270,12 +268,24 @@ export async function POST(req) {
     });
     const storedBooking = await findBookingByGoogleEventId(eventId);
 
+    const originalStart = new Date(storedBooking?.startIso || oldEvent.data.start?.dateTime || "");
+    const originalEnd = new Date(storedBooking?.endIso || oldEvent.data.end?.dateTime || "");
+    const durationMs =
+      !Number.isNaN(originalStart.getTime()) &&
+      !Number.isNaN(originalEnd.getTime()) &&
+      originalEnd.getTime() > originalStart.getTime()
+        ? originalEnd.getTime() - originalStart.getTime()
+        : 60 * 60 * 1000;
+    const end = new Date(start.getTime() + durationMs);
+
     const p = oldEvent.data.extendedProperties?.private || {};
 
     const firstName = p.firstName || "there";
     const lastName = p.lastName || "";
     const email = p.email || "";
     const service = p.service || oldEvent.data.summary || "Appointment";
+    const visitType = p.visitType || "";
+    const durationHours = p.durationHours || "";
     const address = p.address || oldEvent.data.location || "Calgary, AB";
     const notes = p.notes || "";
 
@@ -305,8 +315,10 @@ export async function POST(req) {
         summary: `${service} – ${firstName} ${lastName}`.trim(),
         location: address,
         description: [
+          ...(visitType ? [`Visit Type: ${visitType}`] : []),
           `Name: ${firstName} ${lastName}`.trim(),
           `Email: ${email}`,
+          ...(durationHours ? [`Duration: ${durationHours} ${durationHours === "1" ? "hour" : "hours"}`] : []),
           `Address: ${address || "N/A"}`,
           `Notes: ${notes || "None"}`,
           `Rescheduled: Yes`,
@@ -314,6 +326,8 @@ export async function POST(req) {
         extendedProperties: {
           private: {
             service: String(service || ""),
+            visitType: String(visitType || ""),
+            durationHours: String(durationHours || ""),
             firstName: String(firstName || ""),
             lastName: String(lastName || ""),
             email: String(email || ""),
