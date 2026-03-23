@@ -97,7 +97,6 @@ export default function InvoicesPage() {
     <AdminLayout>
       <section className="admin-hero">
         <div>
-          <p className="admin-kicker">Invoices</p>
           <h1 className="admin-title">Billing overview</h1>
           <p className="admin-subtitle">
             Manage draft, sent, overdue, and paid invoices in one place.

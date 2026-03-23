@@ -1654,6 +1654,38 @@ body {
   text-align: right;
 }
 
+.admin-projects-table-row {
+  grid-template-columns: 1.35fr 1.1fr 1fr 0.9fr;
+}
+
+.admin-projects-table .admin-table-head > :last-child {
+  justify-self: start;
+  text-align: left;
+}
+
+.admin-projects-table .admin-table-row > :last-child {
+  justify-self: start;
+  text-align: left;
+}
+
+.admin-projects-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 10px 0 4px 0;
+}
+
+.admin-projects-controls > * {
+  min-width: 0;
+}
+
+.admin-projects-header {
+  margin-bottom: 0;
+}
+
 .admin-table-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1711,6 +1743,38 @@ body {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.admin-actions.admin-projects-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 10px 0 4px 0;
+}
+
+.admin-projects-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-projects-control-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.admin-projects-control--search {
+  padding-top: 24px;
+}
+
+.admin-projects-controls .admin-input {
+  height: 40px;
+  padding: 8px 12px;
 }
 
 .admin-btn {
@@ -1975,7 +2039,7 @@ body {
   position: relative;
   width: min(720px, 92vw);
   max-height: min(80vh, 720px);
-  overflow: hidden;
+  overflow-y: auto;
   background: #ffffff;
   border-radius: 18px;
   border: 1px solid #e5e7eb;
@@ -2747,6 +2811,18 @@ body {
   .admin-table-row {
     grid-template-columns: 1fr;
     gap: 6px;
+  }
+
+  .admin-projects-table-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-projects-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-projects-header {
+    align-items: stretch;
   }
 
   .admin-table-head {

@@ -85,7 +85,6 @@ export default function AdminUploadPage() {
     <AdminLayout>
       <section className="admin-hero">
         <div>
-          <p className="admin-kicker">Media</p>
           <h1 className="admin-title">Upload Files</h1>
           <p className="admin-subtitle">
             Upload images or videos to your project gallery.

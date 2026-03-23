@@ -15,7 +15,6 @@ export default function TermsPage() {
         <div className="auth-shell auth-shell--single">
           <section className="admin-login-card">
             <div className="auth-header-row">
-              <p className="admin-kicker">Legal</p>
               <Link className="auth-link auth-back" href="/login">
                 &larr; Back
               </Link>

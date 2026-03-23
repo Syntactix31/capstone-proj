@@ -379,7 +379,6 @@ ensures that user is prompted with a warning when there is unsaved changes
           <div className="admin-modal__content admin-modal__content--compact" role="dialog" aria-modal="true">
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">Unsaved changes</p>
                 <h2 className="admin-title">You have unsaved changes.</h2>
               </div>
             </div>
@@ -435,7 +434,6 @@ ensures that user is prompted with a warning when there is unsaved changes
       ) : null}
       <section className="admin-hero">
         <div>
-          <p className="admin-kicker">Clients</p>
           <h1 className="admin-title">Client Management</h1>
           <p className="admin-subtitle">
             Manage client details, properties, and communication preferences.

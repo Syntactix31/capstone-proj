@@ -179,7 +179,6 @@ export default function DashboardPage() {
           {/*hero card*/}
             <section className="admin-hero">
             <div>
-              <p className="admin-kicker">Admin Dashboard</p>
               <h1 className="admin-title">
                 Your job overview
               </h1>
@@ -356,7 +355,6 @@ export default function DashboardPage() {
               <div className="admin-modal__content" role="dialog" aria-modal="true">
                 <div className="admin-modal__header">
                   <div>
-                    <p className="admin-kicker">Client Profile</p>
                     <h2 className="admin-title">{activeClient.name || "Client"}</h2>
                     <p className="admin-subtitle">{activeClient.id}</p>
                   </div>

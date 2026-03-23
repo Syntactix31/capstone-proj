@@ -199,7 +199,6 @@ export default function AdminEstimatesDashboard() {
         {/* HEADER */}
         <section className="admin-hero">
           <div>
-            <p className="admin-kicker">Estimates</p>
             <h1 className="admin-title">Analytics Dashboard</h1>
             <p className="admin-subtitle">
               Manage and track all estimates.

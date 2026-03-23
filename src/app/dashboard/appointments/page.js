@@ -283,8 +283,9 @@ export default function AdminAppointmentsPage() {
   // time slot intervals - used for when user wants to create a new appointment and has to choose a timeslot
   const timeSlots = useMemo(() => {
     const slots = [];
-    for (let hour = 0; hour < 24; hour += 1) {
+    for (let hour = calendarStartHour; hour <= calendarEndHour; hour += 1) {
       for (let minute = 0; minute < 60; minute += 30) {
+        if (hour === calendarEndHour && minute > 0) continue;
         const period = hour >= 12 ? "PM" : "AM";
         const normalized = hour % 12 === 0 ? 12 : hour % 12;
         const minuteLabel = minute.toString().padStart(2, "0");
@@ -292,7 +293,7 @@ export default function AdminAppointmentsPage() {
       }
     }
     return slots;
-  }, []);
+  }, [calendarEndHour, calendarStartHour]);
 
   const weekDays = useMemo(() => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], []);
 
@@ -774,7 +775,6 @@ return (
       {/* Hero / page header section showing title, subtitle, and refresh button */}
       <section className="admin-hero">
         <div>
-          <p className="admin-kicker">Appointments</p>
           <h1 className="admin-title">Schedule overview</h1>
           <p className="admin-subtitle">Synced with Google Calendar bookings.</p>
 
@@ -1121,7 +1121,6 @@ return (
           <div className="admin-modal__content" role="dialog" aria-modal="true">
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">Appointment Details</p>
                 <h2 className="admin-title">{activeAppointment.client}</h2>
                 <p className="admin-subtitle">{activeAppointment.eventId}</p>
               </div>
@@ -1214,7 +1213,6 @@ return (
           >
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">{editingId ? "Reschedule Appointment" : "Add Appointment"}</p>
                 <h2 className="admin-title">Appointment details</h2>
               </div>
               <button
@@ -1381,7 +1379,6 @@ return (
           <div className="admin-modal__content" role="dialog" aria-modal="true">
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">Booked</p>
                 <h2 className="admin-title">Confirmed appointments</h2>
                 <p className="admin-subtitle">All appointments synced from Google Calendar.</p>
               </div>
@@ -1436,7 +1433,6 @@ return (
           <div className="admin-modal__content" role="dialog" aria-modal="true">
             <div className="admin-modal__header">
               <div>
-                <p className="admin-kicker">Cancel Appointment</p>
                 <h2 className="admin-title">Are you sure?</h2>
                 <p className="admin-subtitle">
                   This will remove it from Google Calendar and send cancel emails.
