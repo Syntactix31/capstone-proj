@@ -388,7 +388,7 @@ export default function AdminAppointmentsPage() {
   const bookedAppointments = appointments.filter((appt) => appt.status === "Confirmed");
   const confirmed = bookedAppointments.length;
   const visitTypeSummary = useMemo(() => {
-    const counts = new Map();
+    const counts = new Map(VISIT_TYPES.map((label) => [label, 0]));
 
     for (const appointment of bookedAppointments) {
       const label = String(appointment.visitType || "Estimate").trim() || "Estimate";
@@ -1118,30 +1118,26 @@ return (
         <div className="admin-summary-column admin-summary-column--wide">
           <article className="admin-card admin-card--stat admin-card--visit-types">
             <div className="admin-stat-title">Visit Types</div>
-            {visitTypeSummary.length ? (
-              <div className="admin-visit-types">
-                {visitTypeSummary.map((item) => (
-                  <div
-                    key={item.label}
-                    className={`admin-visit-types__item admin-visit-types__item--${visitTypeTone(item.label)}`}
-                    style={visitTypeToneStyle(item.label)}
-                  >
-                    <div className="admin-visit-types__row">
-                      <span className="admin-visit-types__label">{item.label}</span>
-                      <span className="admin-visit-types__count">{item.count}</span>
-                    </div>
-                    <div className="admin-visit-types__track" aria-hidden="true">
-                      <div
-                        className="admin-visit-types__fill"
-                        style={{ width: `${item.share}%` }}
-                      />
-                    </div>
+            <div className="admin-visit-types">
+              {visitTypeSummary.map((item) => (
+                <div
+                  key={item.label}
+                  className={`admin-visit-types__item admin-visit-types__item--${visitTypeTone(item.label)}`}
+                  style={visitTypeToneStyle(item.label)}
+                >
+                  <div className="admin-visit-types__row">
+                    <span className="admin-visit-types__label">{item.label}</span>
+                    <span className="admin-visit-types__count">{item.count}</span>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="admin-muted">No booked visit types yet.</div>
-            )}
+                  <div className="admin-visit-types__track" aria-hidden="true">
+                    <div
+                      className="admin-visit-types__fill"
+                      style={{ width: `${item.share}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </article>
         </div>
 
