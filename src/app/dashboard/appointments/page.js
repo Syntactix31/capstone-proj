@@ -732,10 +732,7 @@ export default function AdminAppointmentsPage() {
   // Admin actions that actually change Google Calendar
   // functions implemented by jiro
   // Cancel an appointment through the backend and refresh the page data.
-  async function cancelOnServer(eventId) {
-    const ok = window.confirm("Cancel this appointment? This removes it from Google Calendar and sends cancel emails.");
-    if (!ok) return false;
-
+  async function cancelOnServer(eventId) {;
     setBusy(true);
     try {
       const res = await fetch("/api/booking/cancel", {
