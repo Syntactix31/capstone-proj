@@ -58,26 +58,30 @@ export default function AdminUploadPage() {
   }
 
   async function handleDelete(fileUrl) {
-  try {
-    const formData = new FormData();
-    formData.append("url", fileUrl); // could also append pathname
+    //asks user whether you wnat to confirm the delete action, if not, return early
+    const confirmDelete = window.confirm("Are you sure you want to delete this file?");
+    if (!confirmDelete) return; // user clicked cancel
+    
+    try {
+      const formData = new FormData();
+      formData.append("url", fileUrl); // could also append pathname
 
-    const res = await fetch("/api/DeleteMedia", {
-      method: "POST",
-      body: formData,
-    });
+      const res = await fetch("/api/DeleteMedia", {
+        method: "POST",
+        body: formData,
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (data.success) {
-      setGalleryFiles(prev => prev.filter(file => file.src !== fileUrl));
-    } else {
-      alert("Delete failed");
+      if (data.success) {
+        setGalleryFiles(prev => prev.filter(file => file.src !== fileUrl));
+      } else {
+        alert("Delete failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting file");
     }
-  } catch (err) {
-    console.error(err);
-    alert("Error deleting file");
-  }
 }
 
 
