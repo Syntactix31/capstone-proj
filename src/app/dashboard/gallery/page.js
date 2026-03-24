@@ -119,7 +119,9 @@ export default function AdminUploadPage() {
                 <video src={file.src} width={150} controls />
               )}
               <p>{file.pathname.split("/").pop()}</p>
-              <button onClick={() => handleDelete(file.src)}>Delete</button>
+              <button onClick={() => handleDelete(file.src)} className="admin-btn admin-btn--danger">
+                Delete
+              </button>
             </div>
           ))}
         </div>
