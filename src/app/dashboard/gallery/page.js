@@ -112,16 +112,17 @@ export default function AdminUploadPage() {
       </section>
 
       <section className="admin-card">
-        <h2>Gallery</h2>
+        <h2 className="admin-section-title">Gallery</h2>
+        <br />
         <div className="upload-preview">
           {galleryFiles.map((file, i) => (
             <div key={i} style={{ marginBottom: "20px" }}>
+              <p className="admin-subtitle">{file.pathname.split("/").pop()}</p>
               {file.type === "image" ? (
                 <img src={file.src} width={150} />
               ) : (
                 <video src={file.src} width={150} controls />
               )}
-              <p>{file.pathname.split("/").pop()}</p>
               <button onClick={() => handleDelete(file.src)} className="admin-btn admin-btn--danger">
                 Delete
               </button>
