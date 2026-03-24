@@ -2227,6 +2227,21 @@ body {
   );
 }
 
+.admin-calendar__grid::after {
+  content: "";
+  position: absolute;
+  inset: var(--calendar-grid-padding, 12px);
+  pointer-events: none;
+  z-index: 4;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--calendar-row-height) + var(--calendar-row-gap) - 1px),
+    #e5e7eb calc(var(--calendar-row-height) + var(--calendar-row-gap) - 1px),
+    #e5e7eb calc(var(--calendar-row-height) + var(--calendar-row-gap))
+  );
+}
+
 .admin-calendar--day .admin-calendar__grid {
   grid-template-columns: 1fr;
 }
@@ -2254,6 +2269,7 @@ body {
   grid-column: 1 / -1;
   position: relative;
   z-index: 1;
+  pointer-events: none;
 }
 
 .admin-calendar__event {

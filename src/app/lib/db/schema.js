@@ -55,9 +55,27 @@ export async function ensureDatabaseSchema() {
       `;
 
       await sql`
+        CREATE TABLE IF NOT EXISTS projects (
+          id text PRIMARY KEY,
+          client_id text NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          service text NOT NULL,
+          address text NOT NULL DEFAULT '',
+          payment_status text NOT NULL DEFAULT 'Unpaid',
+          created_at timestamptz NOT NULL,
+          updated_at timestamptz NOT NULL
+        )
+      `;
+
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS projects_client_service_address_idx
+        ON projects (client_id, service, address)
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS bookings (
           id text PRIMARY KEY,
           client_id text NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
+          project_id text REFERENCES projects(id) ON DELETE SET NULL,
           property_id text REFERENCES client_properties(id) ON DELETE SET NULL,
           service text NOT NULL,
           status text NOT NULL DEFAULT 'confirmed',
@@ -70,6 +88,11 @@ export async function ensureDatabaseSchema() {
           created_at timestamptz NOT NULL,
           updated_at timestamptz NOT NULL
         )
+      `;
+
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS project_id text REFERENCES projects(id) ON DELETE SET NULL
       `;
 
       await sql`

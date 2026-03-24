@@ -56,6 +56,39 @@ export async function fetchClientJoinedByEmail(email) {
   return rows[0] ? mapClientRow(rows[0]) : null;
 }
 
+export async function fetchClientById(clientId) {
+  await ensureDatabaseSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      c.id AS client_id,
+      c.name AS client_name,
+      c.email AS client_email,
+      c.phone,
+      c.notes AS client_notes,
+      c.created_at AS client_created_at,
+      c.updated_at AS client_updated_at,
+      p.id AS property_id,
+      p.address,
+      p.city,
+      p.province,
+      p.property_type,
+      p.additional_instructions
+    FROM clients c
+    LEFT JOIN LATERAL (
+      SELECT *
+      FROM client_properties
+      WHERE client_id = c.id
+      ORDER BY updated_at DESC, created_at DESC
+      LIMIT 1
+    ) p ON TRUE
+    WHERE c.id = ${clientId}
+    LIMIT 1
+  `;
+
+  return rows[0] ? mapClientRow(rows[0]) : null;
+}
+
 // Load all clients for the admin page, including their latest property info.
 export async function listClients() {
   await ensureDatabaseSchema();

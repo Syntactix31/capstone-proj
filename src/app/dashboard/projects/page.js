@@ -23,16 +23,8 @@ function formatVisitLabel(project) {
   return `${project.nextVisitDate}`;
 }
 
-function paymentStatusForKey(key) {
-  let hash = 0;
-  for (const char of String(key || "")) {
-    hash = (hash * 31 + char.charCodeAt(0)) % PAYMENT_STATUSES.length;
-  }
-  return PAYMENT_STATUSES[hash];
-}
-
 export default function AdminProjectsPage() {
-  const [appointments, setAppointments] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clientsLoading, setClientsLoading] = useState(true);
@@ -40,7 +32,6 @@ export default function AdminProjectsPage() {
   const [query, setQuery] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("All");
   const [serviceFilter, setServiceFilter] = useState("All");
-  const [manualProjects, setManualProjects] = useState([]);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectForm, setProjectForm] = useState({
     clientId: "",
@@ -54,21 +45,21 @@ export default function AdminProjectsPage() {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch("/api/admin/appointments", { cache: "no-store" });
+        const res = await fetch("/api/admin/projects", { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
         if (!active) return;
 
         if (!res.ok) {
-          setAppointments([]);
+          setProjects([]);
           setError(data?.error || "Failed to load projects.");
           return;
         }
 
-        setAppointments(Array.isArray(data.appointments) ? data.appointments : []);
+        setProjects(Array.isArray(data.projects) ? data.projects : []);
       } catch (loadError) {
         console.error(loadError);
         if (!active) return;
-        setAppointments([]);
+        setProjects([]);
         setError("Failed to load projects.");
       } finally {
         if (active) setLoading(false);
@@ -111,49 +102,6 @@ export default function AdminProjectsPage() {
       active = false;
     };
   }, []);
-
-  const derivedProjects = useMemo(() => {
-    const grouped = new Map();
-    const now = Date.now();
-
-    appointments.forEach((appt) => {
-      const client = appt.client || "Unknown Client";
-      const service = appt.service || "Service";
-      const address = appt.address || "";
-      const key = `${client}::${service}::${address}`;
-      const startDate = new Date(appt.startIso || `${appt.date}T00:00:00`);
-      const existing = grouped.get(key);
-
-      if (!existing) {
-        grouped.set(key, {
-          id: `PRJ-${String(grouped.size + 1).padStart(4, "0")}`,
-          client,
-          service,
-          address,
-          nextVisitDate: null,
-          nextVisitTime: null,
-          nextVisitTs: Number.POSITIVE_INFINITY,
-          paymentStatus: paymentStatusForKey(key),
-        });
-      }
-
-      const project = grouped.get(key);
-      if (!Number.isNaN(startDate.getTime()) && startDate.getTime() >= now && startDate.getTime() < project.nextVisitTs) {
-        project.nextVisitTs = startDate.getTime();
-        project.nextVisitDate = appt.date || "";
-        project.nextVisitTime = appt.time || "";
-      }
-    });
-
-    return Array.from(grouped.values()).sort((a, b) => {
-      if (a.nextVisitTs === b.nextVisitTs) return a.client.localeCompare(b.client);
-      return a.nextVisitTs - b.nextVisitTs;
-    });
-  }, [appointments]);
-
-  const projects = useMemo(() => {
-    return [...manualProjects, ...derivedProjects];
-  }, [derivedProjects, manualProjects]);
 
   const sortedClients = useMemo(
     () =>
@@ -210,26 +158,34 @@ export default function AdminProjectsPage() {
     setProjectForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleProjectCreate = (event) => {
+  const handleProjectCreate = async (event) => {
     event.preventDefault();
     const selectedClient =
       sortedClients.find((client) => client.id === projectForm.clientId) || null;
     if (!selectedClient) return;
 
-    setManualProjects((prev) => [
-      {
-        id: `PRJ-${String(prev.length + derivedProjects.length + 1).padStart(4, "0")}`,
-        client: selectedClient.name || "Client",
-        service: projectForm.service,
-        address: selectedClient.address || "Address not added",
-        nextVisitDate: null,
-        nextVisitTime: null,
-        nextVisitTs: Number.POSITIVE_INFINITY,
-        paymentStatus: "Unpaid",
-      },
-      ...prev,
-    ]);
-    setIsProjectModalOpen(false);
+    try {
+      const res = await fetch("/api/admin/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: selectedClient.id,
+          service: projectForm.service,
+          address: selectedClient.address || "",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error || "Failed to create project.");
+        return;
+      }
+
+      setProjects((prev) => [data.project, ...prev.filter((project) => project.id !== data.project.id)]);
+      setIsProjectModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      setError("Failed to create project.");
+    }
   };
 
   return (

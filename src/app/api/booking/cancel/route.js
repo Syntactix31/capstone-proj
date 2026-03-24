@@ -3,6 +3,10 @@ import { getCalendarClient } from "../../../lib/googleCalendar";
 import { getGmailTransporter } from "../../../lib/gmail";
 import { findBookingByGoogleEventId, updateBookingByGoogleEventId } from "../../../lib/db/bookings";
 
+function isNotFoundError(error) {
+  return error?.code === 404 || error?.status === 404 || error?.response?.status === 404;
+}
+
 // Format appointment dates nicely for cancellation emails.
 function formatPrettyDate(dateObj) {
   return dateObj.toLocaleString("en-CA", {
@@ -41,7 +45,7 @@ function emailShell({ title, preheader, bodyHtml }) {
   const b = brand();
 
   const logo = `
-    <img 
+    <img
       src="cid:companylogo"
       width="160"
       alt="Landscape Craftsmen Logo"
@@ -144,7 +148,7 @@ function row(label, value) {
       label
     )}</td>
     <td style="padding:10px 12px; border:1px solid #e5e7eb; color:#111827;">${escapeHtml(
-      value || "—"
+      value || "-"
     )}</td>
   </tr>`;
 }
@@ -216,67 +220,82 @@ export async function POST(req) {
     const calendar = await getCalendarClient();
     const storedBooking = await findBookingByGoogleEventId(eventId);
 
-    const event = await calendar.events.get({
-      calendarId: process.env.GOOGLE_CALENDAR_ID,
-      eventId,
-    });
+    let event = null;
+    try {
+      event = await calendar.events.get({
+        calendarId: process.env.GOOGLE_CALENDAR_ID,
+        eventId,
+      });
+    } catch (error) {
+      if (!isNotFoundError(error)) throw error;
+    }
 
-    const p = event.data.extendedProperties?.private || {};
-    const firstName = p.firstName || "there";
+    const p = event?.data?.extendedProperties?.private || {};
+    const firstName = p.firstName || storedBooking?.firstName || "there";
     const lastName = p.lastName || "";
-    const email = p.email || "";
-    const service = p.service || event.data.summary || "Appointment";
+    const email = p.email || storedBooking?.email || "";
+    const service = p.service || event?.data?.summary || storedBooking?.service || "Appointment";
 
-    const startIso = event.data.start?.dateTime;
+    const startIso = event?.data?.start?.dateTime || storedBooking?.startIso || null;
     const startDate = startIso ? new Date(startIso) : null;
     const startPretty =
       startDate && !Number.isNaN(startDate.getTime())
         ? formatPrettyDate(startDate)
         : "Scheduled time";
 
-    await calendar.events.delete({
-      calendarId: process.env.GOOGLE_CALENDAR_ID,
-      eventId,
-    });
+    try {
+      await calendar.events.delete({
+        calendarId: process.env.GOOGLE_CALENDAR_ID,
+        eventId,
+      });
+    } catch (error) {
+      if (!isNotFoundError(error)) throw error;
+    }
 
     await updateBookingByGoogleEventId(eventId, { status: "cancelled" });
 
-    const transporter = getGmailTransporter();
-
-    if (email) {
-      await transporter.sendMail({
-        from: `"${brand().name}" <${process.env.OWNER_EMAIL}>`,
-        to: email,
-        subject: `Booking Cancelled – ${brand().name}`,
-        html: cancelEmailCustomer({ firstName, service, startPretty }),
-        attachments: [
-          {
-            filename: "Landscapecraftsmen_logo.jpg",
-            path: process.cwd() + "/public/icons/Landscapecraftsmen_logo.jpg",
-            cid: "companylogo",
-          },
-        ],
-      });
-    }
-
-    await transporter.sendMail({
-      from: `"${brand().name} Booking System" <${process.env.OWNER_EMAIL}>`,
-      to: process.env.OWNER_EMAIL,
-      subject: "Booking Cancelled",
-      html: cancelEmailOwner({
-        fullName: `${firstName} ${lastName}`.trim() || storedBooking?.client || "Unknown",
-        email: email || storedBooking?.email || "Unknown",
-        service: service || storedBooking?.service || "Appointment",
-        startPretty,
-      }),
-      attachments: [
+    const canSendEmail = Boolean(process.env.OWNER_EMAIL && process.env.GMAIL_APP_PASSWORD);
+    if (canSendEmail) {
+      const transporter = getGmailTransporter();
+      const attachments = [
         {
           filename: "Landscapecraftsmen_logo.jpg",
           path: process.cwd() + "/public/icons/Landscapecraftsmen_logo.jpg",
           cid: "companylogo",
         },
-      ],
-    });
+      ];
+
+      if (email) {
+        try {
+          await transporter.sendMail({
+            from: `"${brand().name}" <${process.env.OWNER_EMAIL}>`,
+            to: email,
+            subject: `Booking Cancelled - ${brand().name}`,
+            html: cancelEmailCustomer({ firstName, service, startPretty }),
+            attachments,
+          });
+        } catch (mailError) {
+          console.error("CANCEL CUSTOMER EMAIL ERROR:", mailError);
+        }
+      }
+
+      try {
+        await transporter.sendMail({
+          from: `"${brand().name} Booking System" <${process.env.OWNER_EMAIL}>`,
+          to: process.env.OWNER_EMAIL,
+          subject: "Booking Cancelled",
+          html: cancelEmailOwner({
+            fullName: `${firstName} ${lastName}`.trim() || storedBooking?.client || "Unknown",
+            email: email || storedBooking?.email || "Unknown",
+            service: service || storedBooking?.service || "Appointment",
+            startPretty,
+          }),
+          attachments,
+        });
+      } catch (mailError) {
+        console.error("CANCEL OWNER EMAIL ERROR:", mailError);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

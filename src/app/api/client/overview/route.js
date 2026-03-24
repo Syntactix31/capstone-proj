@@ -4,6 +4,22 @@ import { getSql } from "../../../lib/db/client";
 import { ensureDatabaseSchema } from "../../../lib/db/schema";
 import { normalizeEmail } from "../../../lib/db/users";
 
+const EDMONTON_TIME_ZONE = "America/Edmonton";
+
+function formatDateOnly(dateValue) {
+  if (!dateValue) return "-";
+
+  const date = new Date(`${dateValue}T12:00:00-07:00`);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("en-CA", {
+    timeZone: EDMONTON_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
 export async function GET(req) {
   const user = getRequestUser(req);
   if (!user) {
@@ -57,7 +73,7 @@ export async function GET(req) {
     const projects = bookings.map(b => ({
       id: b.id,
       name: b.service,
-      startDate: b.booking_date ? new Date(b.booking_date).toLocaleDateString() : "-",
+      startDate: formatDateOnly(b.booking_date),
       status: b.status === 'confirmed' ? 'Active' : b.status === 'cancelled' ? 'Cancelled' : 'Pending'
     }));
 

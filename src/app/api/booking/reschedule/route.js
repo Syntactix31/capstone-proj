@@ -4,6 +4,17 @@ import { getGmailTransporter } from "../../../lib/gmail";
 import { findBookingByGoogleEventId, updateBookingByGoogleEventId } from "../../../lib/db/bookings";
 import { upsertClientProperty } from "../../../lib/db/clients";
 
+const EDMONTON_TIME_ZONE = "America/Edmonton";
+const EDMONTON_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: EDMONTON_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
 // Turn a "9:30 am" style label into numeric hour/minute values.
 function parseTime12h(timeStr) {
   const match = String(timeStr || "")
@@ -34,16 +45,34 @@ function buildEdmontonDate(dateStr, timeStr) {
   const yyyyMmDd = String(dateStr || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(yyyyMmDd)) return null;
 
-  const hh = String(t.hours).padStart(2, "0");
-  const mm = String(t.minutes).padStart(2, "0");
+  const [year, month, day] = yyyyMmDd.split("-").map((value) => Number(value));
 
-  return new Date(`${yyyyMmDd}T${hh}:${mm}:00-07:00`);
+  let utcMillis = Date.UTC(year, month - 1, day, t.hours, t.minutes, 0);
+
+  for (let i = 0; i < 3; i += 1) {
+    const parts = EDMONTON_PARTS_FORMATTER.formatToParts(new Date(utcMillis));
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const zonedAsUtc = Date.UTC(
+      Number(values.year),
+      Number(values.month) - 1,
+      Number(values.day),
+      Number(values.hour),
+      Number(values.minute),
+      0
+    );
+    const desiredAsUtc = Date.UTC(year, month - 1, day, t.hours, t.minutes, 0);
+    const diffMs = desiredAsUtc - zonedAsUtc;
+    if (diffMs === 0) break;
+    utcMillis += diffMs;
+  }
+
+  return new Date(utcMillis);
 }
 
 // Format appointment dates nicely for reschedule emails.
 function formatPrettyDate(dateObj) {
   return dateObj.toLocaleString("en-CA", {
-    timeZone: "America/Edmonton",
+    timeZone: EDMONTON_TIME_ZONE,
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -291,7 +320,7 @@ export async function POST(req) {
 
     const existing = await calendar.events.list({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
-      timeMin: start.toISOString(),
+      timeMin: new Date(start.getTime() - 1).toISOString(),
       timeMax: end.toISOString(),
       singleEvents: true,
     });

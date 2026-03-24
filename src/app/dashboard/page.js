@@ -49,6 +49,8 @@ const STATUS_CLASS = {
   Active: "admin-badge admin-badge--active",
 };
 
+const EDMONTON_TIME_ZONE = "America/Edmonton";
+
 /*
 phone input field formatting
 */
@@ -86,8 +88,16 @@ function getAppointmentDate(appointment) {
   return fallbackDate;
 }
 
+function parseDateOnly(dateStr) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ""))) return null;
+  return new Date(`${dateStr}T12:00:00-07:00`);
+}
+
 function getDateParts(value) {
-  const date = new Date(value);
+  const date =
+    typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? parseDateOnly(value)
+      : new Date(value);
   if (Number.isNaN(date.getTime())) {
     return {
       month: "TBD",
@@ -98,13 +108,14 @@ function getDateParts(value) {
   }
 
   return {
-    month: date.toLocaleString([], { month: "short" }).toUpperCase(),
-    day: date.toLocaleString([], { day: "2-digit" }),
-    weekday: date.toLocaleString([], { weekday: "long" }),
+    month: date.toLocaleString([], { month: "short", timeZone: EDMONTON_TIME_ZONE }).toUpperCase(),
+    day: date.toLocaleString([], { day: "2-digit", timeZone: EDMONTON_TIME_ZONE }),
+    weekday: date.toLocaleString([], { weekday: "long", timeZone: EDMONTON_TIME_ZONE }),
     full: date.toLocaleString([], {
       month: "long",
       day: "numeric",
       year: "numeric",
+      timeZone: EDMONTON_TIME_ZONE,
     }),
   };
 }

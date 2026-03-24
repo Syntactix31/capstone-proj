@@ -19,6 +19,17 @@ const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
 };
 
+const EDMONTON_TIME_ZONE = "America/Edmonton";
+const EDMONTON_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: EDMONTON_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
 
 function prettyServiceName(serviceIdOrName) {
   const hit =
@@ -54,6 +65,56 @@ function to12h(time24) {
   return `${h12}:${String(mm).padStart(2, "0")} ${mer}`;
 }
 
+function getEdmontonParts(date) {
+  const parts = EDMONTON_PARTS_FORMATTER.formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+    minute: Number(values.minute),
+  };
+}
+
+function formatEdmontonDateKey(date) {
+  const parts = getEdmontonParts(date);
+  return `${String(parts.year).padStart(4, "0")}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+}
+
+function buildDateTime(dateStr, time12h) {
+  const time24 = to24h(time12h);
+  if (!time24 || !dateStr) return null;
+
+  const [year, month, day] = String(dateStr)
+    .split("-")
+    .map((value) => Number(value));
+  const [hour, minute] = time24.split(":").map((value) => Number(value));
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute)
+  ) {
+    return null;
+  }
+
+  let utcMillis = Date.UTC(year, month - 1, day, hour, minute, 0);
+
+  for (let i = 0; i < 3; i += 1) {
+    const zoned = getEdmontonParts(new Date(utcMillis));
+    const desiredAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
+    const zonedAsUtc = Date.UTC(zoned.year, zoned.month - 1, zoned.day, zoned.hour, zoned.minute, 0);
+    const diffMs = desiredAsUtc - zonedAsUtc;
+    if (diffMs === 0) break;
+    utcMillis += diffMs;
+  }
+
+  return new Date(utcMillis);
+}
+
 function splitClientName(fullName) {
   const parts = String(fullName || "")
     .trim()
@@ -78,6 +139,7 @@ function getClientFormFields(client) {
 export default function AdminAppointmentsPage() {
   // Core page state: fetched appointments plus loading/error flags.
   const [appointments, setAppointments] = useState([]); // from Google Calendar
+  const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clientsLoading, setClientsLoading] = useState(true);
@@ -101,6 +163,8 @@ export default function AdminAppointmentsPage() {
     lastName: "",
     phone: "",
     email: "",
+    projectSelection: "",
+    projectId: "",
     service: "fence",
     visitType: "Estimate",
     durationHours: "1",
@@ -166,9 +230,28 @@ export default function AdminAppointmentsPage() {
     }
   }
 
+  async function refreshProjects() {
+    try {
+      const res = await fetch("/api/admin/projects", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setProjects([]);
+        return;
+      }
+      setProjects(Array.isArray(data.projects) ? data.projects : []);
+    } catch (error) {
+      console.error(error);
+      setProjects([]);
+    }
+  }
+
   // Keep "now" up to date so the calendar can show the current time position.
   useEffect(() => {
     refreshAppointments();
+  }, []);
+
+  useEffect(() => {
+    refreshProjects();
   }, []);
 
   // Load client records for the add-appointment form.
@@ -252,6 +335,27 @@ export default function AdminAppointmentsPage() {
     () => clients.find((client) => client.id === formState.clientId) || null,
     [clients, formState.clientId]
   );
+  const selectedClientProjects = useMemo(
+    () => projects.filter((project) => project.clientId === formState.clientId),
+    [formState.clientId, projects]
+  );
+  const projectOrServiceOptions = useMemo(() => {
+    if (selectedClientProjects.length > 0) {
+      return selectedClientProjects.map((project) => ({
+        value: `project:${project.id}`,
+        label: `${prettyServiceName(project.service)}${project.address ? ` - ${project.address}` : ""}`,
+        projectId: project.id,
+        service: project.service,
+      }));
+    }
+
+    return activeServices.map((service) => ({
+      value: `service:${service.id}`,
+      label: service.name,
+      projectId: "",
+      service: service.id,
+    }));
+  }, [activeServices, selectedClientProjects]);
 
   // Hour boundaries define the visible scheduling grid for the calendar.
   const calendarStartHour = 7;
@@ -303,10 +407,33 @@ export default function AdminAppointmentsPage() {
     return slots;
   }, [calendarEndHour, calendarStartHour, formState.durationHours]);
 
+  const availableTimeSlots = useMemo(() => {
+    if (!formState.date) return timeSlots;
+
+    const durationMs = (Number.parseInt(formState.durationHours || "1", 10) || 1) * 60 * 60 * 1000;
+
+    return timeSlots.filter((slot) => {
+      const slotStart = buildDateTime(formState.date, slot);
+      if (!slotStart || Number.isNaN(slotStart.getTime())) return false;
+      if (slotStart.getTime() < Date.now()) return false;
+
+      const slotEnd = new Date(slotStart.getTime() + durationMs);
+      return !appointments.some((appt) => {
+        if (editingId && appt.eventId === editingId) return false;
+
+        const apptStart = new Date(appt.startIso || "");
+        const apptEnd = new Date(appt.endIso || "");
+        if (Number.isNaN(apptStart.getTime()) || Number.isNaN(apptEnd.getTime())) return false;
+
+        return slotStart <= apptEnd && slotEnd > apptStart;
+      });
+    });
+  }, [appointments, editingId, formState.date, formState.durationHours, timeSlots]);
+
   const weekDays = useMemo(() => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], []);
 
   // splits the ISOString fomratted date and takes the date segment only
-  const formatDateKey = (date) => date.toISOString().split("T")[0];
+  const formatDateKey = (date) => formatEdmontonDateKey(date);
 
   /* gets the day that starts off the week (sundays)
   getDay() returns the day of the week as a number (0-6)
@@ -589,6 +716,7 @@ export default function AdminAppointmentsPage() {
         return false;
       }
       await refreshAppointments();
+      await refreshProjects();
       return true;
     } catch (e) {
       console.error(e);
@@ -629,13 +757,18 @@ export default function AdminAppointmentsPage() {
   */
   const openAddForm = () => {
     const defaultClient = sortedClients[0] || null;
+    const defaultClientProjects = projects.filter((project) => project.clientId === defaultClient?.id);
+    const defaultProjectOption = defaultClientProjects[0] || null;
+    const defaultServiceId = defaultProjectOption?.service || activeServices[0]?.id || "fence";
     setEditingId(null);
     setFormState({
       clientId: defaultClient?.id ?? "",
       ...getClientFormFields(defaultClient),
       firstName: "",
       lastName: "",
-      service: activeServices[0]?.id ?? "fence",
+      projectSelection: defaultProjectOption ? `project:${defaultProjectOption.id}` : `service:${defaultServiceId}`,
+      projectId: defaultProjectOption?.id || "",
+      service: defaultServiceId,
       visitType: "Estimate",
       durationHours: "1",
       date: formatDateKey(new Date()),
@@ -662,6 +795,8 @@ export default function AdminAppointmentsPage() {
       lastName,
       phone: "",
       email: appt.email || "",
+      projectSelection: "",
+      projectId: "",
       service: appt.serviceId || "fence",
       visitType: "Estimate",
       durationHours: "1",
@@ -683,10 +818,30 @@ export default function AdminAppointmentsPage() {
     const { name, value } = event.target;
     if (name === "clientId") {
       const nextClient = clients.find((client) => client.id === value) || null;
+      const nextProjects = projects.filter((project) => project.clientId === value);
+      const nextProject = nextProjects[0] || null;
+      const fallbackService = nextProject?.service || activeServices[0]?.id || "fence";
       setFormState((prev) => ({
         ...prev,
         clientId: value,
         ...getClientFormFields(nextClient),
+        projectSelection: nextProject ? `project:${nextProject.id}` : `service:${fallbackService}`,
+        projectId: nextProject?.id || "",
+        service: fallbackService,
+      }));
+      return;
+    }
+    if (name === "projectSelection") {
+      const nextProjectId = value.startsWith("project:") ? value.slice("project:".length) : "";
+      const nextProject = projects.find((project) => project.id === nextProjectId) || null;
+      const nextService = value.startsWith("service:")
+        ? value.slice("service:".length)
+        : nextProject?.service || formState.service;
+      setFormState((prev) => ({
+        ...prev,
+        projectSelection: value,
+        projectId: nextProject?.id || "",
+        service: nextService,
       }));
       return;
     }
@@ -719,9 +874,16 @@ export default function AdminAppointmentsPage() {
       return;
     }
 
+    if (!availableTimeSlots.length || !availableTimeSlots.includes(formState.time)) {
+      alert("No available times for the selected date and duration.");
+      return;
+    }
+
     const { firstName, lastName } = splitClientName(selectedClient?.name);
     // backend
     const payload = {
+      clientId: formState.clientId,
+      projectId: formState.projectId || null,
       service: formState.service, // service id (fence, pergola, etc)
       visitType: formState.visitType,
       durationHours: formState.durationHours,
@@ -789,13 +951,26 @@ export default function AdminAppointmentsPage() {
   }, [editingId, formState.clientId, isFormOpen, sortedClients]);
 
   useEffect(() => {
-    if (!isFormOpen || editingId || !timeSlots.length) return;
-    if (timeSlots.includes(formState.time)) return;
+    if (!isFormOpen || editingId || !availableTimeSlots.length) return;
+    if (availableTimeSlots.includes(formState.time)) return;
     setFormState((prev) => ({
       ...prev,
-      time: timeSlots[0],
+      time: availableTimeSlots[0],
     }));
-  }, [editingId, formState.time, isFormOpen, timeSlots]);
+  }, [availableTimeSlots, editingId, formState.time, isFormOpen]);
+
+  useEffect(() => {
+    if (!isFormOpen || editingId || !formState.clientId || !projectOrServiceOptions.length) return;
+    if (projectOrServiceOptions.some((option) => option.value === formState.projectSelection)) return;
+
+    const nextOption = projectOrServiceOptions[0];
+    setFormState((prev) => ({
+      ...prev,
+      projectSelection: nextOption.value,
+      projectId: nextOption.projectId,
+      service: nextOption.service,
+    }));
+  }, [editingId, formState.clientId, formState.projectSelection, isFormOpen, projectOrServiceOptions]);
 
 return (
     <AdminLayout>
@@ -1308,23 +1483,43 @@ return (
               ) : null}
 
               <div className="admin-modal__full">
-                <label className="admin-label" htmlFor="service">Service</label>
-                <select
-                  id="service"
-                  name="service"
-                  className="admin-input"
-                  value={formState.service}
-                  onChange={handleFormChange}
-                  required={!editingId}
-                  disabled={!!editingId}
-                  title={editingId ? "Service stays the same when rescheduling." : ""}
-                >
-                  {activeServices.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="admin-label" htmlFor={editingId ? "service" : "projectSelection"}>
+                  {editingId ? "Service" : selectedClientProjects.length > 0 ? "Project" : "Service"}
+                </label>
+                {editingId ? (
+                  <select
+                    id="service"
+                    name="service"
+                    className="admin-input"
+                    value={formState.service}
+                    onChange={handleFormChange}
+                    required={!editingId}
+                    disabled={!!editingId}
+                    title={editingId ? "Service stays the same when rescheduling." : ""}
+                  >
+                    {activeServices.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    id="projectSelection"
+                    name="projectSelection"
+                    className="admin-input"
+                    value={formState.projectSelection}
+                    onChange={handleFormChange}
+                    required
+                    disabled={!formState.clientId || !projectOrServiceOptions.length}
+                  >
+                    {projectOrServiceOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {!editingId ? (
@@ -1392,12 +1587,19 @@ return (
                   value={formState.time}
                   onChange={handleFormChange}
                   required
+                  disabled={!formState.date || !availableTimeSlots.length}
                 >
-                  {timeSlots.map((slot) => (
-                    <option key={slot} value={slot}>
-                      {slot}
+                  {!availableTimeSlots.length ? (
+                    <option value="">
+                      {formState.date ? "No available times" : "Select a date first"}
                     </option>
-                  ))}
+                  ) : (
+                    availableTimeSlots.map((slot) => (
+                      <option key={slot} value={slot}>
+                        {slot}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
