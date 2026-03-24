@@ -95,7 +95,6 @@ export default function PaymentsPage() {
     <AdminLayout>
       <section className="admin-hero">
         <div>
-          <p className="admin-kicker">Payments</p>
           <h1 className="admin-title">Transactions and collection</h1>
           <p className="admin-subtitle">
             Track payment status, methods, and retry failed transactions.

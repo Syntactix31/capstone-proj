@@ -124,7 +124,6 @@ function LoginPageContent() {
       <main className="admin-login-wrap">
         <div className="auth-shell auth-shell--single">
           <section className="admin-login-card">
-            <p className="admin-kicker">Welcome back</p>
             <h1 className="admin-title">Sign in to your account</h1>
             <p className="admin-subtitle">
               Access your bookings, quotes, and saved projects.

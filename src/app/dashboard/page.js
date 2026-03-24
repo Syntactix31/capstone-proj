@@ -49,6 +49,8 @@ const STATUS_CLASS = {
   Active: "admin-badge admin-badge--active",
 };
 
+const EDMONTON_TIME_ZONE = "America/Edmonton";
+
 /*
 phone input field formatting
 */
@@ -86,8 +88,16 @@ function getAppointmentDate(appointment) {
   return fallbackDate;
 }
 
+function parseDateOnly(dateStr) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ""))) return null;
+  return new Date(`${dateStr}T12:00:00-07:00`);
+}
+
 function getDateParts(value) {
-  const date = new Date(value);
+  const date =
+    typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? parseDateOnly(value)
+      : new Date(value);
   if (Number.isNaN(date.getTime())) {
     return {
       month: "TBD",
@@ -98,13 +108,14 @@ function getDateParts(value) {
   }
 
   return {
-    month: date.toLocaleString([], { month: "short" }).toUpperCase(),
-    day: date.toLocaleString([], { day: "2-digit" }),
-    weekday: date.toLocaleString([], { weekday: "long" }),
+    month: date.toLocaleString([], { month: "short", timeZone: EDMONTON_TIME_ZONE }).toUpperCase(),
+    day: date.toLocaleString([], { day: "2-digit", timeZone: EDMONTON_TIME_ZONE }),
+    weekday: date.toLocaleString([], { weekday: "long", timeZone: EDMONTON_TIME_ZONE }),
     full: date.toLocaleString([], {
       month: "long",
       day: "numeric",
       year: "numeric",
+      timeZone: EDMONTON_TIME_ZONE,
     }),
   };
 }
@@ -179,7 +190,6 @@ export default function DashboardPage() {
           {/*hero card*/}
             <section className="admin-hero">
             <div>
-              <p className="admin-kicker">Admin Dashboard</p>
               <h1 className="admin-title">
                 Your job overview
               </h1>
@@ -198,10 +208,6 @@ export default function DashboardPage() {
               <span className={STATUS_CLASS.Confirmed}>
                 {confirmedCount} Confirmed
               </span>
-            </article>
-            <article className="admin-card admin-card--stat">
-              <div className="admin-stat-title">Active services</div>
-              <div className="admin-stat-value">{activeServices}</div>
             </article>
             <article className="admin-card admin-card--stat">
               <div className="admin-stat-title">Active clients</div>
@@ -356,7 +362,6 @@ export default function DashboardPage() {
               <div className="admin-modal__content" role="dialog" aria-modal="true">
                 <div className="admin-modal__header">
                   <div>
-                    <p className="admin-kicker">Client Profile</p>
                     <h2 className="admin-title">{activeClient.name || "Client"}</h2>
                     <p className="admin-subtitle">{activeClient.id}</p>
                   </div>
@@ -401,10 +406,6 @@ export default function DashboardPage() {
                     <div className="admin-strong">{activeClient.province || "—"}</div>
                   </div>
                   <div>
-                    <div className="admin-muted">Postal Code</div>
-                    <div className="admin-strong">{activeClient.postal || "—"}</div>
-                  </div>
-                  <div>
                     <div className="admin-muted">Property Type</div>
                     <div className="admin-strong">{activeClient.propertyType || "—"}</div>
                   </div>
@@ -423,3 +424,4 @@ export default function DashboardPage() {
     </AdminLayout>
   );
 }
+

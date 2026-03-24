@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../../components/Navbar.js";
@@ -30,10 +30,34 @@ function formatPrettyDate(dateStr) {
   }).format(d);
 }
 
+function normalizePhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function isValidPhone(value) {
+  return /^\d{10}$/.test(normalizePhone(value));
+}
+
+function formatPhoneDisplay(value) {
+  const digits = normalizePhone(value);
+  if (digits.length !== 10) return "";
+  return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 // Collect the user's personal/job-site details before creating the booking.
 function DetailsContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const [phone, setPhone] = useState("");
+  const [phoneFocused, setPhoneFocused] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  const phoneDisplayValue = phoneFocused
+    ? phone
+    : isValidPhone(phone)
+      ? formatPhoneDisplay(phone)
+      : phone;
+  const showPhoneError = submitAttempted && !isValidPhone(phone);
 
   const servicesParam = params.get("service") || "";
   const servicesArray = servicesParam.split(",").filter(Boolean);
@@ -43,8 +67,9 @@ function DetailsContent() {
 
   const date = params.get("date") || "";
   const time = params.get("time") || "";
+  const durationHours = params.get("durationHours") || "1";
 
-  const backHref = `/book/time?service=${encodeURIComponent(servicesParam)}`;
+  const backHref = `/book/time?service=${encodeURIComponent(servicesParam)}&durationHours=${encodeURIComponent(durationHours)}`;
 
   const displayTime = (() => {
     if (!date || !time) return "No time selected";
@@ -55,9 +80,17 @@ function DetailsContent() {
   // Send the selected service/date/time plus the form fields to the booking API.
   async function handleSubmit(e) {
     e.preventDefault();
+    setSubmitAttempted(true);
 
     const formData = new FormData(e.target);
     const payload = Object.fromEntries(formData.entries());
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!isValidPhone(normalizedPhone)) {
+      return;
+    }
+
+    payload.phone = normalizedPhone;
 
     try {
       const res = await fetch("/api/booking/create", {
@@ -138,7 +171,7 @@ function DetailsContent() {
                 </div>
                 <Link
                   href={servicesParam
-                    ? `/book/time?service=${encodeURIComponent(servicesParam)}`
+                    ? `/book/time?service=${encodeURIComponent(servicesParam)}&durationHours=${encodeURIComponent(durationHours)}`
                     : "/book/time"
                   }
                   className="summary-card-edit"
@@ -175,6 +208,7 @@ function DetailsContent() {
               <input type="hidden" name="service" value={servicesParam} />
               <input type="hidden" name="date" value={date} />
               <input type="hidden" name="time" value={time} />
+              <input type="hidden" name="durationHours" value={durationHours} />
 
               <div className="details-row">
                 <div className="details-field">
@@ -218,6 +252,29 @@ function DetailsContent() {
                   className="details-input"
                   required
                 />
+              </div>
+
+              <div className="details-field">
+                <label className="details-label" htmlFor="phone">
+                  Phone
+                </label>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  inputMode="tel"
+                  className="details-input"
+                  value={phoneDisplayValue}
+                  onFocus={() => setPhoneFocused(true)}
+                  onBlur={() => setPhoneFocused(false)}
+                  onChange={(event) =>
+                    setPhone(normalizePhone(event.target.value).slice(0, 10))
+                  }
+                  required
+                />
+                {showPhoneError ? (
+                  <p className="admin-error">Enter a 10-digit phone number.</p>
+                ) : null}
               </div>
 
               <div className="details-field">

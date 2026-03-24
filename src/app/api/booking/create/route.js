@@ -2,7 +2,29 @@ import { NextResponse } from "next/server";
 import { getCalendarClient } from "../../../lib/googleCalendar";
 import { getGmailTransporter } from "../../../lib/gmail";
 import { createBooking } from "../../../lib/db/bookings";
-import { upsertClient, upsertClientProperty } from "../../../lib/db/clients";
+import { fetchClientById, upsertClient, upsertClientProperty } from "../../../lib/db/clients";
+import { createProject, findProjectById, listProjects } from "../../../lib/db/projects";
+
+const EDMONTON_TIME_ZONE = "America/Edmonton";
+const EDMONTON_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: EDMONTON_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function normalizePhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function normalizeDurationHours(value) {
+  const parsed = Number.parseInt(String(value || "1"), 10);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.min(Math.max(parsed, 1), 8);
+}
 
 // Turn a "9:30 am" style label into numeric hour/minute values.
 function parseTime12h(timeStr) {
@@ -34,16 +56,34 @@ function buildEdmontonDate(dateStr, timeStr) {
   const yyyyMmDd = String(dateStr || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(yyyyMmDd)) return null;
 
-  const hh = String(t.hours).padStart(2, "0");
-  const mm = String(t.minutes).padStart(2, "0");
+  const [year, month, day] = yyyyMmDd.split("-").map((value) => Number(value));
 
-  return new Date(`${yyyyMmDd}T${hh}:${mm}:00-07:00`);
+  let utcMillis = Date.UTC(year, month - 1, day, t.hours, t.minutes, 0);
+
+  for (let i = 0; i < 3; i += 1) {
+    const parts = EDMONTON_PARTS_FORMATTER.formatToParts(new Date(utcMillis));
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const zonedAsUtc = Date.UTC(
+      Number(values.year),
+      Number(values.month) - 1,
+      Number(values.day),
+      Number(values.hour),
+      Number(values.minute),
+      0
+    );
+    const desiredAsUtc = Date.UTC(year, month - 1, day, t.hours, t.minutes, 0);
+    const diffMs = desiredAsUtc - zonedAsUtc;
+    if (diffMs === 0) break;
+    utcMillis += diffMs;
+  }
+
+  return new Date(utcMillis);
 }
 
 // Format appointment dates nicely for customer/owner emails.
 function formatPrettyDate(dateObj) {
   return dateObj.toLocaleString("en-CA", {
-    timeZone: "America/Edmonton",
+    timeZone: EDMONTON_TIME_ZONE,
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -270,12 +310,25 @@ export async function POST(req) {
       firstName,
       lastName,
       email,
+      phone,
+      visitType,
+      durationHours,
       address,
       notes,
+      clientId,
+      projectId,
     } = body;
 
-    if (!date || !time || !email || !firstName || !lastName || !service) {
+    const normalizedPhone = normalizePhone(phone);
+    const normalizedDurationHours = normalizeDurationHours(durationHours);
+    const normalizedVisitType = String(visitType || "Estimate").trim() || "Estimate";
+
+    if (!date || !time || !email || !firstName || !service) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (normalizedPhone && !/^\d{10}$/.test(normalizedPhone)) {
+      return NextResponse.json({ error: "Phone number must be 10 digits." }, { status: 400 });
     }
 
     const start = buildEdmontonDate(date, time);
@@ -287,13 +340,13 @@ export async function POST(req) {
       return NextResponse.json({ error: "Cannot book in the past." }, { status: 400 });
     }
 
-    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const end = new Date(start.getTime() + normalizedDurationHours * 60 * 60 * 1000);
 
     const calendar = await getCalendarClient();
 
     const existing = await calendar.events.list({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
-      timeMin: start.toISOString(),
+      timeMin: new Date(start.getTime() - 1).toISOString(),
       timeMax: end.toISOString(),
       singleEvents: true,
     });
@@ -310,17 +363,23 @@ export async function POST(req) {
         summary: `${service} – ${firstName} ${lastName}`,
         location: address || "Calgary, AB",
         description: [
+          `Visit Type: ${normalizedVisitType}`,
           `Name: ${firstName} ${lastName}`,
           `Email: ${email}`,
+          `Phone: ${normalizedPhone || "N/A"}`,
+          `Duration: ${normalizedDurationHours} ${normalizedDurationHours === 1 ? "hour" : "hours"}`,
           `Address: ${address || "N/A"}`,
           `Notes: ${notes || "None"}`,
         ].join("\n"),
         extendedProperties: {
           private: {
             service: String(service || ""),
+            visitType: normalizedVisitType,
+            durationHours: String(normalizedDurationHours),
             firstName: String(firstName || ""),
             lastName: String(lastName || ""),
             email: String(email || ""),
+            phone: String(normalizedPhone || ""),
             address: String(address || ""),
             notes: String(notes || ""),
             date: String(date || ""),
@@ -339,18 +398,42 @@ export async function POST(req) {
       },
     });
 
-    const client = await upsertClient({
-      name: `${firstName} ${lastName}`.trim(),
-      email,
-    });
+    const client =
+      (clientId ? await fetchClientById(String(clientId)) : null) ||
+      (await upsertClient({
+        name: `${firstName} ${lastName}`.trim(),
+        email,
+        phone: normalizedPhone,
+      }));
+
     const property = await upsertClientProperty({
       clientId: client.id,
       address,
     });
+
+    let linkedProject = null;
+    if (projectId) {
+      linkedProject = await findProjectById(String(projectId));
+      if (!linkedProject || linkedProject.clientId !== client.id) {
+        return NextResponse.json({ error: "Invalid project selected." }, { status: 400 });
+      }
+    } else {
+      const existingProjects = await listProjects({ clientId: client.id });
+      if (existingProjects.length === 0) {
+        linkedProject = await createProject({
+          clientId: client.id,
+          service,
+          address: address || property?.address || client.address || "",
+        });
+      }
+    }
+
     await createBooking({
       clientId: client.id,
+      projectId: linkedProject?.id || null,
       propertyId: property?.id || null,
       service,
+      visitType: normalizedVisitType,
       bookingDate: date,
       bookingTime: time,
       startAt: start.toISOString(),

@@ -3,6 +3,7 @@ import { getSql } from "./client.js";
 let schemaPromise = null;
 
 // Make sure the required tables/indexes exist before the app uses the DB.
+//Revise time data to not use local machine units
 export async function ensureDatabaseSchema() {
   if (!schemaPromise) {
     schemaPromise = (async () => {
@@ -41,7 +42,6 @@ export async function ensureDatabaseSchema() {
           address text NOT NULL,
           city text NOT NULL DEFAULT 'Calgary',
           province text NOT NULL DEFAULT 'Alberta',
-          postal text NOT NULL DEFAULT '',
           property_type text NOT NULL DEFAULT 'House',
           additional_instructions text NOT NULL DEFAULT '',
           created_at timestamptz NOT NULL,
@@ -55,11 +55,30 @@ export async function ensureDatabaseSchema() {
       `;
 
       await sql`
+        CREATE TABLE IF NOT EXISTS projects (
+          id text PRIMARY KEY,
+          client_id text NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          service text NOT NULL,
+          address text NOT NULL DEFAULT '',
+          payment_status text NOT NULL DEFAULT 'Unpaid',
+          created_at timestamptz NOT NULL,
+          updated_at timestamptz NOT NULL
+        )
+      `;
+
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS projects_client_service_address_idx
+        ON projects (client_id, service, address)
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS bookings (
           id text PRIMARY KEY,
           client_id text NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
+          project_id text REFERENCES projects(id) ON DELETE SET NULL,
           property_id text REFERENCES client_properties(id) ON DELETE SET NULL,
           service text NOT NULL,
+          visit_type text NOT NULL DEFAULT 'Estimate',
           status text NOT NULL DEFAULT 'confirmed',
           booking_date date NOT NULL,
           booking_time text NOT NULL,
@@ -70,6 +89,16 @@ export async function ensureDatabaseSchema() {
           created_at timestamptz NOT NULL,
           updated_at timestamptz NOT NULL
         )
+      `;
+
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS project_id text REFERENCES projects(id) ON DELETE SET NULL
+      `;
+
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS visit_type text NOT NULL DEFAULT 'Estimate'
       `;
 
       await sql`

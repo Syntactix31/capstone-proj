@@ -21,6 +21,23 @@ const TIME_SLOTS = [
   "3:00 pm","3:30 pm",
 ];
 
+const EDMONTON_TIME_ZONE = "America/Edmonton";
+const EDMONTON_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: EDMONTON_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function normalizeDurationHours(value) {
+  const parsed = Number.parseInt(String(value || "1"), 10);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.min(Math.max(parsed, 1), 8);
+}
+
 // Convert a Date object into a YYYY-MM-DD string.
 function ymd(dateObj) {
   const y = dateObj.getFullYear();
@@ -56,6 +73,47 @@ function startOfDayLocal() {
   return d;
 }
 
+function getEdmontonParts(date) {
+  const parts = EDMONTON_PARTS_FORMATTER.formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+    minute: Number(values.minute),
+  };
+}
+
+function buildEdmontonDate(dateStr, hour, minute) {
+  const [year, month, day] = String(dateStr)
+    .split("-")
+    .map((value) => Number(value));
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute)
+  ) {
+    return null;
+  }
+
+  let utcMillis = Date.UTC(year, month - 1, day, hour, minute, 0);
+
+  for (let i = 0; i < 3; i += 1) {
+    const zoned = getEdmontonParts(new Date(utcMillis));
+    const desiredAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
+    const zonedAsUtc = Date.UTC(zoned.year, zoned.month - 1, zoned.day, zoned.hour, zoned.minute, 0);
+    const diffMs = desiredAsUtc - zonedAsUtc;
+    if (diffMs === 0) break;
+    utcMillis += diffMs;
+  }
+
+  return new Date(utcMillis);
+}
+
 // Turn a selected day and slot label into a real Date object.
 function makeDateFromYmdAndSlot(dateStr, slot) {
   const m = String(slot).trim().match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
@@ -71,15 +129,47 @@ function makeDateFromYmdAndSlot(dateStr, slot) {
     if (hh !== 12) hh += 12;
   }
 
-  const hhStr = String(hh).padStart(2, "0");
-  const mmStr = String(mm).padStart(2, "0");
-
-  return new Date(`${dateStr}T${hhStr}:${mmStr}:00-07:00`);
+  return buildEdmontonDate(dateStr, hh, mm);
 }
 
 // Check whether two time ranges overlap.
 function overlaps(aStart, aEnd, bStart, bEnd) {
-  return aStart < bEnd && aEnd > bStart;
+  return aStart <= bEnd && aEnd > bStart;
+}
+
+function buildSlotRange(dateStr, slot, durationHours) {
+  const slotStart = makeDateFromYmdAndSlot(dateStr, slot);
+  if (!slotStart || Number.isNaN(slotStart.getTime())) return null;
+
+  return {
+    start: slotStart,
+    end: new Date(slotStart.getTime() + durationHours * 60 * 60 * 1000),
+  };
+}
+
+function hasAvailableSlots(dateStr, busyIntervals, durationHours) {
+  const intervals = (Array.isArray(busyIntervals) ? busyIntervals : [])
+    .map((i) => {
+      const s = new Date(i.start);
+      const e = new Date(i.end);
+      if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return null;
+      return { s, e };
+    })
+    .filter(Boolean);
+
+  for (const slot of TIME_SLOTS) {
+    const slotRange = buildSlotRange(dateStr, slot, durationHours);
+    if (!slotRange) continue;
+
+    if (slotRange.start.getTime() < Date.now()) continue;
+
+    const isBooked = intervals.some((it) =>
+      overlaps(slotRange.start, slotRange.end, it.s, it.e)
+    );
+    if (!isBooked) return true;
+  }
+
+  return false;
 }
 
 // Main booking time picker used for both new bookings and reschedules.
@@ -96,6 +186,10 @@ function BookTimeInner() {
 
   const eventId = params.get("eventId") || "";
   const mode = params.get("mode") || "";
+  const durationHours = useMemo(
+    () => normalizeDurationHours(params.get("durationHours")),
+    [params]
+  );
 
   const selectedServices = useMemo(
     () => serviceIds
@@ -117,6 +211,7 @@ function BookTimeInner() {
   const [selectedTime, setSelectedTime] = useState(null);
 
   const [busyIntervals, setBusyIntervals] = useState([]);
+  const [busyIntervalsByDate, setBusyIntervalsByDate] = useState({});
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   const calendarCells = useMemo(() => {
@@ -176,6 +271,53 @@ function BookTimeInner() {
     };
   }, [selectedDateStr]);
 
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadMonthAvailability() {
+      const visibleDates = calendarCells
+        .filter(Boolean)
+        .map((dateObj) => {
+          const next = new Date(dateObj);
+          next.setHours(0, 0, 0, 0);
+          return next;
+        })
+        .filter((dateObj) => dateObj.getTime() >= today.getTime())
+        .map(ymd);
+
+      if (!visibleDates.length) {
+        if (!ignore) setBusyIntervalsByDate({});
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/booking/availability", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dates: visibleDates }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return;
+
+        if (!ignore) {
+          setBusyIntervalsByDate(
+            data?.busyIntervalsByDate && typeof data.busyIntervalsByDate === "object"
+              ? data.busyIntervalsByDate
+              : {}
+          );
+        }
+      } catch {
+        if (!ignore) setBusyIntervalsByDate({});
+      }
+    }
+
+    loadMonthAvailability();
+    return () => {
+      ignore = true;
+    };
+  }, [calendarCells, today]);
+
   // Mark slots as disabled if they are in the past or overlap an existing booking.
   const disabledSlots = useMemo(() => {
     const disabled = new Set();
@@ -192,25 +334,34 @@ function BookTimeInner() {
       .filter(Boolean);
 
     for (const slot of TIME_SLOTS) {
-      const slotStart = makeDateFromYmdAndSlot(selectedDateStr, slot);
-      if (!slotStart || Number.isNaN(slotStart.getTime())) continue;
+      const slotRange = buildSlotRange(selectedDateStr, slot, durationHours);
+      if (!slotRange) continue;
 
-      const slotEnd = new Date(slotStart.getTime() + 30 * 60 * 1000);
-
-      if (slotStart.getTime() < Date.now()) {
+      if (slotRange.start.getTime() < Date.now()) {
         disabled.add(slot.toLowerCase());
         continue;
       }
 
       for (const it of intervals) {
-        if (overlaps(slotStart, slotEnd, it.s, it.e)) {
+        if (overlaps(slotRange.start, slotRange.end, it.s, it.e)) {
           disabled.add(slot.toLowerCase());
           break;
         }
       }
     }
     return disabled;
-  }, [busyIntervals, selectedDateStr]);
+  }, [busyIntervals, durationHours, selectedDateStr]);
+
+  const availableSlots = useMemo(
+    () => TIME_SLOTS.filter((slot) => !disabledSlots.has(slot.toLowerCase())),
+    [disabledSlots]
+  );
+
+  useEffect(() => {
+    if (!selectedTime) return;
+    if (availableSlots.includes(selectedTime)) return;
+    setSelectedTime(null);
+  }, [availableSlots, selectedTime]);
 
   // Continue to either the details step or the reschedule route.
   const onConfirm = async () => {
@@ -265,7 +416,9 @@ function BookTimeInner() {
     router.push(
       `/book/details?service=${encodeURIComponent(serviceParam)}&date=${encodeURIComponent(
         selectedDateStr
-      )}&time=${encodeURIComponent(selectedTime)}`
+      )}&time=${encodeURIComponent(selectedTime)}&durationHours=${encodeURIComponent(
+        String(durationHours)
+      )}`
     );
 
   };
@@ -393,16 +546,22 @@ function BookTimeInner() {
                   const dStart = new Date(d);
                   dStart.setHours(0, 0, 0, 0);
                   const isPast = dStart.getTime() < today.getTime();
+                  const dayBusyIntervals = busyIntervalsByDate[dateStr];
+                  const isUnavailable =
+                    !isPast &&
+                    Array.isArray(dayBusyIntervals) &&
+                    !hasAvailableSlots(dateStr, dayBusyIntervals, durationHours);
+                  const isDisabled = isPast || isUnavailable;
 
                   return (
                     <button
                       key={dateStr}
                       type="button"
-                      disabled={isPast}
+                      disabled={isDisabled}
                       className={
                         "calendar-day" +
                         (isSelected ? " calendar-day--selected" : "") +
-                        (isPast ? " calendar-day--disabled" : "")
+                        (isDisabled ? " calendar-day--disabled" : "")
                       }
                       onClick={() => setSelectedDateStr(dateStr)}
                       title={prettyDate(d)}
@@ -430,27 +589,25 @@ function BookTimeInner() {
                 <p className="times-hint">Select a date on the calendar to see time slots.</p>
               ) : loadingSlots ? (
                 <p className="times-hint">Loading availability…</p>
+              ) : !availableSlots.length ? (
+                <p className="times-hint">No available times for this date.</p>
               ) : (
                 <>
                   <div className="times-grid">
-                    {TIME_SLOTS.map((slot) => {
-                      const isBooked = disabledSlots.has(slot.toLowerCase());
+                    {availableSlots.map((slot) => {
                       const isSelected = selectedTime === slot;
 
                       return (
                         <button
                           key={slot}
                           type="button"
-                          disabled={isBooked}
                           className={
                             "time-slot" +
-                            (isSelected ? " time-slot--selected" : "") +
-                            (isBooked ? " time-slot--disabled" : "")
+                            (isSelected ? " time-slot--selected" : "")
                           }
                           onClick={() => setSelectedTime(slot)}
                         >
                           {slot}
-                          {isBooked ? " (Booked)" : ""}
                         </button>
                       );
                     })}

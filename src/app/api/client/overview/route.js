@@ -4,6 +4,22 @@ import { getSql } from "../../../lib/db/client";
 import { ensureDatabaseSchema } from "../../../lib/db/schema";
 import { normalizeEmail } from "../../../lib/db/users";
 
+const EDMONTON_TIME_ZONE = "America/Edmonton";
+
+function formatDateOnly(dateValue) {
+  if (!dateValue) return "-";
+
+  const date = new Date(`${dateValue}T12:00:00-07:00`);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("en-CA", {
+    timeZone: EDMONTON_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
 export async function GET(req) {
   const user = getRequestUser(req);
   if (!user) {
@@ -12,7 +28,7 @@ export async function GET(req) {
 
   try {
     await ensureDatabaseSchema();
-    const sql = getSql();
+    const sql = await getSql();
 
     // Fetch client by email
     const clientRows = await sql`
@@ -26,30 +42,44 @@ export async function GET(req) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    // Fetch bookings for the client
+    const recentEstimates = await sql`
+      SELECT 
+        e.id, e.title, e.service, e.price, e.status, e.notes,
+        e.created_at as "createdAt", e.pdf_url as "pdfUrl"
+      FROM estimates e
+      WHERE e.client_id = ${client.id}
+      ORDER BY e.created_at DESC
+      LIMIT 3
+    `;
+
+    const estimates = recentEstimates.map(e => ({
+      id: e.id,
+      title: e.title || e.service,
+      price: Number(e.price).toFixed(2),
+      status: e.status,
+      createdAt: e.createdAt ? new Date(e.createdAt).toISOString().split("T")[0] : "-", 
+      pdfUrl: e.pdfUrl
+    }));
+
     const bookings = await sql`
       SELECT
-        b.id,
-        b.service,
-        b.booking_date,
-        b.status,
-        b.created_at
+        b.id, b.service, b.booking_date, b.status, b.created_at
       FROM bookings b
       WHERE b.client_id = ${client.id}
       ORDER BY b.created_at DESC
+      LIMIT 5
     `;
 
-    // Map bookings to projects format
     const projects = bookings.map(b => ({
       id: b.id,
       name: b.service,
-      startDate: new Date(b.booking_date).toLocaleDateString(),
+      startDate: formatDateOnly(b.booking_date),
       status: b.status === 'confirmed' ? 'Active' : b.status === 'cancelled' ? 'Cancelled' : 'Pending'
     }));
 
-    // Estimates and payments not implemented yet
-    const estimates = [];
     const payments = [];
+
+    console.log(`Overview for ${user.email}: ${estimates.length} estimates, ${projects.length} projects`);
 
     return NextResponse.json({
       projects,

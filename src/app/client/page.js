@@ -53,6 +53,7 @@ export default function ClientDashboardPage() {
 
     async function loadUser() {
       try {
+        // added next: { revalidate: 0 }
         const res = await fetch("/api/auth/me", { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
         if (!active) return;
@@ -139,8 +140,8 @@ export default function ClientDashboardPage() {
             {estimates.slice(0, 5).map((est) => (
               <div className="client-list-row" key={est.id}>
                 <div>
-                  <div className="client-strong">{est.project}</div>
-                  <div className="client-muted">${est.amount}</div>
+                  <div className="client-strong">{est.title}</div>
+                  <div className="client-muted">${est.price}</div>
                 </div>
                 <span className={STATUS_CLASS[est.status] || "client-badge"}>
                   {est.status}
