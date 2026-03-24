@@ -38,6 +38,75 @@ function prettyServiceName(serviceIdOrName) {
   return hit?.name || String(serviceIdOrName || "Appointment");
 }
 
+function visitTypeTone(label) {
+  const normalized = String(label || "").trim().toLowerCase();
+  if (normalized === "estimate") return "estimate";
+  if (normalized === "design consultation") return "design";
+  if (normalized === "installation") return "installation";
+  return "installation";
+}
+
+function visitTypeToneStyle(label) {
+  const tone = visitTypeTone(label);
+
+  if (tone === "estimate") {
+    return {
+      "--visit-pill-bg": "#e8f1ff",
+      "--visit-pill-fg": "#2157a6",
+      "--visit-track-bg": "#e5eefb",
+      "--visit-fill-bg": "linear-gradient(90deg, #4b86e8 0%, #76a8f5 100%)",
+      "--visit-fill-shadow": "inset 0 0 0 1px rgba(33, 87, 166, 0.14)",
+    };
+  }
+
+  if (tone === "design") {
+    return {
+      "--visit-pill-bg": "#fff0df",
+      "--visit-pill-fg": "#b86412",
+      "--visit-track-bg": "#f7eee1",
+      "--visit-fill-bg": "linear-gradient(90deg, #dd8a3d 0%, #f0ae62 100%)",
+      "--visit-fill-shadow": "inset 0 0 0 1px rgba(184, 100, 18, 0.14)",
+    };
+  }
+
+  return {
+    "--visit-pill-bg": "#edf5ea",
+    "--visit-pill-fg": "#2f5f2b",
+    "--visit-track-bg": "#e7efe4",
+    "--visit-fill-bg": "linear-gradient(90deg, #5f8f4d 0%, #7aa866 100%)",
+    "--visit-fill-shadow": "inset 0 0 0 1px rgba(47, 95, 43, 0.12)",
+  };
+}
+
+function visitTypeEventToneStyle(label) {
+  const tone = visitTypeTone(label);
+
+  if (tone === "estimate") {
+    return {
+      "--calendar-event-bg": "rgba(79, 133, 234, 0.18)",
+      "--calendar-event-border": "rgba(79, 133, 234, 0.42)",
+      "--calendar-event-title": "#163c7a",
+      "--calendar-event-subtitle": "#3360aa",
+    };
+  }
+
+  if (tone === "design") {
+    return {
+      "--calendar-event-bg": "rgba(221, 138, 61, 0.18)",
+      "--calendar-event-border": "rgba(221, 138, 61, 0.42)",
+      "--calendar-event-title": "#87470d",
+      "--calendar-event-subtitle": "#b86412",
+    };
+  }
+
+  return {
+    "--calendar-event-bg": "rgba(71, 122, 64, 0.18)",
+    "--calendar-event-border": "rgba(71, 122, 64, 0.35)",
+    "--calendar-event-title": "#23451f",
+    "--calendar-event-subtitle": "#477a40",
+  };
+}
+
 // Convert 12-hour times into 24-hour times for comparisons/layout math.
 function to24h(time12h) {
   // "9:30 AM" -> "09:30"
@@ -210,6 +279,7 @@ export default function AdminAppointmentsPage() {
         client: a.client || "Unknown",
         service: prettyServiceName(a.service),
         serviceId: a.service,
+        visitType: a.visitType || "Estimate",
         date: a.date, 
         time: a.time, 
         address: a.address || "",
@@ -314,12 +384,25 @@ export default function AdminAppointmentsPage() {
     return () => media.removeListener(syncMedia);
   }, []);
 
-
-  const upcoming = appointments.filter((appt) => appt.status === "Confirmed").length;
-
   // Since Google events are real bookings, treat them as Confirmed
   const bookedAppointments = appointments.filter((appt) => appt.status === "Confirmed");
   const confirmed = bookedAppointments.length;
+  const visitTypeSummary = useMemo(() => {
+    const counts = new Map();
+
+    for (const appointment of bookedAppointments) {
+      const label = String(appointment.visitType || "Estimate").trim() || "Estimate";
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+
+    return [...counts.entries()]
+      .map(([label, count]) => ({
+        label,
+        count,
+        share: confirmed > 0 ? Math.max((count / confirmed) * 100, 8) : 0,
+      }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [bookedAppointments, confirmed]);
 
   const activeServices = useMemo(() => SERVICES.filter((s) => s.active), []);
   const sortedClients = useMemo(
@@ -1003,29 +1086,66 @@ return (
 
       {/* Summary cards showing appointment statistics */}
       <section className="admin-summary-grid">
+        <div className="admin-summary-column admin-summary-column--stack">
+          {/* Card showing total projects */}
+          <article className="admin-card admin-card--stat">
+            <div className="admin-stat-title">Projects</div>
+            <div className="admin-card--stat-body">
+              <div className="admin-stat-value">{projects.length}</div>
+              <div className="admin-muted">Currently in Progress</div>
+            </div>
+          </article>
 
-        {/* Card showing total upcoming appointments */}
-        <article className="admin-card admin-card--stat">
-          <div className="admin-stat-title">Upcoming</div>
-          <div className="admin-stat-value">{upcoming}</div>
-          <div className="admin-muted">Next 180 days</div>
-        </article>
+          {/* Card showing confirmed appointments and button to open booked list modal */}
+          <article className="admin-card admin-card--stat">
+            <div className="admin-stat-title">Confirmed</div>
+            <div className="admin-card--stat-body">
+              <div className="admin-stat-value">{confirmed}</div>
 
-        {/* Card showing confirmed appointments and button to open booked list modal */}
-        <article className="admin-card admin-card--stat">
-          <div className="admin-stat-title">Confirmed</div>
-          <div className="admin-stat-value">{confirmed}</div>
+              {/* Opens modal listing all booked appointments */}
+              <button
+                type="button"
+                className={`${STATUS_CLASS.Confirmed} admin-badge--button`}
+                onClick={() => setShowBookedModal(true)}
+                disabled={busy}
+              >
+                Booked
+              </button>
+            </div>
+          </article>
+        </div>
 
-          {/* Opens modal listing all booked appointments */}
-          <button
-            type="button"
-            className={`${STATUS_CLASS.Confirmed} admin-badge--button`}
-            onClick={() => setShowBookedModal(true)}
-            disabled={busy}
-          >
-            Booked
-          </button>
-        </article>
+        <div className="admin-summary-column admin-summary-column--wide">
+          <article className="admin-card admin-card--stat admin-card--visit-types">
+            <div className="admin-stat-title">Visit Types</div>
+            {visitTypeSummary.length ? (
+              <div className="admin-visit-types">
+                {visitTypeSummary.map((item) => (
+                  <div
+                    key={item.label}
+                    className={`admin-visit-types__item admin-visit-types__item--${visitTypeTone(item.label)}`}
+                    style={visitTypeToneStyle(item.label)}
+                  >
+                    <div className="admin-visit-types__row">
+                      <span className="admin-visit-types__label">{item.label}</span>
+                      <span className="admin-visit-types__count">{item.count}</span>
+                    </div>
+                    <div className="admin-visit-types__track" aria-hidden="true">
+                      <div
+                        className="admin-visit-types__fill"
+                        style={{ width: `${item.share}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="admin-muted">No booked visit types yet.</div>
+            )}
+          </article>
+        </div>
+
+
       </section>
 
 
@@ -1237,6 +1357,7 @@ return (
 
                         /* Grid positioning logic determines which row/time and day column the event appears in */
                         style={{
+                          ...visitTypeEventToneStyle(appt.visitType),
                           gridRow: `${appt.gridRow} / span ${appt.span}`, // determines appt positioning vertically (time)
                           gridColumn: // determines appts positioning horizontally (day)
                             viewMode === "day"

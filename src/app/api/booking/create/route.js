@@ -321,7 +321,7 @@ export async function POST(req) {
 
     const normalizedPhone = normalizePhone(phone);
     const normalizedDurationHours = normalizeDurationHours(durationHours);
-    const normalizedVisitType = String(visitType || "Installation").trim() || "Installation";
+    const normalizedVisitType = String(visitType || "Estimate").trim() || "Estimate";
 
     if (!date || !time || !email || !firstName || !service) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -433,6 +433,7 @@ export async function POST(req) {
       projectId: linkedProject?.id || null,
       propertyId: property?.id || null,
       service,
+      visitType: normalizedVisitType,
       bookingDate: date,
       bookingTime: time,
       startAt: start.toISOString(),

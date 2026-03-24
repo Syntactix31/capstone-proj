@@ -210,10 +210,6 @@ export default function DashboardPage() {
               </span>
             </article>
             <article className="admin-card admin-card--stat">
-              <div className="admin-stat-title">Active services</div>
-              <div className="admin-stat-value">{activeServices}</div>
-            </article>
-            <article className="admin-card admin-card--stat">
               <div className="admin-stat-title">Active clients</div>
               <div className="admin-stat-value">{activeClients}</div>
             </article>

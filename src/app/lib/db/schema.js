@@ -78,6 +78,7 @@ export async function ensureDatabaseSchema() {
           project_id text REFERENCES projects(id) ON DELETE SET NULL,
           property_id text REFERENCES client_properties(id) ON DELETE SET NULL,
           service text NOT NULL,
+          visit_type text NOT NULL DEFAULT 'Estimate',
           status text NOT NULL DEFAULT 'confirmed',
           booking_date date NOT NULL,
           booking_time text NOT NULL,
@@ -93,6 +94,11 @@ export async function ensureDatabaseSchema() {
       await sql`
         ALTER TABLE bookings
         ADD COLUMN IF NOT EXISTS project_id text REFERENCES projects(id) ON DELETE SET NULL
+      `;
+
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS visit_type text NOT NULL DEFAULT 'Estimate'
       `;
 
       await sql`

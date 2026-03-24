@@ -387,6 +387,7 @@ export async function POST(req) {
 
     await updateBookingByGoogleEventId(eventId, {
       propertyId: property?.id || storedBooking?.propertyId || null,
+      visitType,
       bookingDate: newDate,
       bookingTime: newTime,
       startAt: start.toISOString(),
