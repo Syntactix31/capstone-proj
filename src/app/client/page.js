@@ -69,7 +69,10 @@ export default function ClientDashboardPage() {
     };
   }, []);
 
-  const activeProjects = projects.filter((p) => p.status === "Active").length;
+  const activeProjects = projects.filter((p) => 
+  p.originalStatus !== "Unpaid"
+    ).length;
+
   const pendingEstimates = estimates.filter((e) => e.status === "Pending").length;
   const totalPaid = useMemo(
     () => payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toFixed(2),

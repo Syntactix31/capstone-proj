@@ -8,6 +8,7 @@ const STATUS_CLASS = {
   Active: "client-badge client-badge--active",
   Pending: "client-badge client-badge--pending",
   Paid: "client-badge client-badge--paid",
+  Complete: "client-badge client-badge--complete",
 };
 
 export default function ClientProjectsPage() {

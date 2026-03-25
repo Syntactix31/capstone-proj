@@ -61,6 +61,7 @@ export async function GET(req) {
       pdfUrl: e.pdfUrl
     }));
 
+    // Might not need this
     const bookings = await sql`
       SELECT
         b.id, b.service, b.booking_date, b.status, b.created_at
@@ -70,12 +71,32 @@ export async function GET(req) {
       LIMIT 5
     `;
 
-    const projects = bookings.map(b => ({
-      id: b.id,
-      name: b.service,
-      startDate: formatDateOnly(b.booking_date),
-      status: b.status === 'confirmed' ? 'Active' : b.status === 'cancelled' ? 'Cancelled' : 'Pending'
-    }));
+const projectRows = await sql`
+  SELECT 
+    p.id, 
+    p.service as name, 
+    COALESCE(p.address, '') as description,
+    COALESCE(p.start_date, NULL) as "startDate", 
+    COALESCE(p.completion_date, NULL) as "endDate", 
+    COALESCE(p.payment_status, 'Unpaid') as status,
+    COALESCE(p.total_cost, 0) as "totalCost",
+    p.created_at as "createdAt"
+  FROM projects p
+  WHERE p.client_id = ${client.id}  -- ← FIXED
+  ORDER BY p.created_at DESC
+`;
+
+  const projects = projectRows.map(p => ({
+    id: p.id,
+    name: p.name,
+    description: p.description || '-',  
+    startDate: formatDateOnly(p.startDate),    
+    endDate: formatDateOnly(p.endDate),      
+    status: p.status === 'Unpaid' ? 'Pending' : 
+            p.status === 'Deposit Paid' ? 'Active' : 
+            p.status === 'Fully Paid' ? 'Complete' : p.status,
+    totalAmount: Number(p.totalCost || 0).toLocaleString()
+  }));
 
     const payments = [];
 
