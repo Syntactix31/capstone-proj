@@ -8,6 +8,9 @@ const STATUS_CLASS = {
   Active: "client-badge client-badge--active",
   Pending: "client-badge client-badge--pending",
   Paid: "client-badge client-badge--paid",
+  Required: "client-badge client-badge--pending",
+  Failed: "client-badge client-badge--rejected",
+  Refunded: "client-badge client-badge--complete",
 };
 
 export default function ClientPaymentsPage() {

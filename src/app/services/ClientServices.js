@@ -45,7 +45,7 @@ export default function ClientServices() {
     },
   ], []);
 
-  // Add or remove one service from the current selection.
+  // Add or remove one service from the current selection
   const toggleSelect = useCallback((slug) => {
     setSelectedSlugs((prev) => {
       if (prev.includes(slug)) {
@@ -55,7 +55,7 @@ export default function ClientServices() {
     });
   }, []);
 
-  // Carry the selected services forward into the booking and quote flows.
+  // Carry the selected services forward into the booking and quote flows
   const serviceUrls = useMemo(() => {
     const params = selectedSlugs.length > 0 
       ? `service=${selectedSlugs.join(",")}` 

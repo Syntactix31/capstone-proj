@@ -83,6 +83,77 @@ function normalizePayments(value) {
     .filter((item) => item.date || Number(item.amount) > 0 || item.notes);
 }
 
+function paymentSortKey(entry) {
+  const candidate = entry?.date || entry?.dueDate || "";
+  const timestamp = candidate ? new Date(candidate).getTime() : 0;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function buildPaymentLedgerEntries(project) {
+  const totalCost = normalizeMoney(project?.totalCost);
+  const projectName = String(project?.service || "Project").trim() || "Project";
+  const orderedPayments = [...(Array.isArray(project?.payments) ? project.payments : [])].sort(
+    (a, b) => paymentSortKey(a) - paymentSortKey(b)
+  );
+
+  let runningPaid = 0;
+
+  const entries = orderedPayments.map((payment, index) => {
+    const amount = normalizeMoney(payment.amount);
+    const status = String(payment.status || "Pending").trim() || "Pending";
+    const isPaid = status === "Paid";
+
+    if (isPaid) {
+      runningPaid += amount;
+    }
+
+    let type = index === 0 ? "Initial Deposit" : "Payment";
+    if (isPaid && Math.max(totalCost - runningPaid, 0) <= 0.009) {
+      type = "Full payment";
+    }
+
+    return {
+      id: String(payment.id || `payment-${project.id}-${index + 1}`),
+      projectId: project.id,
+      project: projectName,
+      date: payment.date || "",
+      dueDate: status === "Paid" ? "" : payment.date || "",
+      amount: amount.toFixed(2),
+      status,
+      type,
+      notes: payment.notes || "",
+    };
+  });
+
+  const remainingBalance = Math.max(
+    totalCost -
+      entries.reduce(
+        (sum, payment) => sum + (payment.status === "Paid" ? normalizeMoney(payment.amount) : 0),
+        0
+      ),
+    0
+  );
+
+  if (remainingBalance > 0.009 && project?.paymentStatus !== "Fully Paid") {
+    entries.push({
+      id: `required-${project.id}`,
+      projectId: project.id,
+      project: projectName,
+      date: "",
+      dueDate:
+        project?.estimatedCompletionDate || project?.startDate || project?.nextVisitDate || "",
+      amount: remainingBalance.toFixed(2),
+      status: "Required",
+      type: entries.some((payment) => payment.status === "Paid")
+        ? "Remaining Balance"
+        : "Initial Deposit",
+      notes: "Auto-generated from outstanding project balance.",
+    });
+  }
+
+  return entries.sort((a, b) => paymentSortKey(b) - paymentSortKey(a));
+}
+
 function mapProjectRow(row) {
   const servicesIncluded = normalizeServiceLineItems(
     parseJsonArray(row.services_included),
@@ -253,6 +324,17 @@ export async function findProjectById(id) {
   `;
 
   return rows[0] ? mapProjectRow(rows[0]) : null;
+}
+
+export async function listProjectPayments({ clientId, limit } = {}) {
+  const projects = await listProjects(clientId ? { clientId } : {});
+  const payments = projects.flatMap((project) => buildPaymentLedgerEntries(project));
+
+  if (Number.isFinite(limit) && limit > 0) {
+    return payments.slice(0, limit);
+  }
+
+  return payments;
 }
 
 export async function createProject({

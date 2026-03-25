@@ -186,7 +186,7 @@ export default function ClientEstimatesPage() {
               <th className="text-center py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider">
                 Status
               </th>
-              <th className="text-right py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider hidden table-cell">
+              <th className="text-center py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider hidden table-cell">
                 Created
               </th>
               <th className="text-center py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider w-48">
@@ -212,7 +212,7 @@ export default function ClientEstimatesPage() {
                 <td className="py-5 px-6 text-right font-bold text-xl text-gray-900 hidden table-cell">
                   ${estimate.price}
                 </td>
-                <td className="py-5 px-6">
+                <td className="py-5 px-6 text-center">
                   <span className={`${STATUS_CLASS[estimate.status] || "client-badge"} inline-block px-3 py-1 text-xs font-semibold uppercase tracking-wide`}>
                     {estimate.status}
                   </span>

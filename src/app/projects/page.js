@@ -94,19 +94,35 @@ function Tile({ src, type, poster, span, onClick, priority }) {
 export default function ProjectsPage() {
   // Load media from public/projects folder
   const [media, setMedia] = useState([]);
+  const [error, setError] = useState("");
 
   // On mount, fetch media list from API
   useEffect(() => {
     async function fetchMedia() {
-      const res = await fetch(`/api/ScanMedia?cache=${Date.now()}`);
-      const data = await res.json();
-      setMedia(data);
+      try {
+        const res = await fetch(`/api/ScanMedia?cache=${Date.now()}`, {
+          cache: "no-store"
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Failed to load project media.");
+        }
+
+        setMedia(Array.isArray(data) ? data : []);
+        setError("");
+      } catch (err) {
+        console.error("Projects page failed to load media:", err);
+        setMedia([]);
+        setError("Project media is temporarily unavailable.");
+      }
     }
     fetchMedia();
   }, []);
 
   const [activeIndex, setActiveIndex] = useState(null);
   const visibleMedia = media.slice(0, 23);
+  const activeItem = activeIndex !== null ? visibleMedia[activeIndex] : null;
   const closeModal = () => setActiveIndex(null);
  
 
@@ -158,6 +174,11 @@ export default function ProjectsPage() {
       </section>
       <section className="projectsSection">
         <div className="collageWrap">
+          {error && (
+            <div className="mb-6 rounded-lg border border-[#477a40]/20 bg-[#477a40]/8 px-4 py-3 text-sm text-[#2c4d27]">
+              {error}
+            </div>
+          )}
           <div className="collage">
             {/* Removed .slice(0,23) from map */}
             {visibleMedia.map((item, i) => (
@@ -175,7 +196,7 @@ export default function ProjectsPage() {
         </div>
       </section>
             {/* ===== Modal / Lightbox ===== */}
-      {activeIndex !== null && (
+      {activeItem && (
         <div
           className="lightboxOverlay"
           role="dialog"
@@ -201,10 +222,10 @@ export default function ProjectsPage() {
               ‹
             </button>
  
-            <div className="lightboxMedia" key={visibleMedia[activeIndex].src}>
-              {visibleMedia[activeIndex].type === "image" ? (
+            <div className="lightboxMedia" key={activeItem.src}>
+              {activeItem.type === "image" ? (
                 <Image
-                  src={visibleMedia[activeIndex].src}
+                  src={activeItem.src}
                   alt={`Project ${activeIndex + 1}`}
                   fill
                   quality={90}
@@ -217,10 +238,10 @@ export default function ProjectsPage() {
                   controls
                   autoPlay
                   playsInline
-                  poster={visibleMedia[activeIndex].poster}
+                  poster={activeItem.poster}
                   className="lightboxVideo"
                 >
-                  <source src={visibleMedia[activeIndex].src} type="video/mp4" />
+                  <source src={activeItem.src} type="video/mp4" />
                 </video>
               )}
             </div>
