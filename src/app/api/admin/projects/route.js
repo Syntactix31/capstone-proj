@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../lib/auth/server";
 import { createProject, listProjects } from "../../../lib/db/projects";
 
+function normalizeServiceItem(value) {
+  return {
+    id: String(value?.id || "service-1"),
+    name: String(value?.name || "").trim(),
+    description: String(value?.description || "").trim(),
+    price: String(value?.price || "").trim(),
+    quantity: String(value?.quantity || "1").trim(),
+    total: String(value?.total || "").trim(),
+  };
+}
+
 export async function GET(req) {
   const auth = requireAdmin(req);
   if (auth.error) return auth.error;
@@ -24,6 +35,10 @@ export async function POST(req) {
     const clientId = String(body?.clientId || "").trim();
     const service = String(body?.service || "").trim();
     const address = String(body?.address || "").trim();
+    const servicesIncluded = Array.isArray(body?.servicesIncluded)
+      ? body.servicesIncluded.map(normalizeServiceItem).filter((item) => item.name)
+      : [];
+    const totalCost = body?.totalCost;
 
     if (!clientId || !service) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -33,6 +48,8 @@ export async function POST(req) {
       clientId,
       service,
       address,
+      totalCost,
+      servicesIncluded,
     });
 
     return NextResponse.json({ project });

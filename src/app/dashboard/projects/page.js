@@ -1,15 +1,51 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import AdminLayout from "../../components/AdminLayout.js";
 
 const PAYMENT_STATUSES = ["Unpaid", "Deposit Paid", "Fully Paid"];
-const PROJECT_SERVICES = [
-  "Fence Installation",
-  "Deck & Railing",
-  "Pergola",
-  "Sod Installation",
-  "Trees and Shrubs",
+const DEFAULT_SERVICES = [
+  {
+    id: "S-01",
+    name: "Fence Installation",
+    description: "Custom fence design, materials, and full installation.",
+    price: "2800.00",
+    quantity: "1",
+    active: true,
+  },
+  {
+    id: "S-02",
+    name: "Deck & Railing",
+    description: "Deck builds, railing upgrades, and safety repairs.",
+    price: "4500.00",
+    quantity: "1",
+    active: true,
+  },
+  {
+    id: "S-03",
+    name: "Pergola",
+    description: "Backyard pergola installation and finishing.",
+    price: "3200.00",
+    quantity: "1",
+    active: true,
+  },
+  {
+    id: "S-04",
+    name: "Sod Installation",
+    description: "Site prep and fresh sod installation.",
+    price: "1100.00",
+    quantity: "1",
+    active: false,
+  },
+  {
+    id: "S-05",
+    name: "Trees and Shrubs",
+    description: "Planting, pruning, and seasonal care.",
+    price: "1100.00",
+    quantity: "1",
+    active: true,
+  },
 ];
 
 const PAYMENT_CLASS = {
@@ -28,14 +64,27 @@ export default function AdminProjectsPage() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clientsLoading, setClientsLoading] = useState(true);
+  const [services] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_SERVICES;
+
+    try {
+      const stored = window.localStorage.getItem("admin_services");
+      const parsed = stored ? JSON.parse(stored) : null;
+      return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_SERVICES;
+    } catch {
+      return DEFAULT_SERVICES;
+    }
+  });
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("All");
   const [serviceFilter, setServiceFilter] = useState("All");
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
   const [projectForm, setProjectForm] = useState({
     clientId: "",
-    service: PROJECT_SERVICES[0],
+    service: DEFAULT_SERVICES[0].name,
+    quantity: "1",
   });
 
   useEffect(() => {
@@ -133,9 +182,32 @@ export default function AdminProjectsPage() {
   }, [paymentFilter, projects, query, serviceFilter]);
 
   const serviceOptions = useMemo(
-    () => ["All", ...Array.from(new Set([...PROJECT_SERVICES, ...projects.map((project) => project.service)])).sort()],
-    [projects]
+    () => ["All", ...Array.from(new Set([...services.map((service) => service.name), ...projects.map((project) => project.service)])).sort()],
+    [projects, services]
   );
+
+  const availableServices = useMemo(
+    () => services.filter((service) => service.active !== false),
+    [services]
+  );
+
+  const selectedService = useMemo(
+    () =>
+      availableServices.find((service) => service.name === projectForm.service) ||
+      availableServices[0] ||
+      null,
+    [availableServices, projectForm.service]
+  );
+
+  const projectQuantity = useMemo(
+    () => Math.max(1, Number.parseInt(projectForm.quantity || "1", 10) || 1),
+    [projectForm.quantity]
+  );
+
+  const projectTotal = useMemo(() => {
+    const unitPrice = Number.parseFloat(selectedService?.price || "0") || 0;
+    return (unitPrice * projectQuantity).toFixed(2);
+  }, [projectQuantity, selectedService]);
 
   const stats = useMemo(() => {
     return {
@@ -148,9 +220,14 @@ export default function AdminProjectsPage() {
   const openProjectModal = () => {
     setProjectForm({
       clientId: sortedClients[0]?.id || "",
-      service: PROJECT_SERVICES[0],
+      service: availableServices[0]?.name || DEFAULT_SERVICES[0].name,
+      quantity: "1",
     });
     setIsProjectModalOpen(true);
+  };
+
+  const openProjectPreview = (project) => {
+    setSelectedProject(project);
   };
 
   const handleProjectFormChange = (event) => {
@@ -172,6 +249,17 @@ export default function AdminProjectsPage() {
           clientId: selectedClient.id,
           service: projectForm.service,
           address: selectedClient.address || "",
+          totalCost: projectTotal,
+          servicesIncluded: [
+            {
+              id: selectedService?.id || "service-1",
+              name: projectForm.service,
+              description: selectedService?.description || "",
+              price: String(selectedService?.price || "0.00"),
+              quantity: String(projectQuantity),
+              total: projectTotal,
+            },
+          ],
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -272,7 +360,12 @@ export default function AdminProjectsPage() {
             </div>
 
             {filteredProjects.map((project) => (
-              <div className="admin-table-row admin-projects-table-row" key={project.id}>
+              <button
+                type="button"
+                className="admin-table-row admin-projects-table-row admin-projects-table-row--button"
+                key={project.id}
+                onClick={() => openProjectPreview(project)}
+              >
                 <div>
                   <div className="admin-strong">{project.client}</div>
                   <div className="admin-muted">{project.address || "Address not added"}</div>
@@ -289,7 +382,7 @@ export default function AdminProjectsPage() {
                     {project.paymentStatus}
                   </span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -368,12 +461,39 @@ export default function AdminProjectsPage() {
                   onChange={handleProjectFormChange}
                   required
                 >
-                  {PROJECT_SERVICES.map((service) => (
-                    <option key={service} value={service}>
-                      {service}
+                  {availableServices.map((service) => (
+                    <option key={service.id || service.name} value={service.name}>
+                      {service.name}
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-quantity">
+                  Quantity
+                </label>
+                <input
+                  id="project-quantity"
+                  name="quantity"
+                  className="admin-input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={projectForm.quantity}
+                  onChange={handleProjectFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Calculated total</label>
+                <input
+                  className="admin-input"
+                  value={`$${projectTotal}`}
+                  disabled
+                  readOnly
+                />
               </div>
             </div>
 
@@ -394,6 +514,80 @@ export default function AdminProjectsPage() {
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {selectedProject ? (
+        <div className="admin-modal" role="dialog" aria-modal="true">
+          <button
+            className="admin-modal__backdrop"
+            type="button"
+            aria-label="Close project details"
+            onClick={() => setSelectedProject(null)}
+          />
+          <div className="admin-modal__content">
+            <div className="admin-modal__header">
+              <div>
+                <h2 className="admin-title">{selectedProject.client}</h2>
+                <p className="admin-subtitle">
+                  {selectedProject.service}
+                  {selectedProject.address ? ` - ${selectedProject.address}` : ""}
+                </p>
+              </div>
+              <button
+                className="admin-btn admin-btn--ghost admin-btn--small"
+                type="button"
+                onClick={() => setSelectedProject(null)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="admin-form">
+              <div className="admin-field">
+                <span className="admin-label">Project ID</span>
+                <div className="admin-muted">{selectedProject.id}</div>
+              </div>
+              <div className="admin-field">
+                <span className="admin-label">Payment status</span>
+                <span className={PAYMENT_CLASS[selectedProject.paymentStatus]}>
+                  {selectedProject.paymentStatus}
+                </span>
+              </div>
+              <div className="admin-field">
+                <span className="admin-label">Start date</span>
+                <div className="admin-muted">{selectedProject.startDate || "Not set"}</div>
+              </div>
+              <div className="admin-field">
+                <span className="admin-label">Estimated completion</span>
+                <div className="admin-muted">
+                  {selectedProject.estimatedCompletionDate || "Not set"}
+                </div>
+              </div>
+              <div className="admin-field">
+                <span className="admin-label">Total cost</span>
+                <div className="admin-muted">
+                  ${Number(selectedProject.totalCost || 0).toFixed(2)}
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-modal__actions">
+              <Link
+                className="admin-btn admin-btn--primary"
+                href={`/dashboard/projects/${selectedProject.id}`}
+              >
+                Open project page
+              </Link>
+              <button
+                className="admin-btn admin-btn--ghost"
+                type="button"
+                onClick={() => setSelectedProject(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </AdminLayout>
