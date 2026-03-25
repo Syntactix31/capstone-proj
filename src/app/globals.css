@@ -1766,12 +1766,52 @@ body {
   grid-template-columns: 1.35fr 1.1fr 1fr 0.9fr;
 }
 
+.admin-payments-table-row {
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1.2fr)
+    minmax(0, 0.95fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.95fr)
+    minmax(0, 1.15fr);
+}
+
+.admin-invoices-table-row {
+  grid-template-columns:
+    minmax(0, 0.95fr)
+    minmax(0, 1.15fr)
+    minmax(0, 1.2fr)
+    minmax(0, 1.15fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.9fr);
+}
+
 .admin-projects-table .admin-table-head > :last-child {
   justify-self: start;
   text-align: left;
 }
 
 .admin-projects-table .admin-table-row > :last-child {
+  justify-self: start;
+  text-align: left;
+}
+
+.admin-payments-table .admin-table-head > :last-child {
+  justify-self: start;
+  text-align: left;
+}
+
+.admin-payments-table .admin-table-row > :last-child {
+  justify-self: start;
+  text-align: left;
+}
+
+.admin-invoices-table .admin-table-head > :last-child {
+  justify-self: start;
+  text-align: left;
+}
+
+.admin-invoices-table .admin-table-row > :last-child {
   justify-self: start;
   text-align: left;
 }
@@ -1900,6 +1940,19 @@ body {
 .admin-projects-controls .admin-input {
   height: 40px;
   padding: 8px 12px;
+}
+
+.admin-invoices-controls {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+  align-items: end;
+}
+
+.admin-invoices-controls > * {
+  width: min(320px, 100%);
+  max-width: 320px;
+  margin-left: auto;
 }
 
 .admin-btn {
@@ -2971,8 +3024,25 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .admin-payments-table-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-invoices-table-row {
+    grid-template-columns: 1fr;
+  }
+
   .admin-projects-controls {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-invoices-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-invoices-controls > * {
+    max-width: none;
   }
 
   .admin-projects-header {

@@ -55,8 +55,12 @@ const PAYMENT_CLASS = {
 };
 
 function formatVisitLabel(project) {
-  if (!project.nextVisitDate ) return "No upcoming visit";
-  return `${project.nextVisitDate}`;
+  if (!project.nextVisitDate) return "No upcoming visit";
+
+  const rawDate = String(project.nextVisitDate).trim();
+  if (!rawDate) return "No upcoming visit";
+
+  return rawDate.includes("T") ? rawDate.split("T")[0] : rawDate;
 }
 
 export default function AdminProjectsPage() {
