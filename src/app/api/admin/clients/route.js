@@ -2,6 +2,40 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../lib/auth/server";
 import { listClients, updateClient, upsertClient } from "../../../lib/db/clients";
 
+const CLIENT_FIELD_LIMITS = {
+  name: 30,
+  email: 120,
+  phone: 10,
+  address: 120,
+  city: 60,
+  province: 60,
+  propertyType: 40,
+  notes: 1000,
+  additionalInstructions: 1000,
+};
+
+function clampClientField(value, limit) {
+  return String(value || "").slice(0, limit);
+}
+
+function clampClientPayload(input = {}) {
+  return {
+    ...input,
+    name: clampClientField(input.name, CLIENT_FIELD_LIMITS.name),
+    email: clampClientField(input.email, CLIENT_FIELD_LIMITS.email),
+    phone: clampClientField(input.phone, CLIENT_FIELD_LIMITS.phone),
+    address: clampClientField(input.address, CLIENT_FIELD_LIMITS.address),
+    city: clampClientField(input.city, CLIENT_FIELD_LIMITS.city),
+    province: clampClientField(input.province, CLIENT_FIELD_LIMITS.province),
+    propertyType: clampClientField(input.propertyType, CLIENT_FIELD_LIMITS.propertyType),
+    notes: clampClientField(input.notes, CLIENT_FIELD_LIMITS.notes),
+    additionalInstructions: clampClientField(
+      input.additionalInstructions,
+      CLIENT_FIELD_LIMITS.additionalInstructions,
+    ),
+  };
+}
+
 // Load clients for the admin client management page.
 export async function GET(req) {
   const auth = requireAdmin(req);
@@ -22,7 +56,7 @@ export async function POST(req) {
   if (auth.error) return auth.error;
 
   try {
-    const body = await req.json();
+    const body = clampClientPayload(await req.json());
     const name = String(body?.name || "").trim();
     const email = String(body?.email || "").trim();
     const phone = String(body?.phone || "").trim();
@@ -57,7 +91,7 @@ export async function PATCH(req) {
   if (auth.error) return auth.error;
 
   try {
-    const body = await req.json();
+    const body = clampClientPayload(await req.json());
     if (!body?.id) {
       return NextResponse.json({ error: "Missing client id" }, { status: 400 });
     }

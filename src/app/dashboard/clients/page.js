@@ -3,6 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/app/components/AdminLayout.js";
 
+const CLIENT_FIELD_LIMITS = {
+  name: 30,
+  email: 120,
+  address: 120,
+  city: 60,
+  province: 60,
+  notes: 1000,
+  additionalInstructions: 1000,
+};
+
 // Admin page for viewing, editing, and creating client records.
 export default function AdminClientsPage() {
   const [clients, setClients] = useState([]);
@@ -29,6 +39,13 @@ export default function AdminClientsPage() {
   );
   const [draft, setDraft] = useState(null);
   const [phoneFocused, setPhoneFocused] = useState(false);
+
+  const cloneClientDraft = (client) =>
+    client
+      ? {
+          ...client,
+        }
+      : null;
 
   // Implemented by jiro
   // Load client records from the protected admin route.
@@ -76,9 +93,9 @@ export default function AdminClientsPage() {
   that the phone number field isn't in focus
   */
   useEffect(() => {
-    setDraft(selectedClient);
+    setDraft(cloneClientDraft(selectedClient));
     setPhoneFocused(false);
-  }, [selectedClient]);
+  }, [selectedClient?.id]);
 
     /*Field formatting + input rules
 
@@ -526,6 +543,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                     <span className="admin-label">Full name</span>
                     <input
                       className="admin-input"
+                      maxLength={CLIENT_FIELD_LIMITS.name}
                       value={draft.name}
                       onChange={(event) =>
                         setDraft((current) => ({ ...current, name: event.target.value }))
@@ -537,6 +555,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                     <input
                       className="admin-input"
                       type="email"
+                      maxLength={CLIENT_FIELD_LIMITS.email}
                       pattern={EMAIL_PATTERN}
                       title="Use a valid email like name@example.com."
                       value={draft.email}
@@ -575,6 +594,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                     <span className="admin-label">Notes</span>
                     <textarea
                       className="admin-textarea"
+                      maxLength={CLIENT_FIELD_LIMITS.notes}
                       placeholder="Add notes about the client..."
                       rows={4}
                       value={draft.notes}
@@ -595,6 +615,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                     <span className="admin-label">Street address</span>
                     <input
                       className="admin-input"
+                      maxLength={CLIENT_FIELD_LIMITS.address}
                       value={draft.address}
                       onChange={(event) =>
                         setDraft((current) => ({ ...current, address: event.target.value }))
@@ -605,6 +626,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                     <span className="admin-label">City</span>
                     <input
                       className="admin-input"
+                      maxLength={CLIENT_FIELD_LIMITS.city}
                       value={draft.city}
                       onChange={(event) =>
                         setDraft((current) => ({ ...current, city: event.target.value }))
@@ -615,6 +637,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                     <span className="admin-label">Province</span>
                     <input
                       className="admin-input"
+                      maxLength={CLIENT_FIELD_LIMITS.province}
                       value={draft.province}
                       onChange={(event) =>
                         setDraft((current) => ({ ...current, province: event.target.value }))
@@ -640,6 +663,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                     <span className="admin-label">Additional instructions</span>
                     <textarea
                       className="admin-textarea"
+                      maxLength={CLIENT_FIELD_LIMITS.additionalInstructions}
                       placeholder="Gate codes, access notes, or special requests."
                       rows={3}
                       value={draft.additionalInstructions}
