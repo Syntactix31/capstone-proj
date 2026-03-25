@@ -144,7 +144,10 @@ export default function ClientProjectDetailPage() {
                   <div>
                     <div className="client-strong">{service.name}</div>
                     <div className="client-muted">
-                      {service.description || service.amount ? `$${service.amount}` : ""}
+                      {/* Ensuring all value fields are consistent */}
+                      {/* {service.description || service.amount ? `$${service.amount}` : ""} */}
+
+                      {service.description || service.price ? `$${service.price}` : ""}
                     </div>
                   </div>
                 </div>
