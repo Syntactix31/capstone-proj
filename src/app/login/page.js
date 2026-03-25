@@ -6,6 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../components/Navbar.js";
 import Footer from "../components/Footer.js";
 
+const LOGIN_FIELD_LIMITS = {
+  name: 30,
+  email: 120,
+  password: 128,
+};
+
 // Map backend OAuth error codes to clearer messages for the UI.
 const OAUTH_ERROR_MESSAGES = {
   access_denied: "Google sign-in was canceled.",
@@ -157,6 +163,7 @@ function LoginPageContent() {
                     className="admin-input"
                     type="email"
                     name="email"
+                    maxLength={LOGIN_FIELD_LIMITS.email}
                     placeholder="you@email.com"
                     autoComplete="email"
                     required
@@ -169,6 +176,7 @@ function LoginPageContent() {
                     className="admin-input"
                     type="password"
                     name="password"
+                    maxLength={LOGIN_FIELD_LIMITS.password}
                     placeholder="********"
                     autoComplete="current-password"
                     required
@@ -204,6 +212,7 @@ function LoginPageContent() {
                       className="admin-input"
                       type="text"
                       name="firstName"
+                      maxLength={LOGIN_FIELD_LIMITS.name}
                       placeholder="John"
                       autoComplete="given-name"
                       required
@@ -215,6 +224,7 @@ function LoginPageContent() {
                       className="admin-input"
                       type="text"
                       name="lastName"
+                      maxLength={LOGIN_FIELD_LIMITS.name}
                       placeholder="Appleseed"
                       autoComplete="family-name"
                       required
@@ -228,6 +238,7 @@ function LoginPageContent() {
                     className="admin-input"
                     type="email"
                     name="email"
+                    maxLength={LOGIN_FIELD_LIMITS.email}
                     placeholder="you@email.com"
                     autoComplete="email"
                     required
@@ -240,6 +251,7 @@ function LoginPageContent() {
                     className="admin-input"
                     type="password"
                     name="password"
+                    maxLength={LOGIN_FIELD_LIMITS.password}
                     placeholder="Min 12 chars incl. upper/lower/number/symbol"
                     autoComplete="new-password"
                     required
@@ -252,6 +264,7 @@ function LoginPageContent() {
                     className="admin-input"
                     type="password"
                     name="confirmPassword"
+                    maxLength={LOGIN_FIELD_LIMITS.password}
                     placeholder="Repeat your password"
                     autoComplete="new-password"
                     required
@@ -277,6 +290,7 @@ function LoginPageContent() {
                     className="admin-input"
                     type="email"
                     name="email"
+                    maxLength={LOGIN_FIELD_LIMITS.email}
                     placeholder="you@email.com"
                     autoComplete="email"
                     required

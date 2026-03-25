@@ -6,6 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../../components/Navbar.js";
 import Footer from "../../components/Footer.js";
 
+const BOOKING_FIELD_LIMITS = {
+  name: 30,
+  email: 120,
+  address: 120,
+  notes: 1000,
+};
+
 // Services that can be attached to a booking.
 const SERVICE_OPTIONS = [
   { id: "fence", name: "Fence Installation", duration: "1-2 days" },
@@ -217,7 +224,7 @@ function DetailsContent() {
                   </label>
                   <input
                     id="firstName"
-                    maxLength={20}
+                    maxLength={BOOKING_FIELD_LIMITS.name}
                     name="firstName"
                     type="text"
                     className="details-input"
@@ -231,7 +238,7 @@ function DetailsContent() {
                   </label>
                   <input
                     id="lastName"
-                    maxLength={20}
+                    maxLength={BOOKING_FIELD_LIMITS.name}
                     name="lastName"
                     type="text"
                     className="details-input"
@@ -246,7 +253,7 @@ function DetailsContent() {
                 </label>
                 <input
                   id="email"
-                  maxLength={35}
+                  maxLength={BOOKING_FIELD_LIMITS.email}
                   name="email"
                   type="email"
                   className="details-input"
@@ -283,7 +290,7 @@ function DetailsContent() {
                 </label>
                 <input
                   id="address"
-                  maxLength={100}
+                  maxLength={BOOKING_FIELD_LIMITS.address}
                   name="address"
                   type="text"
                   className="details-input"
@@ -297,7 +304,7 @@ function DetailsContent() {
                 </label>
                 <textarea
                   id="notes"
-                  maxLength={999}
+                  maxLength={BOOKING_FIELD_LIMITS.notes}
                   name="notes"
                   className="details-textarea"
                   rows={5}
