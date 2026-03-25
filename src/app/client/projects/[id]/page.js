@@ -106,7 +106,7 @@ export default function ClientProjectDetailPage() {
             </span>
             {project.projectedCompletion && (
               <div className="text-sm text-gray-600">
-                Projected completion: {project.projectedCompletion}
+                Projected completion: {project.estimatedCompletionDate}
               </div>
             )}
           </div>
@@ -121,7 +121,7 @@ export default function ClientProjectDetailPage() {
         <article className="client-card client-card--stat">
           <div className="client-stat-title">Est. Completion</div>
           <div className="client-stat-value">
-            {project.projectedCompletion || "-"}
+            {project.estimatedCompletionDate || "-"}
           </div>
         </article>
         <article className="client-card client-card--stat">
