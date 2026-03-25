@@ -20,6 +20,21 @@ export default function ClientEstimatesPage() {
   const [signingName, setSigningName] = useState("");
   const [signatureDate, setSignatureDate] = useState("");
 
+  const [signedPdf, setSignedPdf] = useState(null);
+  const [signedPdfName, setSignedPdfName] = useState("");
+
+
+  const handlePdfChange = (e) => {
+    const file = e.target.files?.[0];
+      if (!file) return;
+      if (!file.type.includes("pdf")) {
+        alert("Please upload a valid PDF file.");
+        return;
+      }
+      setSignedPdf(file);
+      setSignedPdfName(file.name);
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -62,7 +77,7 @@ export default function ClientEstimatesPage() {
   }, [estimates]);
 
   const handleSignEstimate = async (estimate) => {
-    // Update signature date to today
+    // Update signature date to today (uses local time currently)
     setSignatureDate(new Date().toISOString().split("T")[0]);
     setEstimateToSign(estimate);
     setSigningName("");
@@ -75,26 +90,31 @@ export default function ClientEstimatesPage() {
       return;
     }
 
+    if (!signedPdf) {
+      alert("Please upload the signed PDF before proceeding.");
+      return;
+    }
+
     try {
+      const formData = new FormData();
+      formData.append("signerName", signingName.trim());
+      formData.append("signatureDate", signatureDate);
+      formData.append("signedPdf", signedPdf);
+
       const res = await fetch(`/api/client/estimates/${estimateToSign.id}/sign`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          signerName: signingName.trim(),
-          signatureDate,
-        }),
+        body: formData,
       });
 
       if (res.ok) {
-        // Refresh estimates remove for perfotmance
         window.location.reload();
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to sign estimate.");
+        alert(data.error || "Failed to submit signed document.");
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to sign estimate. Please try again.");
+      alert("Error submitting signed PDF.");
     }
 
     setShowLegalModal(false);
@@ -278,6 +298,33 @@ export default function ClientEstimatesPage() {
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#477a40] transition-all"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Upload Signed Estimate PDF
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handlePdfChange}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#477a40] transition-all"
+                />
+                {signedPdfName && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    Attached: {signedPdfName}{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSignedPdf(null);
+                        setSignedPdfName("");
+                      }}
+                      className="text-[#477a40] font-semibold hover:underline"
+                    >
+                      remove
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="text-xs text-gray-500">

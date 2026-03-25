@@ -96,12 +96,13 @@ export default function AdminUploadPage() {
         </div>
       </section>
 
-      <section className="admin-card">
+      <section className="admin-card max-h-23">
         <input
           type="file"
           multiple
           accept="image/*,video/*"
           onChange={handleUpload}
+          className="p-4 rounded-2xl text-white bg-[#477a40] active:scale-95 hover:scale-105 hover:cursor-pointer hover:border-2 hover:shadow-lg items-center text-center transition-transform"
         />
 
         <div className="upload-preview">
@@ -123,7 +124,7 @@ export default function AdminUploadPage() {
               ) : (
                 <video src={file.src} width={150} controls />
               )}
-              <button onClick={() => handleDelete(file.src)} className="admin-btn admin-btn--danger">
+              <button onClick={() => handleDelete(file.src)} className="admin-btn admin-btn--danger mt-4">
                 Delete
               </button>
             </div>
