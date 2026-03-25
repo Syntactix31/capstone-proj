@@ -1731,6 +1731,16 @@ body {
   background: #ffffff;
 }
 
+.estimates-table-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #f1f5f9;
+  background: #ffffff;
+}
+
+
 .admin-table-head {
   background: #f8fafc;
   border-color: #e5e7eb;

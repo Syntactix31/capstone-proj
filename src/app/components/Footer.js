@@ -5,10 +5,8 @@ export default function Footer() {
   return (
     <footer className="bg-[#31270C] w-full mt-20 text-white py-10 px-6 md:px-12 lg:px-16">
       <div className="max-w-6xl mx-auto">
-        {/* Top Section - Logo/Contact + Social + Nav */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 items-center mb-8 pb-8 border-b border-[#31270C]/30">
           
-          {/* Logo/Contact Info */}
           <div className="text-center md:text-left">
             <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white tracking-tight">
               Landscape Craftsmen
@@ -30,7 +28,6 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
           <nav className="hidden md:block text-center">
             <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <div className="flex flex-col space-y-2 text-sm">
@@ -49,7 +46,6 @@ export default function Footer() {
             </div>
           </nav>
 
-          {/* Social Media - Desktop */}
           <div className="flex justify-center md:justify-end space-x-6">
             <a
               href="https://www.facebook.com/p/Landscape-Craftsmen-61575247719417/"
@@ -84,10 +80,8 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom Section - Mobile Nav + Copyright */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-8 border-t border-[#31270C]/20">
           
-          {/* Mobile Quick Links */}
           <nav className="flex flex-wrap justify-center gap-4 text-sm md:hidden">
             <Link href="/services" className="hover:text-[#F4A261] transition-colors duration-200 font-medium">
               Services
@@ -103,7 +97,6 @@ export default function Footer() {
             </Link>
           </nav>
           
-          {/* Copyright */}
           <div className="text-center text-xs text-[#D9D9D9] mt-4 sm:mt-0">
             <p>&copy; 2026 Landscape Craftsmen. All rights reserved.</p>
           </div>
@@ -112,3 +105,5 @@ export default function Footer() {
     </footer>
   );
 }
+
+
