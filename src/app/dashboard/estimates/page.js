@@ -320,6 +320,15 @@ export default function AdminEstimatesDashboard() {
             />
 
             <form className="admin-modal__content" onSubmit={handleSubmit}>
+              <button
+                type="button"
+                aria-label="Close"
+                className="absolute top-4 right-4 text-slate-500 hover:text-slate-800 hover:cursor-pointer"
+                onClick={() => setIsFormOpen(false)}
+              >
+                ✕
+              </button>
+
               <h2 className="admin-title">
                 {editingId ? "Edit Estimate" : "New Estimate"}
               </h2>
