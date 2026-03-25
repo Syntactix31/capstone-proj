@@ -3,197 +3,170 @@
 import { useMemo, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
 
+const PAYMENT_METHODS = ["E-Transfer", "Cash", "Cheque"];
+const PAYMENT_TYPES = ["Initial Deposit", "Full payment"];
+
 const INITIAL_PAYMENTS = [
   {
     id: "PAY-7001",
-    invoiceId: "INV-1001",
     client: "Jordan Lee",
     date: "2026-03-04",
     amount: 2100,
     method: "E-Transfer",
-    status: "Pending",
+    type: "Initial Deposit",
   },
   {
     id: "PAY-7002",
-    invoiceId: "INV-1002",
     client: "Avery Chen",
-    date: "2026-03-02",
+    date: "2026-03-06",
     amount: 6350,
-    method: "Credit Card",
-    status: "Succeeded",
+    method: "Cheque",
+    type: "Full payment",
   },
   {
     id: "PAY-7003",
-    invoiceId: "INV-1003",
     client: "Taylor Singh",
-    date: "2026-03-01",
+    date: "2026-03-08",
     amount: 500,
     method: "Cash",
-    status: "Refunded",
+    type: "Initial Deposit",
   },
   {
     id: "PAY-7004",
-    invoiceId: "INV-1004",
     client: "Morgan Patel",
-    date: "2026-03-03",
+    date: "2026-03-10",
     amount: 1650,
-    method: "Credit Card",
-    status: "Failed",
+    method: "E-Transfer",
+    type: "Full payment",
   },
 ];
 
-const STATUS_CLASS = {
-  Succeeded: "admin-badge admin-badge--active",
-  Pending: "admin-badge admin-badge--pending",
-  Refunded: "admin-badge admin-badge--muted",
-  Failed: "admin-badge admin-badge--pending",
-};
-
-const formatMoney = (value) =>
-  new Intl.NumberFormat("en-CA", {
+function formatMoney(value) {
+  return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency: "CAD",
     maximumFractionDigits: 2,
   }).format(value);
+}
 
 export default function PaymentsPage() {
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [payments] = useState(INITIAL_PAYMENTS);
+  const [query, setQuery] = useState("");
   const [methodFilter, setMethodFilter] = useState("All");
-  const [payments, setPayments] = useState(INITIAL_PAYMENTS);
+  const [typeFilter, setTypeFilter] = useState("All");
 
   const filteredPayments = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
     return payments.filter((payment) => {
-      const statusOk = statusFilter === "All" || payment.status === statusFilter;
-      const methodOk = methodFilter === "All" || payment.method === methodFilter;
-      return statusOk && methodOk;
+      const matchesMethod =
+        methodFilter === "All" || payment.method === methodFilter;
+      const matchesType = typeFilter === "All" || payment.type === typeFilter;
+
+      if (!normalizedQuery) return matchesMethod && matchesType;
+
+      const matchesQuery =
+        payment.id.toLowerCase().includes(normalizedQuery) ||
+        payment.client.toLowerCase().includes(normalizedQuery) ||
+        payment.date.toLowerCase().includes(normalizedQuery) ||
+        payment.method.toLowerCase().includes(normalizedQuery) ||
+        payment.type.toLowerCase().includes(normalizedQuery);
+
+      return matchesMethod && matchesType && matchesQuery;
     });
-  }, [methodFilter, payments, statusFilter]);
-
-  const stats = useMemo(() => {
-    const successful = payments.filter((p) => p.status === "Succeeded");
-    const pending = payments.filter((p) => p.status === "Pending");
-    const failed = payments.filter((p) => p.status === "Failed");
-    return {
-      totalVolume: successful.reduce((sum, p) => sum + p.amount, 0),
-      successfulCount: successful.length,
-      pendingAmount: pending.reduce((sum, p) => sum + p.amount, 0),
-      failedCount: failed.length,
-    };
-  }, [payments]);
-
-  const retryFailed = (paymentId) => {
-    setPayments((prev) =>
-      prev.map((payment) =>
-        payment.id === paymentId
-          ? { ...payment, status: "Pending" }
-          : payment
-      )
-    );
-  };
+  }, [methodFilter, payments, query, typeFilter]);
 
   return (
     <AdminLayout>
       <section className="admin-hero">
         <div>
-          <h1 className="admin-title">Transactions and collection</h1>
+          <h1 className="admin-title">Payments</h1>
           <p className="admin-subtitle">
-            Track payment status, methods, and retry failed transactions.
+            Track client payment records by date, amount, method, and payment type.
           </p>
         </div>
-        <div className="admin-hero-actions">
-          <button className="admin-btn admin-btn--primary" type="button">
-            Record payment
-          </button>
-          <button className="admin-btn admin-btn--ghost" type="button">
-            Download report
-          </button>
-        </div>
-      </section>
-
-      <section className="admin-summary-grid">
-        <article className="admin-card admin-card--stat">
-          <div className="admin-stat-title">Collected</div>
-          <div className="admin-stat-value">{formatMoney(stats.totalVolume)}</div>
-          <div className="admin-muted">{stats.successfulCount} successful</div>
-        </article>
-        <article className="admin-card admin-card--stat">
-          <div className="admin-stat-title">Pending</div>
-          <div className="admin-stat-value">{formatMoney(stats.pendingAmount)}</div>
-          <div className="admin-muted">Awaiting confirmation</div>
-        </article>
-        <article className="admin-card admin-card--stat">
-          <div className="admin-stat-title">Failed transactions</div>
-          <div className="admin-stat-value">{stats.failedCount}</div>
-          <div className="admin-muted">Needs retry</div>
-        </article>
       </section>
 
       <section className="admin-card">
-        <div className="admin-card-header">
-          <h2 className="admin-card-title">Payment activity</h2>
-          <div className="admin-actions">
-            <select
+        <div className="admin-card-header admin-projects-header">
+          <h2 className="admin-card-title">Payment list</h2>
+        </div>
+
+        <div className="admin-actions admin-projects-controls">
+          <div className="admin-projects-control admin-projects-control--search">
+            <input
+              id="payments-search"
               className="admin-input"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              aria-label="Filter payment status"
-            >
-              <option value="All">All statuses</option>
-              <option value="Succeeded">Succeeded</option>
-              <option value="Pending">Pending</option>
-              <option value="Failed">Failed</option>
-              <option value="Refunded">Refunded</option>
-            </select>
+              type="search"
+              placeholder="Search payments..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label="Search payments"
+            />
+          </div>
+
+          <div className="admin-projects-control">
+            <label className="admin-projects-control-label" htmlFor="payments-method-filter">
+              Method
+            </label>
             <select
+              id="payments-method-filter"
               className="admin-input"
               value={methodFilter}
-              onChange={(e) => setMethodFilter(e.target.value)}
+              onChange={(event) => setMethodFilter(event.target.value)}
               aria-label="Filter payment method"
             >
-              <option value="All">All methods</option>
-              <option value="Credit Card">Credit Card</option>
-              <option value="E-Transfer">E-Transfer</option>
-              <option value="Cash">Cash</option>
+              <option value="All">All</option>
+              {PAYMENT_METHODS.map((method) => (
+                <option key={method} value={method}>
+                  {method}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="admin-projects-control">
+            <label className="admin-projects-control-label" htmlFor="payments-type-filter">
+              Type
+            </label>
+            <select
+              id="payments-type-filter"
+              className="admin-input"
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value)}
+              aria-label="Filter payment type"
+            >
+              <option value="All">All</option>
+              {PAYMENT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
-        <div className="admin-table">
-          <div className="admin-table-row admin-table-head">
+        <div className="admin-table admin-payments-table">
+          <div className="admin-table-row admin-table-head admin-payments-table-row">
             <div>Payment ID</div>
-            <div>Invoice</div>
             <div>Client</div>
             <div>Date</div>
             <div>Amount</div>
             <div>Method</div>
-            <div>Status</div>
-            <div>Actions</div>
+            <div>Type</div>
           </div>
 
           {filteredPayments.map((payment) => (
-            <div className="admin-table-row" key={payment.id}>
+            <div
+              className="admin-table-row admin-payments-table-row"
+              key={payment.id}
+            >
               <div className="admin-strong">{payment.id}</div>
-              <div>{payment.invoiceId}</div>
               <div>{payment.client}</div>
               <div>{payment.date}</div>
               <div>{formatMoney(payment.amount)}</div>
               <div>{payment.method}</div>
-              <div>
-                <span className={STATUS_CLASS[payment.status]}>{payment.status}</span>
-              </div>
-              <div className="admin-actions">
-                <button className="admin-btn admin-btn--small admin-btn--ghost" type="button">
-                  Receipt
-                </button>
-                <button
-                  className="admin-btn admin-btn--small"
-                  type="button"
-                  disabled={payment.status !== "Failed"}
-                  onClick={() => retryFailed(payment.id)}
-                >
-                  Retry
-                </button>
-              </div>
+              <div>{payment.type}</div>
             </div>
           ))}
         </div>

@@ -67,8 +67,9 @@ function DetailsContent() {
 
   const date = params.get("date") || "";
   const time = params.get("time") || "";
+  const durationHours = params.get("durationHours") || "1";
 
-  const backHref = `/book/time?service=${encodeURIComponent(servicesParam)}`;
+  const backHref = `/book/time?service=${encodeURIComponent(servicesParam)}&durationHours=${encodeURIComponent(durationHours)}`;
 
   const displayTime = (() => {
     if (!date || !time) return "No time selected";
@@ -170,7 +171,7 @@ function DetailsContent() {
                 </div>
                 <Link
                   href={servicesParam
-                    ? `/book/time?service=${encodeURIComponent(servicesParam)}`
+                    ? `/book/time?service=${encodeURIComponent(servicesParam)}&durationHours=${encodeURIComponent(durationHours)}`
                     : "/book/time"
                   }
                   className="summary-card-edit"
@@ -207,6 +208,7 @@ function DetailsContent() {
               <input type="hidden" name="service" value={servicesParam} />
               <input type="hidden" name="date" value={date} />
               <input type="hidden" name="time" value={time} />
+              <input type="hidden" name="durationHours" value={durationHours} />
 
               <div className="details-row">
                 <div className="details-field">

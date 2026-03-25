@@ -58,26 +58,30 @@ export default function AdminUploadPage() {
   }
 
   async function handleDelete(fileUrl) {
-  try {
-    const formData = new FormData();
-    formData.append("url", fileUrl); // could also append pathname
+    //asks user whether you wnat to confirm the delete action, if not, return early
+    const confirmDelete = window.confirm("Are you sure you want to delete this file?");
+    if (!confirmDelete) return; // user clicked cancel
+    
+    try {
+      const formData = new FormData();
+      formData.append("url", fileUrl); // could also append pathname
 
-    const res = await fetch("/api/DeleteMedia", {
-      method: "POST",
-      body: formData,
-    });
+      const res = await fetch("/api/DeleteMedia", {
+        method: "POST",
+        body: formData,
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (data.success) {
-      setGalleryFiles(prev => prev.filter(file => file.src !== fileUrl));
-    } else {
-      alert("Delete failed");
+      if (data.success) {
+        setGalleryFiles(prev => prev.filter(file => file.src !== fileUrl));
+      } else {
+        alert("Delete failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting file");
     }
-  } catch (err) {
-    console.error(err);
-    alert("Error deleting file");
-  }
 }
 
 
@@ -92,12 +96,13 @@ export default function AdminUploadPage() {
         </div>
       </section>
 
-      <section className="admin-card">
+      <section className="admin-card max-h-23">
         <input
           type="file"
           multiple
           accept="image/*,video/*"
           onChange={handleUpload}
+          className="p-4 rounded-2xl text-white bg-[#477a40] active:scale-95 hover:scale-105 hover:cursor-pointer hover:border-2 hover:shadow-lg items-center text-center"
         />
 
         <div className="upload-preview">
@@ -108,17 +113,20 @@ export default function AdminUploadPage() {
       </section>
 
       <section className="admin-card">
-        <h2>Gallery</h2>
+        <h2 className="admin-section-title">Gallery</h2>
+        <br />
         <div className="upload-preview">
           {galleryFiles.map((file, i) => (
             <div key={i} style={{ marginBottom: "20px" }}>
+              <p className="admin-subtitle">{file.pathname.split("/").pop()}</p>
               {file.type === "image" ? (
                 <img src={file.src} width={150} />
               ) : (
                 <video src={file.src} width={150} controls />
               )}
-              <p>{file.pathname.split("/").pop()}</p>
-              <button onClick={() => handleDelete(file.src)}>Delete</button>
+              <button onClick={() => handleDelete(file.src)} className="admin-btn admin-btn--danger mt-4">
+                Delete
+              </button>
             </div>
           ))}
         </div>

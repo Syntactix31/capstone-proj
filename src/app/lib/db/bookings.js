@@ -39,6 +39,7 @@ function mapBookingRow(row) {
   return {
     id: row.id,
     clientId: row.client_id,
+    projectId: row.project_id,
     propertyId: row.property_id,
     eventId: row.google_event_id,
     googleEventId: row.google_event_id,
@@ -46,6 +47,7 @@ function mapBookingRow(row) {
     firstName: row.client_name?.split(" ")?.[0] || "",
     email: row.client_email,
     service: row.service,
+    visitType: row.visit_type || "Estimate",
     date: pretty.date,
     time: pretty.time,
     bookingDate: row.booking_date,
@@ -69,8 +71,10 @@ async function fetchBookingByWhere(whereSql) {
 // Save a new booking record after the calendar event has been created.
 export async function createBooking({
   clientId,
+  projectId = null,
   propertyId = null,
   service,
+  visitType = "Estimate",
   status = "confirmed",
   bookingDate,
   bookingTime,
@@ -88,8 +92,10 @@ export async function createBooking({
     INSERT INTO bookings (
       id,
       client_id,
+      project_id,
       property_id,
       service,
+      visit_type,
       status,
       booking_date,
       booking_time,
@@ -103,8 +109,10 @@ export async function createBooking({
     VALUES (
       ${id},
       ${clientId},
+      ${projectId},
       ${propertyId},
       ${String(service || "")},
+      ${String(visitType || "Estimate")},
       ${normalizeStatus(status)},
       ${bookingDate},
       ${bookingTime},
@@ -223,8 +231,10 @@ export async function updateBookingByGoogleEventId(eventId, patch) {
   await sql`
     UPDATE bookings
     SET
+      project_id = ${patch.projectId ?? current.project_id},
       property_id = ${patch.propertyId ?? current.property_id},
       service = ${String(patch.service ?? current.service)},
+      visit_type = ${String(patch.visitType ?? current.visit_type ?? "Estimate")},
       status = ${normalizeStatus(patch.status ?? current.status)},
       booking_date = ${patch.bookingDate ?? current.booking_date},
       booking_time = ${patch.bookingTime ?? current.booking_time},

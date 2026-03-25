@@ -6,7 +6,7 @@ import AdminLayout from "../../components/AdminLayout.js";
 const STATUS_CLASS = {
   Approved: "admin-badge admin-badge--active mb-4 sm:mb-0",
   Rejected: "admin-badge admin-badge--danger mb-4 sm:mb-0",
-  Pending: "admin-badge admin-badge--neutral mb-4 sm:mb-0",
+  Pending: "admin-badge admin-badge--pending mb-4 sm:mb-0",
 };
 
 export default function AdminEstimatesDashboard() {
@@ -245,40 +245,61 @@ export default function AdminEstimatesDashboard() {
           ) : estimates.length === 0 ? (
             <p>No estimates found.</p>
           ) : (
-            <div className="admin-table">
+            <div className="flex flex-col gap-3">
               {estimates.map((e) => (
-                <div key={e.id} className="admin-table-row">
+                <div
+                  key={e.id}
+                  className="
+                    grid items-center gap-3 rounded-xl border border-slate-100 bg-white 
+                    p-3 sm:p-4 transition-colors duration-200 hover:bg-slate-50
+                    grid-cols-1 sm:grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr]
+                    sm:gap-4
+                  "
+                >
+                  {/* First column: client + service */}
                   <div>
-                    <div className="admin-strong">{e.client}</div>
-                    <div className="admin-muted">{e.service}</div>
+                    <div className="font-semibold text-slate-900">{e.client}</div>
+                    <div className="text-sm text-slate-500">{e.service}</div>
                   </div>
 
-                  <div className="admin-numeric">${e.price}</div>
+                  {/* Second column: price */}
+                  <div className="justify-self-start sm:justify-self-end sm:text-right">
+                    <span className="text-slate-900">${e.price}</span>
+                  </div>
 
-                  <span className={STATUS_CLASS[e.status]}>{e.status}</span>
+                  {/* Third column: status */}
+                  <span className={`${STATUS_CLASS[e.status]} justify-self-start sm:justify-self-end`}>
+                    {e.status}
+                  </span>
 
-                  {/* 4th column: actions */}
-                  <div className="admin-table-actions">
+                  {/* Fourth column: actions */}
+                  <div
+                    className="
+                      flex flex-wrap justify-start sm:justify-end items-center 
+                      gap-2 sm:gap-3
+                      sm:col-span-1
+                    "
+                  >
                     {e.pdfUrl && (
                       <a
                         href={e.pdfUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="admin-btn admin-btn--ghost admin-table-action"
+                        className="admin-btn admin-btn--ghost"
                       >
                         View PDF
                       </a>
                     )}
 
                     <button
-                      className="admin-btn admin-btn--ghost admin-table-action"
+                      className="admin-btn admin-btn--ghost"
                       onClick={() => openForm(e)}
                     >
                       Edit
                     </button>
 
                     <button
-                      className="admin-btn admin-btn--danger admin-table-action"
+                      className="admin-btn admin-btn--danger"
                       onClick={() => deleteEstimate(e.id)}
                     >
                       Delete
@@ -299,6 +320,15 @@ export default function AdminEstimatesDashboard() {
             />
 
             <form className="admin-modal__content" onSubmit={handleSubmit}>
+              <button
+                type="button"
+                aria-label="Close"
+                className="absolute top-4 right-4 text-slate-500 hover:text-slate-800 hover:cursor-pointer"
+                onClick={() => setIsFormOpen(false)}
+              >
+                ✕
+              </button>
+
               <h2 className="admin-title">
                 {editingId ? "Edit Estimate" : "New Estimate"}
               </h2>

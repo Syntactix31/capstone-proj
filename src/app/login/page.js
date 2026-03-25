@@ -62,6 +62,8 @@ function LoginPageContent() {
       }
 
       router.push(data?.user?.role === "admin" ? "/dashboard" : "/");
+      router.push(data?.user?.role === "client" ? "/client" : "/");
+
     } catch {
       setError("Sign in failed.");
     } finally {

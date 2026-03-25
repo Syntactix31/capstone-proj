@@ -19,12 +19,92 @@ const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
 };
 
+const EDMONTON_TIME_ZONE = "America/Edmonton";
+const EDMONTON_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: EDMONTON_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
 
 function prettyServiceName(serviceIdOrName) {
   const hit =
     SERVICES.find((s) => s.id === serviceIdOrName) ||
     SERVICES.find((s) => s.name === serviceIdOrName);
   return hit?.name || String(serviceIdOrName || "Appointment");
+}
+
+function visitTypeTone(label) {
+  const normalized = String(label || "").trim().toLowerCase();
+  if (normalized === "estimate") return "estimate";
+  if (normalized === "design consultation") return "design";
+  if (normalized === "installation") return "installation";
+  return "installation";
+}
+
+function visitTypeToneStyle(label) {
+  const tone = visitTypeTone(label);
+
+  if (tone === "estimate") {
+    return {
+      "--visit-pill-bg": "#e8f1ff",
+      "--visit-pill-fg": "#2157a6",
+      "--visit-track-bg": "#e5eefb",
+      "--visit-fill-bg": "linear-gradient(90deg, #4b86e8 0%, #76a8f5 100%)",
+      "--visit-fill-shadow": "inset 0 0 0 1px rgba(33, 87, 166, 0.14)",
+    };
+  }
+
+  if (tone === "design") {
+    return {
+      "--visit-pill-bg": "#fff0df",
+      "--visit-pill-fg": "#b86412",
+      "--visit-track-bg": "#f7eee1",
+      "--visit-fill-bg": "linear-gradient(90deg, #dd8a3d 0%, #f0ae62 100%)",
+      "--visit-fill-shadow": "inset 0 0 0 1px rgba(184, 100, 18, 0.14)",
+    };
+  }
+
+  return {
+    "--visit-pill-bg": "#edf5ea",
+    "--visit-pill-fg": "#2f5f2b",
+    "--visit-track-bg": "#e7efe4",
+    "--visit-fill-bg": "linear-gradient(90deg, #5f8f4d 0%, #7aa866 100%)",
+    "--visit-fill-shadow": "inset 0 0 0 1px rgba(47, 95, 43, 0.12)",
+  };
+}
+
+function visitTypeEventToneStyle(label) {
+  const tone = visitTypeTone(label);
+
+  if (tone === "estimate") {
+    return {
+      "--calendar-event-bg": "rgba(79, 133, 234, 0.18)",
+      "--calendar-event-border": "rgba(79, 133, 234, 0.42)",
+      "--calendar-event-title": "#163c7a",
+      "--calendar-event-subtitle": "#3360aa",
+    };
+  }
+
+  if (tone === "design") {
+    return {
+      "--calendar-event-bg": "rgba(221, 138, 61, 0.18)",
+      "--calendar-event-border": "rgba(221, 138, 61, 0.42)",
+      "--calendar-event-title": "#87470d",
+      "--calendar-event-subtitle": "#b86412",
+    };
+  }
+
+  return {
+    "--calendar-event-bg": "rgba(71, 122, 64, 0.18)",
+    "--calendar-event-border": "rgba(71, 122, 64, 0.35)",
+    "--calendar-event-title": "#23451f",
+    "--calendar-event-subtitle": "#477a40",
+  };
 }
 
 // Convert 12-hour times into 24-hour times for comparisons/layout math.
@@ -54,6 +134,56 @@ function to12h(time24) {
   return `${h12}:${String(mm).padStart(2, "0")} ${mer}`;
 }
 
+function getEdmontonParts(date) {
+  const parts = EDMONTON_PARTS_FORMATTER.formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+    minute: Number(values.minute),
+  };
+}
+
+function formatEdmontonDateKey(date) {
+  const parts = getEdmontonParts(date);
+  return `${String(parts.year).padStart(4, "0")}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+}
+
+function buildDateTime(dateStr, time12h) {
+  const time24 = to24h(time12h);
+  if (!time24 || !dateStr) return null;
+
+  const [year, month, day] = String(dateStr)
+    .split("-")
+    .map((value) => Number(value));
+  const [hour, minute] = time24.split(":").map((value) => Number(value));
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute)
+  ) {
+    return null;
+  }
+
+  let utcMillis = Date.UTC(year, month - 1, day, hour, minute, 0);
+
+  for (let i = 0; i < 3; i += 1) {
+    const zoned = getEdmontonParts(new Date(utcMillis));
+    const desiredAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
+    const zonedAsUtc = Date.UTC(zoned.year, zoned.month - 1, zoned.day, zoned.hour, zoned.minute, 0);
+    const diffMs = desiredAsUtc - zonedAsUtc;
+    if (diffMs === 0) break;
+    utcMillis += diffMs;
+  }
+
+  return new Date(utcMillis);
+}
+
 function splitClientName(fullName) {
   const parts = String(fullName || "")
     .trim()
@@ -78,6 +208,7 @@ function getClientFormFields(client) {
 export default function AdminAppointmentsPage() {
   // Core page state: fetched appointments plus loading/error flags.
   const [appointments, setAppointments] = useState([]); // from Google Calendar
+  const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clientsLoading, setClientsLoading] = useState(true);
@@ -101,6 +232,8 @@ export default function AdminAppointmentsPage() {
     lastName: "",
     phone: "",
     email: "",
+    projectSelection: "",
+    projectId: "",
     service: "fence",
     visitType: "Estimate",
     durationHours: "1",
@@ -146,6 +279,7 @@ export default function AdminAppointmentsPage() {
         client: a.client || "Unknown",
         service: prettyServiceName(a.service),
         serviceId: a.service,
+        visitType: a.visitType || "Estimate",
         date: a.date, 
         time: a.time, 
         address: a.address || "",
@@ -166,9 +300,28 @@ export default function AdminAppointmentsPage() {
     }
   }
 
+  async function refreshProjects() {
+    try {
+      const res = await fetch("/api/admin/projects", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setProjects([]);
+        return;
+      }
+      setProjects(Array.isArray(data.projects) ? data.projects : []);
+    } catch (error) {
+      console.error(error);
+      setProjects([]);
+    }
+  }
+
   // Keep "now" up to date so the calendar can show the current time position.
   useEffect(() => {
     refreshAppointments();
+  }, []);
+
+  useEffect(() => {
+    refreshProjects();
   }, []);
 
   // Load client records for the add-appointment form.
@@ -231,12 +384,25 @@ export default function AdminAppointmentsPage() {
     return () => media.removeListener(syncMedia);
   }, []);
 
-
-  const upcoming = appointments.filter((appt) => appt.status === "Confirmed").length;
-
   // Since Google events are real bookings, treat them as Confirmed
   const bookedAppointments = appointments.filter((appt) => appt.status === "Confirmed");
   const confirmed = bookedAppointments.length;
+  const visitTypeSummary = useMemo(() => {
+    const counts = new Map(VISIT_TYPES.map((label) => [label, 0]));
+
+    for (const appointment of bookedAppointments) {
+      const label = String(appointment.visitType || "Estimate").trim() || "Estimate";
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+
+    return [...counts.entries()]
+      .map(([label, count]) => ({
+        label,
+        count,
+        share: confirmed > 0 ? Math.max((count / confirmed) * 100, 8) : 0,
+      }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [bookedAppointments, confirmed]);
 
   const activeServices = useMemo(() => SERVICES.filter((s) => s.active), []);
   const sortedClients = useMemo(
@@ -252,6 +418,27 @@ export default function AdminAppointmentsPage() {
     () => clients.find((client) => client.id === formState.clientId) || null,
     [clients, formState.clientId]
   );
+  const selectedClientProjects = useMemo(
+    () => projects.filter((project) => project.clientId === formState.clientId),
+    [formState.clientId, projects]
+  );
+  const projectOrServiceOptions = useMemo(() => {
+    if (selectedClientProjects.length > 0) {
+      return selectedClientProjects.map((project) => ({
+        value: `project:${project.id}`,
+        label: `${prettyServiceName(project.service)}${project.address ? ` - ${project.address}` : ""}`,
+        projectId: project.id,
+        service: project.service,
+      }));
+    }
+
+    return activeServices.map((service) => ({
+      value: `service:${service.id}`,
+      label: service.name,
+      projectId: "",
+      service: service.id,
+    }));
+  }, [activeServices, selectedClientProjects]);
 
   // Hour boundaries define the visible scheduling grid for the calendar.
   const calendarStartHour = 7;
@@ -303,10 +490,33 @@ export default function AdminAppointmentsPage() {
     return slots;
   }, [calendarEndHour, calendarStartHour, formState.durationHours]);
 
+  const availableTimeSlots = useMemo(() => {
+    if (!formState.date) return timeSlots;
+
+    const durationMs = (Number.parseInt(formState.durationHours || "1", 10) || 1) * 60 * 60 * 1000;
+
+    return timeSlots.filter((slot) => {
+      const slotStart = buildDateTime(formState.date, slot);
+      if (!slotStart || Number.isNaN(slotStart.getTime())) return false;
+      if (slotStart.getTime() < Date.now()) return false;
+
+      const slotEnd = new Date(slotStart.getTime() + durationMs);
+      return !appointments.some((appt) => {
+        if (editingId && appt.eventId === editingId) return false;
+
+        const apptStart = new Date(appt.startIso || "");
+        const apptEnd = new Date(appt.endIso || "");
+        if (Number.isNaN(apptStart.getTime()) || Number.isNaN(apptEnd.getTime())) return false;
+
+        return slotStart <= apptEnd && slotEnd > apptStart;
+      });
+    });
+  }, [appointments, editingId, formState.date, formState.durationHours, timeSlots]);
+
   const weekDays = useMemo(() => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], []);
 
   // splits the ISOString fomratted date and takes the date segment only
-  const formatDateKey = (date) => date.toISOString().split("T")[0];
+  const formatDateKey = (date) => formatEdmontonDateKey(date);
 
   /* gets the day that starts off the week (sundays)
   getDay() returns the day of the week as a number (0-6)
@@ -522,10 +732,7 @@ export default function AdminAppointmentsPage() {
   // Admin actions that actually change Google Calendar
   // functions implemented by jiro
   // Cancel an appointment through the backend and refresh the page data.
-  async function cancelOnServer(eventId) {
-    const ok = window.confirm("Cancel this appointment? This removes it from Google Calendar and sends cancel emails.");
-    if (!ok) return false;
-
+  async function cancelOnServer(eventId) {;
     setBusy(true);
     try {
       const res = await fetch("/api/booking/cancel", {
@@ -589,6 +796,7 @@ export default function AdminAppointmentsPage() {
         return false;
       }
       await refreshAppointments();
+      await refreshProjects();
       return true;
     } catch (e) {
       console.error(e);
@@ -629,13 +837,18 @@ export default function AdminAppointmentsPage() {
   */
   const openAddForm = () => {
     const defaultClient = sortedClients[0] || null;
+    const defaultClientProjects = projects.filter((project) => project.clientId === defaultClient?.id);
+    const defaultProjectOption = defaultClientProjects[0] || null;
+    const defaultServiceId = defaultProjectOption?.service || activeServices[0]?.id || "fence";
     setEditingId(null);
     setFormState({
       clientId: defaultClient?.id ?? "",
       ...getClientFormFields(defaultClient),
       firstName: "",
       lastName: "",
-      service: activeServices[0]?.id ?? "fence",
+      projectSelection: defaultProjectOption ? `project:${defaultProjectOption.id}` : `service:${defaultServiceId}`,
+      projectId: defaultProjectOption?.id || "",
+      service: defaultServiceId,
       visitType: "Estimate",
       durationHours: "1",
       date: formatDateKey(new Date()),
@@ -662,6 +875,8 @@ export default function AdminAppointmentsPage() {
       lastName,
       phone: "",
       email: appt.email || "",
+      projectSelection: "",
+      projectId: "",
       service: appt.serviceId || "fence",
       visitType: "Estimate",
       durationHours: "1",
@@ -683,10 +898,30 @@ export default function AdminAppointmentsPage() {
     const { name, value } = event.target;
     if (name === "clientId") {
       const nextClient = clients.find((client) => client.id === value) || null;
+      const nextProjects = projects.filter((project) => project.clientId === value);
+      const nextProject = nextProjects[0] || null;
+      const fallbackService = nextProject?.service || activeServices[0]?.id || "fence";
       setFormState((prev) => ({
         ...prev,
         clientId: value,
         ...getClientFormFields(nextClient),
+        projectSelection: nextProject ? `project:${nextProject.id}` : `service:${fallbackService}`,
+        projectId: nextProject?.id || "",
+        service: fallbackService,
+      }));
+      return;
+    }
+    if (name === "projectSelection") {
+      const nextProjectId = value.startsWith("project:") ? value.slice("project:".length) : "";
+      const nextProject = projects.find((project) => project.id === nextProjectId) || null;
+      const nextService = value.startsWith("service:")
+        ? value.slice("service:".length)
+        : nextProject?.service || formState.service;
+      setFormState((prev) => ({
+        ...prev,
+        projectSelection: value,
+        projectId: nextProject?.id || "",
+        service: nextService,
       }));
       return;
     }
@@ -719,9 +954,16 @@ export default function AdminAppointmentsPage() {
       return;
     }
 
+    if (!availableTimeSlots.length || !availableTimeSlots.includes(formState.time)) {
+      alert("No available times for the selected date and duration.");
+      return;
+    }
+
     const { firstName, lastName } = splitClientName(selectedClient?.name);
     // backend
     const payload = {
+      clientId: formState.clientId,
+      projectId: formState.projectId || null,
       service: formState.service, // service id (fence, pergola, etc)
       visitType: formState.visitType,
       durationHours: formState.durationHours,
@@ -789,13 +1031,26 @@ export default function AdminAppointmentsPage() {
   }, [editingId, formState.clientId, isFormOpen, sortedClients]);
 
   useEffect(() => {
-    if (!isFormOpen || editingId || !timeSlots.length) return;
-    if (timeSlots.includes(formState.time)) return;
+    if (!isFormOpen || editingId || !availableTimeSlots.length) return;
+    if (availableTimeSlots.includes(formState.time)) return;
     setFormState((prev) => ({
       ...prev,
-      time: timeSlots[0],
+      time: availableTimeSlots[0],
     }));
-  }, [editingId, formState.time, isFormOpen, timeSlots]);
+  }, [availableTimeSlots, editingId, formState.time, isFormOpen]);
+
+  useEffect(() => {
+    if (!isFormOpen || editingId || !formState.clientId || !projectOrServiceOptions.length) return;
+    if (projectOrServiceOptions.some((option) => option.value === formState.projectSelection)) return;
+
+    const nextOption = projectOrServiceOptions[0];
+    setFormState((prev) => ({
+      ...prev,
+      projectSelection: nextOption.value,
+      projectId: nextOption.projectId,
+      service: nextOption.service,
+    }));
+  }, [editingId, formState.clientId, formState.projectSelection, isFormOpen, projectOrServiceOptions]);
 
 return (
     <AdminLayout>
@@ -828,29 +1083,62 @@ return (
 
       {/* Summary cards showing appointment statistics */}
       <section className="admin-summary-grid">
+        <div className="admin-summary-column admin-summary-column--stack">
+          {/* Card showing total projects */}
+          <article className="admin-card admin-card--stat">
+            <div className="admin-stat-title">Projects</div>
+            <div className="admin-card--stat-body">
+              <div className="admin-stat-value">{projects.length}</div>
+              <div className="admin-muted">Currently in Progress</div>
+            </div>
+          </article>
 
-        {/* Card showing total upcoming appointments */}
-        <article className="admin-card admin-card--stat">
-          <div className="admin-stat-title">Upcoming</div>
-          <div className="admin-stat-value">{upcoming}</div>
-          <div className="admin-muted">Next 180 days</div>
-        </article>
+          {/* Card showing confirmed appointments and button to open booked list modal */}
+          <article className="admin-card admin-card--stat">
+            <div className="admin-stat-title">Confirmed</div>
+            <div className="admin-card--stat-body">
+              <div className="admin-stat-value">{confirmed}</div>
 
-        {/* Card showing confirmed appointments and button to open booked list modal */}
-        <article className="admin-card admin-card--stat">
-          <div className="admin-stat-title">Confirmed</div>
-          <div className="admin-stat-value">{confirmed}</div>
+              {/* Opens modal listing all booked appointments */}
+              <button
+                type="button"
+                className={`${STATUS_CLASS.Confirmed} admin-badge--button`}
+                onClick={() => setShowBookedModal(true)}
+                disabled={busy}
+              >
+                Booked
+              </button>
+            </div>
+          </article>
+        </div>
 
-          {/* Opens modal listing all booked appointments */}
-          <button
-            type="button"
-            className={`${STATUS_CLASS.Confirmed} admin-badge--button`}
-            onClick={() => setShowBookedModal(true)}
-            disabled={busy}
-          >
-            Booked
-          </button>
-        </article>
+        <div className="admin-summary-column admin-summary-column--wide">
+          <article className="admin-card admin-card--stat admin-card--visit-types">
+            <div className="admin-stat-title">Visit Types</div>
+            <div className="admin-visit-types">
+              {visitTypeSummary.map((item) => (
+                <div
+                  key={item.label}
+                  className={`admin-visit-types__item admin-visit-types__item--${visitTypeTone(item.label)}`}
+                  style={visitTypeToneStyle(item.label)}
+                >
+                  <div className="admin-visit-types__row">
+                    <span className="admin-visit-types__label">{item.label}</span>
+                    <span className="admin-visit-types__count">{item.count}</span>
+                  </div>
+                  <div className="admin-visit-types__track" aria-hidden="true">
+                    <div
+                      className="admin-visit-types__fill"
+                      style={{ width: `${item.share}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+        </div>
+
+
       </section>
 
 
@@ -1062,6 +1350,7 @@ return (
 
                         /* Grid positioning logic determines which row/time and day column the event appears in */
                         style={{
+                          ...visitTypeEventToneStyle(appt.visitType),
                           gridRow: `${appt.gridRow} / span ${appt.span}`, // determines appt positioning vertically (time)
                           gridColumn: // determines appts positioning horizontally (day)
                             viewMode === "day"
@@ -1308,23 +1597,43 @@ return (
               ) : null}
 
               <div className="admin-modal__full">
-                <label className="admin-label" htmlFor="service">Service</label>
-                <select
-                  id="service"
-                  name="service"
-                  className="admin-input"
-                  value={formState.service}
-                  onChange={handleFormChange}
-                  required={!editingId}
-                  disabled={!!editingId}
-                  title={editingId ? "Service stays the same when rescheduling." : ""}
-                >
-                  {activeServices.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="admin-label" htmlFor={editingId ? "service" : "projectSelection"}>
+                  {editingId ? "Service" : selectedClientProjects.length > 0 ? "Project" : "Service"}
+                </label>
+                {editingId ? (
+                  <select
+                    id="service"
+                    name="service"
+                    className="admin-input"
+                    value={formState.service}
+                    onChange={handleFormChange}
+                    required={!editingId}
+                    disabled={!!editingId}
+                    title={editingId ? "Service stays the same when rescheduling." : ""}
+                  >
+                    {activeServices.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    id="projectSelection"
+                    name="projectSelection"
+                    className="admin-input"
+                    value={formState.projectSelection}
+                    onChange={handleFormChange}
+                    required
+                    disabled={!formState.clientId || !projectOrServiceOptions.length}
+                  >
+                    {projectOrServiceOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {!editingId ? (
@@ -1392,12 +1701,19 @@ return (
                   value={formState.time}
                   onChange={handleFormChange}
                   required
+                  disabled={!formState.date || !availableTimeSlots.length}
                 >
-                  {timeSlots.map((slot) => (
-                    <option key={slot} value={slot}>
-                      {slot}
+                  {!availableTimeSlots.length ? (
+                    <option value="">
+                      {formState.date ? "No available times" : "Select a date first"}
                     </option>
-                  ))}
+                  ) : (
+                    availableTimeSlots.map((slot) => (
+                      <option key={slot} value={slot}>
+                        {slot}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 

@@ -1,15 +1,58 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import AdminLayout from "../../components/AdminLayout.js";
+import {
+  buildQuoteData,
+  DEFAULT_DEPOSIT_RATE,
+  DEFAULT_GST_RATE,
+  formatCurrency,
+  todayDateValue,
+} from "../../lib/quotes.js";
 
 const PAYMENT_STATUSES = ["Unpaid", "Deposit Paid", "Fully Paid"];
-const PROJECT_SERVICES = [
-  "Fence Installation",
-  "Deck & Railing",
-  "Pergola",
-  "Sod Installation",
-  "Trees and Shrubs",
+const DEFAULT_SERVICES = [
+  {
+    id: "S-01",
+    name: "Fence Installation",
+    description: "Custom fence design, materials, and full installation.",
+    price: "2800.00",
+    quantity: "1",
+    active: true,
+  },
+  {
+    id: "S-02",
+    name: "Deck & Railing",
+    description: "Deck builds, railing upgrades, and safety repairs.",
+    price: "4500.00",
+    quantity: "1",
+    active: true,
+  },
+  {
+    id: "S-03",
+    name: "Pergola",
+    description: "Backyard pergola installation and finishing.",
+    price: "3200.00",
+    quantity: "1",
+    active: true,
+  },
+  {
+    id: "S-04",
+    name: "Sod Installation",
+    description: "Site prep and fresh sod installation.",
+    price: "1100.00",
+    quantity: "1",
+    active: false,
+  },
+  {
+    id: "S-05",
+    name: "Trees and Shrubs",
+    description: "Planting, pruning, and seasonal care.",
+    price: "1100.00",
+    quantity: "1",
+    active: true,
+  },
 ];
 
 const PAYMENT_CLASS = {
@@ -19,33 +62,53 @@ const PAYMENT_CLASS = {
 };
 
 function formatVisitLabel(project) {
-  if (!project.nextVisitDate ) return "No upcoming visit";
-  return `${project.nextVisitDate}`;
+  if (!project.nextVisitDate) return "No upcoming visit";
+
+  const rawDate = String(project.nextVisitDate).trim();
+  if (!rawDate) return "No upcoming visit";
+
+  return rawDate.includes("T") ? rawDate.split("T")[0] : rawDate;
 }
 
-function paymentStatusForKey(key) {
-  let hash = 0;
-  for (const char of String(key || "")) {
-    hash = (hash * 31 + char.charCodeAt(0)) % PAYMENT_STATUSES.length;
-  }
-  return PAYMENT_STATUSES[hash];
+function createProjectForm(service) {
+  return {
+    clientId: "",
+    service: service?.name || DEFAULT_SERVICES[0].name,
+    priceMode: "default",
+    unitPrice: String(service?.price || "0.00"),
+    quantity: "1",
+    description: service?.description || "",
+    quoteSentDate: todayDateValue(),
+    gstRate: String(DEFAULT_GST_RATE * 100),
+    depositRate: String(DEFAULT_DEPOSIT_RATE * 100),
+  };
 }
 
 export default function AdminProjectsPage() {
-  const [appointments, setAppointments] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clientsLoading, setClientsLoading] = useState(true);
+  const [services] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_SERVICES;
+
+    try {
+      const stored = window.localStorage.getItem("admin_services");
+      const parsed = stored ? JSON.parse(stored) : null;
+      return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_SERVICES;
+    } catch {
+      return DEFAULT_SERVICES;
+    }
+  });
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("All");
   const [serviceFilter, setServiceFilter] = useState("All");
-  const [manualProjects, setManualProjects] = useState([]);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [projectForm, setProjectForm] = useState({
-    clientId: "",
-    service: PROJECT_SERVICES[0],
-  });
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [projectForm, setProjectForm] = useState(() =>
+    createProjectForm(DEFAULT_SERVICES[0])
+  );
 
   useEffect(() => {
     let active = true;
@@ -54,21 +117,21 @@ export default function AdminProjectsPage() {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch("/api/admin/appointments", { cache: "no-store" });
+        const res = await fetch("/api/admin/projects", { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
         if (!active) return;
 
         if (!res.ok) {
-          setAppointments([]);
+          setProjects([]);
           setError(data?.error || "Failed to load projects.");
           return;
         }
 
-        setAppointments(Array.isArray(data.appointments) ? data.appointments : []);
+        setProjects(Array.isArray(data.projects) ? data.projects : []);
       } catch (loadError) {
         console.error(loadError);
         if (!active) return;
-        setAppointments([]);
+        setProjects([]);
         setError("Failed to load projects.");
       } finally {
         if (active) setLoading(false);
@@ -112,49 +175,6 @@ export default function AdminProjectsPage() {
     };
   }, []);
 
-  const derivedProjects = useMemo(() => {
-    const grouped = new Map();
-    const now = Date.now();
-
-    appointments.forEach((appt) => {
-      const client = appt.client || "Unknown Client";
-      const service = appt.service || "Service";
-      const address = appt.address || "";
-      const key = `${client}::${service}::${address}`;
-      const startDate = new Date(appt.startIso || `${appt.date}T00:00:00`);
-      const existing = grouped.get(key);
-
-      if (!existing) {
-        grouped.set(key, {
-          id: `PRJ-${String(grouped.size + 1).padStart(4, "0")}`,
-          client,
-          service,
-          address,
-          nextVisitDate: null,
-          nextVisitTime: null,
-          nextVisitTs: Number.POSITIVE_INFINITY,
-          paymentStatus: paymentStatusForKey(key),
-        });
-      }
-
-      const project = grouped.get(key);
-      if (!Number.isNaN(startDate.getTime()) && startDate.getTime() >= now && startDate.getTime() < project.nextVisitTs) {
-        project.nextVisitTs = startDate.getTime();
-        project.nextVisitDate = appt.date || "";
-        project.nextVisitTime = appt.time || "";
-      }
-    });
-
-    return Array.from(grouped.values()).sort((a, b) => {
-      if (a.nextVisitTs === b.nextVisitTs) return a.client.localeCompare(b.client);
-      return a.nextVisitTs - b.nextVisitTs;
-    });
-  }, [appointments]);
-
-  const projects = useMemo(() => {
-    return [...manualProjects, ...derivedProjects];
-  }, [derivedProjects, manualProjects]);
-
   const sortedClients = useMemo(
     () =>
       [...clients].sort((a, b) =>
@@ -185,9 +205,51 @@ export default function AdminProjectsPage() {
   }, [paymentFilter, projects, query, serviceFilter]);
 
   const serviceOptions = useMemo(
-    () => ["All", ...Array.from(new Set([...PROJECT_SERVICES, ...projects.map((project) => project.service)])).sort()],
-    [projects]
+    () => ["All", ...Array.from(new Set([...services.map((service) => service.name), ...projects.map((project) => project.service)])).sort()],
+    [projects, services]
   );
+
+  const availableServices = useMemo(
+    () => services.filter((service) => service.active !== false),
+    [services]
+  );
+
+  const selectedService = useMemo(
+    () =>
+      availableServices.find((service) => service.name === projectForm.service) ||
+      availableServices[0] ||
+      null,
+    [availableServices, projectForm.service]
+  );
+
+  const projectQuantity = useMemo(
+    () => Math.max(1, Number.parseInt(projectForm.quantity || "1", 10) || 1),
+    [projectForm.quantity]
+  );
+
+  const projectQuote = useMemo(
+    () =>
+      buildQuoteData({
+        priceMode: projectForm.priceMode,
+        unitPrice: projectForm.unitPrice,
+        quantity: projectForm.quantity,
+        description: projectForm.description,
+        sentDate: projectForm.quoteSentDate,
+        gstRate: projectForm.gstRate,
+        depositRate: projectForm.depositRate,
+      }),
+    [
+      projectForm.depositRate,
+      projectForm.description,
+      projectForm.gstRate,
+      projectForm.priceMode,
+      projectForm.quantity,
+      projectForm.quoteSentDate,
+      projectForm.unitPrice,
+    ]
+  );
+
+  const projectTotal = projectQuote.total;
 
   const stats = useMemo(() => {
     return {
@@ -198,38 +260,93 @@ export default function AdminProjectsPage() {
   }, [projects]);
 
   const openProjectModal = () => {
+    const defaultService = availableServices[0] || DEFAULT_SERVICES[0];
     setProjectForm({
+      ...createProjectForm(defaultService),
       clientId: sortedClients[0]?.id || "",
-      service: PROJECT_SERVICES[0],
     });
     setIsProjectModalOpen(true);
   };
 
+  const openProjectPreview = (project) => {
+    setSelectedProject(project);
+  };
+
   const handleProjectFormChange = (event) => {
     const { name, value } = event.target;
+    if (name === "service") {
+      const nextService =
+        availableServices.find((service) => service.name === value) || null;
+      setProjectForm((prev) => ({
+        ...prev,
+        service: value,
+        unitPrice:
+          prev.priceMode === "default"
+            ? String(nextService?.price || "0.00")
+            : prev.unitPrice,
+        description:
+          !prev.description || prev.description === selectedService?.description
+            ? nextService?.description || ""
+            : prev.description,
+      }));
+      return;
+    }
+
+    if (name === "priceMode") {
+      setProjectForm((prev) => ({
+        ...prev,
+        priceMode: value,
+        unitPrice:
+          value === "default"
+            ? String(selectedService?.price || "0.00")
+            : prev.unitPrice,
+      }));
+      return;
+    }
+
     setProjectForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleProjectCreate = (event) => {
+  const handleProjectCreate = async (event) => {
     event.preventDefault();
     const selectedClient =
       sortedClients.find((client) => client.id === projectForm.clientId) || null;
     if (!selectedClient) return;
 
-    setManualProjects((prev) => [
-      {
-        id: `PRJ-${String(prev.length + derivedProjects.length + 1).padStart(4, "0")}`,
-        client: selectedClient.name || "Client",
-        service: projectForm.service,
-        address: selectedClient.address || "Address not added",
-        nextVisitDate: null,
-        nextVisitTime: null,
-        nextVisitTs: Number.POSITIVE_INFINITY,
-        paymentStatus: "Unpaid",
-      },
-      ...prev,
-    ]);
-    setIsProjectModalOpen(false);
+    try {
+      const res = await fetch("/api/admin/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: selectedClient.id,
+          service: projectForm.service,
+          address: selectedClient.address || "",
+          totalCost: projectTotal,
+          servicesIncluded: [
+            {
+              id: selectedService?.id || "service-1",
+              name: projectForm.service,
+              description: projectForm.description,
+              price: projectQuote.unitPrice,
+              quantity: String(projectQuantity),
+              total: projectQuote.subtotal,
+            },
+          ],
+          quoteData: projectQuote,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error || "Failed to create project.");
+        return;
+      }
+
+      setProjects((prev) => [data.project, ...prev.filter((project) => project.id !== data.project.id)]);
+      setIsProjectModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      setError("Failed to create project.");
+    }
   };
 
   return (
@@ -316,7 +433,12 @@ export default function AdminProjectsPage() {
             </div>
 
             {filteredProjects.map((project) => (
-              <div className="admin-table-row admin-projects-table-row" key={project.id}>
+              <button
+                type="button"
+                className="admin-table-row admin-projects-table-row admin-projects-table-row--button"
+                key={project.id}
+                onClick={() => openProjectPreview(project)}
+              >
                 <div>
                   <div className="admin-strong">{project.client}</div>
                   <div className="admin-muted">{project.address || "Address not added"}</div>
@@ -333,7 +455,7 @@ export default function AdminProjectsPage() {
                     {project.paymentStatus}
                   </span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -362,7 +484,9 @@ export default function AdminProjectsPage() {
             <div className="admin-modal__header">
               <div>
                 <h2 className="admin-title">New project</h2>
-                <p className="admin-subtitle">Select a client first, then choose the included service.</p>
+                <p className="admin-subtitle">
+                  Build the service line, quote pricing, and recipient details before creating the project.
+                </p>
               </div>
               <button
                 className="admin-btn admin-btn--ghost admin-btn--small"
@@ -412,12 +536,165 @@ export default function AdminProjectsPage() {
                   onChange={handleProjectFormChange}
                   required
                 >
-                  {PROJECT_SERVICES.map((service) => (
-                    <option key={service} value={service}>
-                      {service}
+                  {availableServices.map((service) => (
+                    <option key={service.id || service.name} value={service.name}>
+                      {service.name}
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-quantity">
+                  Quantity
+                </label>
+                <input
+                  id="project-quantity"
+                  name="quantity"
+                  className="admin-input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={projectForm.quantity}
+                  onChange={handleProjectFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-price-mode">
+                  Pricing mode
+                </label>
+                <select
+                  id="project-price-mode"
+                  name="priceMode"
+                  className="admin-input"
+                  value={projectForm.priceMode}
+                  onChange={handleProjectFormChange}
+                >
+                  <option value="default">Use default service price</option>
+                  <option value="custom">Use custom unit price</option>
+                </select>
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-unit-price">
+                  Unit price ($)
+                </label>
+                <input
+                  id="project-unit-price"
+                  name="unitPrice"
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={projectForm.unitPrice}
+                  onChange={handleProjectFormChange}
+                  disabled={projectForm.priceMode === "default"}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-quote-sent-date">
+                  Quote sent date
+                </label>
+                <input
+                  id="project-quote-sent-date"
+                  name="quoteSentDate"
+                  className="admin-input"
+                  type="date"
+                  value={projectForm.quoteSentDate}
+                  onChange={handleProjectFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-gst-rate">
+                  GST (%)
+                </label>
+                <input
+                  id="project-gst-rate"
+                  name="gstRate"
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={projectForm.gstRate}
+                  onChange={handleProjectFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-deposit-rate">
+                  Deposit required (%)
+                </label>
+                <input
+                  id="project-deposit-rate"
+                  name="depositRate"
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={projectForm.depositRate}
+                  onChange={handleProjectFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-description">
+                  Service description
+                </label>
+                <textarea
+                  id="project-description"
+                  name="description"
+                  className="admin-textarea"
+                  rows={5}
+                  value={projectForm.description}
+                  onChange={handleProjectFormChange}
+                  placeholder="Describe the service, materials, and scope for the quote."
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Calculated total</label>
+                <input
+                  className="admin-input"
+                  value={formatCurrency(projectQuote.total)}
+                  disabled
+                  readOnly
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Quote subtotal</label>
+                <input
+                  className="admin-input"
+                  value={formatCurrency(projectQuote.subtotal)}
+                  disabled
+                  readOnly
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">GST amount</label>
+                <input
+                  className="admin-input"
+                  value={formatCurrency(projectQuote.gstAmount)}
+                  disabled
+                  readOnly
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Deposit amount</label>
+                <input
+                  className="admin-input"
+                  value={formatCurrency(projectQuote.depositAmount)}
+                  disabled
+                  readOnly
+                />
               </div>
             </div>
 
@@ -427,7 +704,7 @@ export default function AdminProjectsPage() {
                 type="submit"
                 disabled={clientsLoading || !projectForm.clientId}
               >
-                Create project
+                Create project and quotation
               </button>
               <button
                 className="admin-btn admin-btn--ghost"
@@ -438,6 +715,89 @@ export default function AdminProjectsPage() {
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {selectedProject ? (
+        <div className="admin-modal" role="dialog" aria-modal="true">
+          <button
+            className="admin-modal__backdrop"
+            type="button"
+            aria-label="Close project details"
+            onClick={() => setSelectedProject(null)}
+          />
+          <div className="admin-modal__content">
+            <div className="admin-modal__header">
+              <div>
+                <h2 className="admin-title">{selectedProject.client}</h2>
+                <p className="admin-subtitle">
+                  {selectedProject.service}
+                  {selectedProject.address ? ` - ${selectedProject.address}` : ""}
+                </p>
+              </div>
+              <button
+                className="admin-btn admin-btn--ghost admin-btn--small"
+                type="button"
+                onClick={() => setSelectedProject(null)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="admin-form">
+              <div className="admin-field">
+                <span className="admin-label">Project ID</span>
+                <div className="admin-muted">{selectedProject.id}</div>
+              </div>
+              <div className="admin-field">
+                <span className="admin-label">Payment status</span>
+                <span className={PAYMENT_CLASS[selectedProject.paymentStatus]}>
+                  {selectedProject.paymentStatus}
+                </span>
+              </div>
+              <div className="admin-field">
+                <span className="admin-label">Start date</span>
+                <div className="admin-muted">{selectedProject.startDate || "Not set"}</div>
+              </div>
+              <div className="admin-field">
+                <span className="admin-label">Estimated completion</span>
+                <div className="admin-muted">
+                  {selectedProject.estimatedCompletionDate || "Not set"}
+                </div>
+              </div>
+              <div className="admin-field">
+                <span className="admin-label">Total cost</span>
+                <div className="admin-muted">
+                  ${Number(selectedProject.totalCost || 0).toFixed(2)}
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-modal__actions">
+              <Link
+                className="admin-btn admin-btn--primary"
+                href={`/dashboard/projects/${selectedProject.id}`}
+              >
+                Open project page
+              </Link>
+              {selectedProject.quoteData ? (
+                <Link
+                  className="admin-btn admin-btn--ghost"
+                  href={`/dashboard/projects/${selectedProject.id}/quote`}
+                  target="_blank"
+                >
+                  View quotation
+                </Link>
+              ) : null}
+              <button
+                className="admin-btn admin-btn--ghost"
+                type="button"
+                onClick={() => setSelectedProject(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </AdminLayout>

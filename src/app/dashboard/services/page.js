@@ -55,7 +55,17 @@ const SERVICES = [
 
 // Admin UI for managing service cards/details.
 export default function AdminServicesPage() {
-  const [services, setServices] = useState(SERVICES);
+  const [services, setServices] = useState(() => {
+    if (typeof window === "undefined") return SERVICES;
+
+    try {
+      const stored = window.localStorage.getItem("admin_services");
+      const parsed = stored ? JSON.parse(stored) : null;
+      return Array.isArray(parsed) && parsed.length ? parsed : SERVICES;
+    } catch {
+      return SERVICES;
+    }
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -78,6 +88,12 @@ export default function AdminServicesPage() {
     () => services.filter((service) => service.active),
     [services]
   );
+
+  const serviceFormTotal = useMemo(() => {
+    const price = Number.parseFloat(formData.price || "0") || 0;
+    const quantity = Math.max(1, Number.parseInt(formData.quantity || "1", 10) || 1);
+    return (price * quantity).toFixed(2);
+  }, [formData.price, formData.quantity]);
 
   // Update whichever field changed in the service form.
   const handleFormChange = (event) => {
@@ -205,8 +221,9 @@ export default function AdminServicesPage() {
         <div className="admin-service-table">
           <div className="admin-service-row admin-service-row--head">
             <span>Name</span>
-            <span>Price</span>
+            <span>Price / Qty</span>
             <span>Quantity</span>
+            <span>Total</span>
           </div>
           {activeServices.map((service) => (
             <button
@@ -218,6 +235,13 @@ export default function AdminServicesPage() {
               <span className="admin-strong">{service.name}</span>
               <span className="admin-muted">${Number(service.price || 0).toFixed(2)}</span>
               <span className="admin-muted">{service.quantity}</span>
+              <span className="admin-muted">
+                $
+                {(
+                  (Number.parseFloat(service.price || "0") || 0) *
+                  (Math.max(1, Number.parseInt(service.quantity || "1", 10) || 1))
+                ).toFixed(2)}
+              </span>
             </button>
           ))}
         </div>
@@ -280,7 +304,7 @@ export default function AdminServicesPage() {
 
               <div className="admin-form__row admin-form__row--price admin-field--full">
                 <label className="admin-field">
-                  <span className="admin-label">Price ($)</span>
+                  <span className="admin-label">Price per quantity ($)</span>
                   <input
                     className="admin-input"
                     name="price"
@@ -304,6 +328,16 @@ export default function AdminServicesPage() {
                   />
                 </label>
               </div>
+
+              <label className="admin-field admin-field--full">
+                <span className="admin-label">Calculated total</span>
+                <input
+                  className="admin-input"
+                  value={`$${serviceFormTotal}`}
+                  disabled
+                  readOnly
+                />
+              </label>
 
               <label className="admin-field admin-field--full">
                 <span className="admin-label">Service duration</span>
