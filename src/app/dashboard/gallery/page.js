@@ -102,7 +102,7 @@ export default function AdminUploadPage() {
           multiple
           accept="image/*,video/*"
           onChange={handleUpload}
-          className="p-4 rounded-2xl text-white bg-[#477a40] active:scale-95 hover:scale-105 hover:cursor-pointer hover:border-2 hover:shadow-lg items-center text-center transition-transform"
+          className="p-4 rounded-2xl text-white bg-[#477a40] active:scale-95 hover:scale-105 hover:cursor-pointer hover:border-2 hover:shadow-lg items-center text-center"
         />
 
         <div className="upload-preview">
