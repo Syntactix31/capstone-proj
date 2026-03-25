@@ -2,8 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import AdminLayout from "../../../components/AdminLayout.js";
+import {
+  buildQuoteData,
+  DEFAULT_DEPOSIT_RATE,
+  DEFAULT_GST_RATE,
+  formatCurrency,
+  formatRateInputValue,
+  todayDateValue,
+} from "../../../lib/quotes.js";
 
 const PAYMENT_STATUSES = ["Unpaid", "Deposit Paid", "Fully Paid"];
 const PAYMENT_ENTRY_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
@@ -34,12 +42,25 @@ function normalizeServiceItem(project) {
 }
 
 function mapProjectToForm(project) {
+  const hasQuote = Boolean(project?.quoteData);
+  const quoteData = buildQuoteData(project?.quoteData || {}, {
+    unitPrice: project?.servicesIncluded?.[0]?.price || "0.00",
+    quantity: project?.servicesIncluded?.[0]?.quantity || "1",
+    description: project?.servicesIncluded?.[0]?.description || "",
+    sentDate: project?.quoteData?.sentDate || todayDateValue(),
+    gstRate: project?.quoteData?.gstRate || DEFAULT_GST_RATE,
+    depositRate: project?.quoteData?.depositRate || DEFAULT_DEPOSIT_RATE,
+  });
+
   return {
     address: project?.address || "",
     paymentStatus: project?.paymentStatus || "Unpaid",
     startDate: project?.startDate || "",
     estimatedCompletionDate: project?.estimatedCompletionDate || "",
+    completionDate: project?.completionDate || "",
     serviceItem: normalizeServiceItem(project),
+    hasQuote,
+    quoteData,
     payments: Array.isArray(project?.payments) ? project.payments : [],
     ownerNotes: project?.ownerNotes || "",
     estimatePdfUrl: project?.estimatePdfUrl || "",
@@ -58,6 +79,7 @@ function calculateServiceTotal(serviceItem) {
 
 export default function AdminProjectDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const projectId = params?.id;
 
   const [project, setProject] = useState(null);
@@ -66,6 +88,7 @@ export default function AdminProjectDetailPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [confirmAction, setConfirmAction] = useState(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
   const [paymentForm, setPaymentForm] = useState(() => createPaymentItem());
@@ -115,6 +138,16 @@ export default function AdminProjectDetailPage() {
     [formState.serviceItem]
   );
 
+  const quoteTotals = useMemo(
+    () =>
+      buildQuoteData(formState.quoteData, {
+        unitPrice: formState.serviceItem.price,
+        quantity: formState.serviceItem.quantity,
+        description: formState.serviceItem.description,
+      }),
+    [formState.quoteData, formState.serviceItem]
+  );
+
   const handleFieldChange = (event) => {
     const { name, value } = event.target;
     setSuccess("");
@@ -126,6 +159,15 @@ export default function AdminProjectDetailPage() {
     setFormState((prev) => ({
       ...prev,
       serviceItem: { ...prev.serviceItem, [field]: value },
+    }));
+  };
+
+  const handleQuoteChange = (event) => {
+    const { name, value } = event.target;
+    setSuccess("");
+    setFormState((prev) => ({
+      ...prev,
+      quoteData: { ...prev.quoteData, [name]: value },
     }));
   };
 
@@ -190,8 +232,7 @@ export default function AdminProjectDetailPage() {
     setPaymentForm(createPaymentItem());
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const saveProject = async ({ generateQuote = false } = {}) => {
     if (!projectId) return;
 
     setSaving(true);
@@ -207,13 +248,25 @@ export default function AdminProjectDetailPage() {
           paymentStatus: formState.paymentStatus,
           startDate: formState.startDate,
           estimatedCompletionDate: formState.estimatedCompletionDate,
-          totalCost: serviceTotal,
+          completionDate: formState.completionDate,
+          totalCost: quoteTotals.total,
           servicesIncluded: [
             {
               ...formState.serviceItem,
               total: serviceTotal,
             },
           ],
+          ...(formState.hasQuote || generateQuote
+            ? {
+                generateQuote,
+                quoteData: {
+                  ...formState.quoteData,
+                  unitPrice: formState.serviceItem.price,
+                  quantity: formState.serviceItem.quantity,
+                  description: formState.serviceItem.description,
+                },
+              }
+            : {}),
           payments: formState.payments,
           ownerNotes: formState.ownerNotes,
           estimatePdfUrl: formState.estimatePdfUrl,
@@ -229,10 +282,110 @@ export default function AdminProjectDetailPage() {
 
       setProject(data.project || null);
       setFormState(mapProjectToForm(data.project || null));
-      setSuccess("Project details saved.");
+      setSuccess(generateQuote ? "Quotation generated." : "Project details saved.");
     } catch (saveError) {
       console.error(saveError);
       setError("Failed to save project.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    await saveProject();
+  };
+
+  const handleGenerateQuote = async () => {
+    if ((Number.parseFloat(quoteTotals.total || "0") || 0) <= 0) {
+      setError("Set a unit price and quantity before generating a quotation.");
+      return;
+    }
+
+    await saveProject({ generateQuote: true });
+  };
+
+  const handleMarkCompleted = async () => {
+    if (!projectId) return;
+
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const res = await fetch(`/api/admin/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: formState.address,
+          paymentStatus: formState.paymentStatus,
+          startDate: formState.startDate,
+          estimatedCompletionDate: formState.estimatedCompletionDate,
+          completionDate: todayDateValue(),
+          totalCost: quoteTotals.total,
+          servicesIncluded: [
+            {
+              ...formState.serviceItem,
+              total: serviceTotal,
+            },
+          ],
+          ...(formState.hasQuote
+            ? {
+                quoteData: {
+                  ...formState.quoteData,
+                  unitPrice: formState.serviceItem.price,
+                  quantity: formState.serviceItem.quantity,
+                  description: formState.serviceItem.description,
+                },
+              }
+            : {}),
+          payments: formState.payments,
+          ownerNotes: formState.ownerNotes,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || "Failed to mark project as completed.");
+        return;
+      }
+
+      setProject(data.project || null);
+      setFormState(mapProjectToForm(data.project || null));
+      setSuccess("Project marked as completed.");
+      setConfirmAction(null);
+    } catch (actionError) {
+      console.error(actionError);
+      setError("Failed to mark project as completed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectId) return;
+
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const res = await fetch(`/api/admin/projects/${projectId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || "Failed to delete project.");
+        return;
+      }
+
+      setConfirmAction(null);
+      router.push("/dashboard/projects");
+      router.refresh();
+    } catch (actionError) {
+      console.error(actionError);
+      setError("Failed to delete project.");
     } finally {
       setSaving(false);
     }
@@ -251,11 +404,31 @@ export default function AdminProjectDetailPage() {
             {project ? `${project.client} - ${project.service}` : "Project details"}
           </h1>
           <p className="admin-subtitle">
-            Manage dates, the selected service line, payments, notes, and estimate PDF details.
+            Manage dates, the selected service line, quote settings, payments, notes, and estimate PDF details.
           </p>
           {error ? <p className="admin-error">{error}</p> : null}
           {success ? <p className="admin-success">{success}</p> : null}
         </div>
+        {!loading && project ? (
+          <div className="admin-hero-actions">
+            <button
+              className="admin-btn admin-btn--primary"
+              type="button"
+              onClick={() => setConfirmAction("complete")}
+              disabled={saving}
+            >
+              Mark completed
+            </button>
+            <button
+              className="admin-btn admin-btn--danger"
+              type="button"
+              onClick={() => setConfirmAction("delete")}
+              disabled={saving}
+            >
+              Delete
+            </button>
+          </div>
+        ) : null}
       </section>
 
       {loading ? (
@@ -327,7 +500,7 @@ export default function AdminProjectDetailPage() {
                 <span className="admin-label">Total cost</span>
                 <input
                   className="admin-input"
-                  value={`$${serviceTotal}`}
+                  value={formatCurrency(quoteTotals.total)}
                   disabled
                   readOnly
                 />
@@ -446,10 +619,68 @@ export default function AdminProjectDetailPage() {
 
           <section className="admin-card">
             <div className="admin-card-header">
-              <h2 className="admin-card-title">Notes and Estimate PDF</h2>
+              <h2 className="admin-card-title">Quote, Notes and Estimate PDF</h2>
             </div>
 
             <div className="admin-form">
+              <label className="admin-field">
+                <span className="admin-label">Quote number</span>
+                <input
+                  className="admin-input"
+                  name="quoteNumber"
+                  value={formState.quoteData.quoteNumber}
+                  onChange={handleQuoteChange}
+                />
+              </label>
+              <label className="admin-field">
+                <span className="admin-label">Sent date</span>
+                <input
+                  className="admin-input"
+                  type="date"
+                  name="sentDate"
+                  value={formState.quoteData.sentDate}
+                  onChange={handleQuoteChange}
+                />
+              </label>
+              <label className="admin-field">
+                <span className="admin-label">GST (%)</span>
+                <input
+                  className="admin-input"
+                  value={String(DEFAULT_GST_RATE * 100)}
+                  disabled
+                  readOnly
+                />
+              </label>
+              <label className="admin-field">
+                <span className="admin-label">Deposit required (%)</span>
+                <input
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  name="depositRate"
+                  value={formatRateInputValue(formState.quoteData.depositRate)}
+                  onChange={handleQuoteChange}
+                />
+              </label>
+              <label className="admin-field">
+                <span className="admin-label">Quote subtotal</span>
+                <input
+                  className="admin-input"
+                  value={formatCurrency(quoteTotals.subtotal)}
+                  disabled
+                  readOnly
+                />
+              </label>
+              <label className="admin-field">
+                <span className="admin-label">Quote total</span>
+                <input
+                  className="admin-input"
+                  value={formatCurrency(quoteTotals.total)}
+                  disabled
+                  readOnly
+                />
+              </label>
               <label className="admin-field admin-field--full">
                 <span className="admin-label">Owner notes (optional)</span>
                 <textarea
@@ -460,50 +691,39 @@ export default function AdminProjectDetailPage() {
                   onChange={handleFieldChange}
                 />
               </label>
-              <label className="admin-field">
-                <span className="admin-label">Estimate PDF name</span>
-                <input
-                  className="admin-input"
-                  name="estimatePdfName"
-                  value={formState.estimatePdfName}
-                  onChange={handleFieldChange}
-                  placeholder="project-estimate.pdf"
-                />
-              </label>
-              <label className="admin-field">
-                <span className="admin-label">Estimate PDF URL</span>
-                <input
-                  className="admin-input"
-                  type="url"
-                  name="estimatePdfUrl"
-                  value={formState.estimatePdfUrl}
-                  onChange={handleFieldChange}
-                  placeholder="https://..."
-                />
-              </label>
             </div>
 
-            {formState.estimatePdfUrl ? (
-              <div className="admin-modal__actions">
-                <a
-                  className="admin-btn admin-btn--ghost"
-                  href={formState.estimatePdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View current PDF
-                </a>
-              </div>
-            ) : null}
           </section>
 
           <div className="admin-modal__actions">
-            <button className="admin-btn admin-btn--primary" type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save project"}
-            </button>
-            <Link className="admin-btn admin-btn--ghost" href="/dashboard/projects">
-              Cancel
-            </Link>
+            <div className="admin-modal__actions-left">
+              {!formState.hasQuote ? (
+                <button
+                  className="admin-btn admin-btn--primary"
+                  type="button"
+                  onClick={handleGenerateQuote}
+                  disabled={saving}
+                >
+                  {saving ? "Generating..." : "Generate quotation"}
+                </button>
+              ) : (
+                <Link
+                  className="admin-btn admin-btn--primary"
+                  href={`/dashboard/projects/${projectId}/quote`}
+                  target="_blank"
+                >
+                  Open quotation
+                </Link>
+              )}
+            </div>
+            <div className="admin-modal__actions-right">
+              <button className="admin-btn admin-btn--primary" type="submit" disabled={saving}>
+                {saving ? "Saving..." : "Save project"}
+              </button>
+              <Link className="admin-btn admin-btn--ghost" href="/dashboard/projects">
+                Cancel
+              </Link>
+            </div>
           </div>
         </form>
       )}
@@ -611,6 +831,94 @@ export default function AdminProjectDetailPage() {
               </div>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {confirmAction ? (
+        <div className="admin-modal">
+          <button
+            className="admin-modal__backdrop"
+            onClick={() => setConfirmAction(null)}
+            aria-label="Close project action confirmation"
+            type="button"
+          />
+          <div className="admin-modal__content" role="dialog" aria-modal="true">
+            <div className="admin-modal__header">
+              <div>
+                <h2 className="admin-title">Are you sure?</h2>
+                <p className="admin-subtitle">
+                  {confirmAction === "complete"
+                    ? `This will mark ${project?.client || "this project"} as completed.`
+                    : confirmAction === "complete-blocked"
+                      ? "Payment status needs to be Fully Paid, and at least one payment must be recorded before marking this project as completed."
+                      : `This will permanently delete ${project?.client || "this project"}.`}
+                </p>
+              </div>
+              <button
+                className="admin-btn admin-btn--ghost admin-btn--small"
+                onClick={() => setConfirmAction(null)}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="admin-modal__actions">
+              <button
+                className={
+                  confirmAction === "delete"
+                    ? "admin-btn admin-btn--danger"
+                    : "admin-btn admin-btn--primary"
+                }
+                type="button"
+                onClick={() => {
+                  if (confirmAction === "delete") {
+                    handleDeleteProject();
+                    return;
+                  }
+
+                  if (
+                    confirmAction === "complete" &&
+                    (
+                      formState.paymentStatus !== "Fully Paid" ||
+                      formState.payments.length < 1
+                    )
+                  ) {
+                    setConfirmAction("complete-blocked");
+                    return;
+                  }
+
+                  if (confirmAction === "complete-blocked") {
+                    setConfirmAction(null);
+                    return;
+                  }
+
+                  handleMarkCompleted();
+                }}
+                disabled={saving}
+              >
+                {confirmAction === "delete"
+                  ? saving
+                    ? "Deleting..."
+                    : "Yes, delete it"
+                  : confirmAction === "complete-blocked"
+                    ? "Close"
+                  : saving
+                    ? "Marking..."
+                    : "Yes, continue"}
+              </button>
+              {confirmAction !== "complete-blocked" ? (
+                <button
+                  className="admin-btn admin-btn--ghost"
+                  type="button"
+                  onClick={() => setConfirmAction(null)}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          </div>
         </div>
       ) : null}
     </AdminLayout>

@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminLayout from "../../components/AdminLayout.js";
+import {
+  buildQuoteData,
+  DEFAULT_DEPOSIT_RATE,
+  DEFAULT_GST_RATE,
+  formatCurrency,
+  todayDateValue,
+} from "../../lib/quotes.js";
 
 const PAYMENT_STATUSES = ["Unpaid", "Deposit Paid", "Fully Paid"];
 const DEFAULT_SERVICES = [
@@ -63,6 +70,20 @@ function formatVisitLabel(project) {
   return rawDate.includes("T") ? rawDate.split("T")[0] : rawDate;
 }
 
+function createProjectForm(service) {
+  return {
+    clientId: "",
+    service: service?.name || DEFAULT_SERVICES[0].name,
+    priceMode: "default",
+    unitPrice: String(service?.price || "0.00"),
+    quantity: "1",
+    description: service?.description || "",
+    quoteSentDate: todayDateValue(),
+    gstRate: String(DEFAULT_GST_RATE * 100),
+    depositRate: String(DEFAULT_DEPOSIT_RATE * 100),
+  };
+}
+
 export default function AdminProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
@@ -85,11 +106,9 @@ export default function AdminProjectsPage() {
   const [serviceFilter, setServiceFilter] = useState("All");
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
-  const [projectForm, setProjectForm] = useState({
-    clientId: "",
-    service: DEFAULT_SERVICES[0].name,
-    quantity: "1",
-  });
+  const [projectForm, setProjectForm] = useState(() =>
+    createProjectForm(DEFAULT_SERVICES[0])
+  );
 
   useEffect(() => {
     let active = true;
@@ -208,10 +227,29 @@ export default function AdminProjectsPage() {
     [projectForm.quantity]
   );
 
-  const projectTotal = useMemo(() => {
-    const unitPrice = Number.parseFloat(selectedService?.price || "0") || 0;
-    return (unitPrice * projectQuantity).toFixed(2);
-  }, [projectQuantity, selectedService]);
+  const projectQuote = useMemo(
+    () =>
+      buildQuoteData({
+        priceMode: projectForm.priceMode,
+        unitPrice: projectForm.unitPrice,
+        quantity: projectForm.quantity,
+        description: projectForm.description,
+        sentDate: projectForm.quoteSentDate,
+        gstRate: projectForm.gstRate,
+        depositRate: projectForm.depositRate,
+      }),
+    [
+      projectForm.depositRate,
+      projectForm.description,
+      projectForm.gstRate,
+      projectForm.priceMode,
+      projectForm.quantity,
+      projectForm.quoteSentDate,
+      projectForm.unitPrice,
+    ]
+  );
+
+  const projectTotal = projectQuote.total;
 
   const stats = useMemo(() => {
     return {
@@ -222,10 +260,10 @@ export default function AdminProjectsPage() {
   }, [projects]);
 
   const openProjectModal = () => {
+    const defaultService = availableServices[0] || DEFAULT_SERVICES[0];
     setProjectForm({
+      ...createProjectForm(defaultService),
       clientId: sortedClients[0]?.id || "",
-      service: availableServices[0]?.name || DEFAULT_SERVICES[0].name,
-      quantity: "1",
     });
     setIsProjectModalOpen(true);
   };
@@ -236,6 +274,36 @@ export default function AdminProjectsPage() {
 
   const handleProjectFormChange = (event) => {
     const { name, value } = event.target;
+    if (name === "service") {
+      const nextService =
+        availableServices.find((service) => service.name === value) || null;
+      setProjectForm((prev) => ({
+        ...prev,
+        service: value,
+        unitPrice:
+          prev.priceMode === "default"
+            ? String(nextService?.price || "0.00")
+            : prev.unitPrice,
+        description:
+          !prev.description || prev.description === selectedService?.description
+            ? nextService?.description || ""
+            : prev.description,
+      }));
+      return;
+    }
+
+    if (name === "priceMode") {
+      setProjectForm((prev) => ({
+        ...prev,
+        priceMode: value,
+        unitPrice:
+          value === "default"
+            ? String(selectedService?.price || "0.00")
+            : prev.unitPrice,
+      }));
+      return;
+    }
+
     setProjectForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -258,12 +326,13 @@ export default function AdminProjectsPage() {
             {
               id: selectedService?.id || "service-1",
               name: projectForm.service,
-              description: selectedService?.description || "",
-              price: String(selectedService?.price || "0.00"),
+              description: projectForm.description,
+              price: projectQuote.unitPrice,
               quantity: String(projectQuantity),
-              total: projectTotal,
+              total: projectQuote.subtotal,
             },
           ],
+          quoteData: projectQuote,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -415,7 +484,9 @@ export default function AdminProjectsPage() {
             <div className="admin-modal__header">
               <div>
                 <h2 className="admin-title">New project</h2>
-                <p className="admin-subtitle">Select a client first, then choose the included service.</p>
+                <p className="admin-subtitle">
+                  Build the service line, quote pricing, and recipient details before creating the project.
+                </p>
               </div>
               <button
                 className="admin-btn admin-btn--ghost admin-btn--small"
@@ -491,10 +562,136 @@ export default function AdminProjectsPage() {
               </div>
 
               <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-price-mode">
+                  Pricing mode
+                </label>
+                <select
+                  id="project-price-mode"
+                  name="priceMode"
+                  className="admin-input"
+                  value={projectForm.priceMode}
+                  onChange={handleProjectFormChange}
+                >
+                  <option value="default">Use default service price</option>
+                  <option value="custom">Use custom unit price</option>
+                </select>
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-unit-price">
+                  Unit price ($)
+                </label>
+                <input
+                  id="project-unit-price"
+                  name="unitPrice"
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={projectForm.unitPrice}
+                  onChange={handleProjectFormChange}
+                  disabled={projectForm.priceMode === "default"}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-quote-sent-date">
+                  Quote sent date
+                </label>
+                <input
+                  id="project-quote-sent-date"
+                  name="quoteSentDate"
+                  className="admin-input"
+                  type="date"
+                  value={projectForm.quoteSentDate}
+                  onChange={handleProjectFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-gst-rate">
+                  GST (%)
+                </label>
+                <input
+                  id="project-gst-rate"
+                  name="gstRate"
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={projectForm.gstRate}
+                  onChange={handleProjectFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-deposit-rate">
+                  Deposit required (%)
+                </label>
+                <input
+                  id="project-deposit-rate"
+                  name="depositRate"
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={projectForm.depositRate}
+                  onChange={handleProjectFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="project-description">
+                  Service description
+                </label>
+                <textarea
+                  id="project-description"
+                  name="description"
+                  className="admin-textarea"
+                  rows={5}
+                  value={projectForm.description}
+                  onChange={handleProjectFormChange}
+                  placeholder="Describe the service, materials, and scope for the quote."
+                />
+              </div>
+
+              <div className="admin-modal__full">
                 <label className="admin-label">Calculated total</label>
                 <input
                   className="admin-input"
-                  value={`$${projectTotal}`}
+                  value={formatCurrency(projectQuote.total)}
+                  disabled
+                  readOnly
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Quote subtotal</label>
+                <input
+                  className="admin-input"
+                  value={formatCurrency(projectQuote.subtotal)}
+                  disabled
+                  readOnly
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">GST amount</label>
+                <input
+                  className="admin-input"
+                  value={formatCurrency(projectQuote.gstAmount)}
+                  disabled
+                  readOnly
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Deposit amount</label>
+                <input
+                  className="admin-input"
+                  value={formatCurrency(projectQuote.depositAmount)}
                   disabled
                   readOnly
                 />
@@ -507,7 +704,7 @@ export default function AdminProjectsPage() {
                 type="submit"
                 disabled={clientsLoading || !projectForm.clientId}
               >
-                Create project
+                Create project and quotation
               </button>
               <button
                 className="admin-btn admin-btn--ghost"
@@ -583,6 +780,15 @@ export default function AdminProjectsPage() {
               >
                 Open project page
               </Link>
+              {selectedProject.quoteData ? (
+                <Link
+                  className="admin-btn admin-btn--ghost"
+                  href={`/dashboard/projects/${selectedProject.id}/quote`}
+                  target="_blank"
+                >
+                  View quotation
+                </Link>
+              ) : null}
               <button
                 className="admin-btn admin-btn--ghost"
                 type="button"

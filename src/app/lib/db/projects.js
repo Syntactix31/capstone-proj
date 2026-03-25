@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ensureDatabaseSchema } from "./schema.js";
 import { getSql } from "./client.js";
+import { buildQuoteData } from "../quotes.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -14,6 +15,17 @@ function parseJsonArray(value) {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+}
+
+function parseJsonObject(value) {
+  if (!value) return {};
+
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
   }
 }
 
@@ -32,11 +44,12 @@ function normalizeServiceLineItems(items, fallbackService = "") {
     .map((item, index) => {
       const price = normalizeMoney(item?.price ?? item?.amount);
       const quantity = normalizeQuantity(item?.quantity);
+      const rawPrice = String(item?.price ?? item?.amount ?? "").trim();
       return {
         id: String(item?.id || `service-${index + 1}`),
         name: String(item?.name || fallbackService || "").trim(),
         description: String(item?.description || "").trim(),
-        price: price.toFixed(2),
+        price: rawPrice || price.toFixed(2),
         quantity: String(quantity),
         total: (price * quantity).toFixed(2),
       };
@@ -75,9 +88,18 @@ function mapProjectRow(row) {
     parseJsonArray(row.services_included),
     row.service
   );
+  const primaryServiceLine = servicesIncluded[0] || null;
   const totalCost =
     normalizeMoney(row.total_cost) ||
     servicesIncluded.reduce((sum, item) => sum + normalizeMoney(item.total), 0);
+  const rawQuoteData = parseJsonObject(row.quote_data);
+  const quoteData = Object.keys(rawQuoteData).length
+    ? buildQuoteData(rawQuoteData, {
+        unitPrice: primaryServiceLine?.price || totalCost,
+        quantity: primaryServiceLine?.quantity || "1",
+        description: primaryServiceLine?.description || "",
+      })
+    : null;
 
   return {
     id: row.id,
@@ -91,6 +113,7 @@ function mapProjectRow(row) {
     completionDate: row.completion_date || null,
     totalCost,
     servicesIncluded,
+    quoteData,
     payments: normalizePayments(parseJsonArray(row.payments)),
     ownerNotes: row.owner_notes || "",
     estimatePdfUrl: row.estimate_pdf_url || "",
@@ -116,6 +139,7 @@ export async function syncProjectsFromBookings() {
     FROM bookings b
     LEFT JOIN client_properties p ON p.id = b.property_id
     WHERE b.project_id IS NULL
+      AND b.project_sync_disabled = false
     ORDER BY b.created_at ASC
   `;
 
@@ -238,14 +262,28 @@ export async function createProject({
   paymentStatus = "Unpaid",
   totalCost = 0,
   servicesIncluded = [],
+  quoteData = {},
+  generateQuote = true,
 }) {
   await ensureDatabaseSchema();
   const sql = getSql();
   const timestamp = nowIso();
   const normalizedServicesIncluded = normalizeServiceLineItems(servicesIncluded, service);
+  const primaryServiceLine = normalizedServicesIncluded[0] || null;
   const normalizedTotalCost =
     normalizeMoney(totalCost) ||
     normalizedServicesIncluded.reduce((sum, item) => sum + normalizeMoney(item.total), 0);
+  let normalizedQuoteData = {};
+  if (generateQuote) {
+    const countRows = await sql`SELECT COUNT(*)::int AS count FROM projects`;
+    const nextQuoteNumber = String((countRows[0]?.count || 0) + 1);
+    normalizedQuoteData = buildQuoteData(quoteData, {
+      quoteNumber: nextQuoteNumber,
+      unitPrice: primaryServiceLine?.price || normalizedTotalCost,
+      quantity: primaryServiceLine?.quantity || "1",
+      description: primaryServiceLine?.description || "",
+    });
+  }
 
   const [row] = await sql`
     INSERT INTO projects (
@@ -256,6 +294,7 @@ export async function createProject({
       payment_status,
       total_cost,
       services_included,
+      quote_data,
       created_at,
       updated_at
     )
@@ -267,6 +306,7 @@ export async function createProject({
       ${String(paymentStatus || "Unpaid")},
       ${normalizedTotalCost},
       ${JSON.stringify(normalizedServicesIncluded)},
+      ${JSON.stringify(normalizedQuoteData)},
       ${timestamp},
       ${timestamp}
     )
@@ -274,6 +314,10 @@ export async function createProject({
     SET
       total_cost = EXCLUDED.total_cost,
       services_included = EXCLUDED.services_included,
+      quote_data = CASE
+        WHEN EXCLUDED.quote_data = '{}' THEN projects.quote_data
+        ELSE EXCLUDED.quote_data
+      END,
       updated_at = EXCLUDED.updated_at
     RETURNING id
   `;
@@ -289,8 +333,10 @@ export async function updateProject(
     paymentStatus,
     startDate,
     estimatedCompletionDate,
+    completionDate,
     totalCost,
     servicesIncluded,
+    quoteData,
     payments,
     ownerNotes,
     estimatePdfUrl,
@@ -303,9 +349,18 @@ export async function updateProject(
 
   const normalizedServicesIncluded = normalizeServiceLineItems(servicesIncluded, service);
   const normalizedPayments = normalizePayments(payments);
+  const primaryServiceLine = normalizedServicesIncluded[0] || null;
   const normalizedTotalCost =
     normalizeMoney(totalCost) ||
     normalizedServicesIncluded.reduce((sum, item) => sum + normalizeMoney(item.total), 0);
+  const shouldUpdateQuoteData = quoteData !== undefined;
+  const normalizedQuoteData = shouldUpdateQuoteData
+    ? buildQuoteData(quoteData, {
+        unitPrice: primaryServiceLine?.price || normalizedTotalCost,
+        quantity: primaryServiceLine?.quantity || "1",
+        description: primaryServiceLine?.description || "",
+      })
+    : null;
 
   const rows = await sql`
     UPDATE projects
@@ -315,8 +370,13 @@ export async function updateProject(
       payment_status = ${String(paymentStatus || "Unpaid")},
       start_date = ${startDate ? String(startDate) : null},
       estimated_completion_date = ${estimatedCompletionDate ? String(estimatedCompletionDate) : null},
+      completion_date = ${completionDate ? String(completionDate) : null},
       total_cost = ${normalizedTotalCost},
       services_included = ${JSON.stringify(normalizedServicesIncluded)},
+      quote_data = CASE
+        WHEN ${shouldUpdateQuoteData} THEN ${JSON.stringify(normalizedQuoteData)}
+        ELSE quote_data
+      END,
       payments = ${JSON.stringify(normalizedPayments)},
       owner_notes = ${String(ownerNotes || "")},
       estimate_pdf_url = ${estimatePdfUrl ? String(estimatePdfUrl) : null},
@@ -327,4 +387,23 @@ export async function updateProject(
   `;
 
   return rows[0] ? findProjectById(rows[0].id) : null;
+}
+
+export async function deleteProject(id) {
+  await ensureDatabaseSchema();
+  const sql = getSql();
+
+  await sql`
+    UPDATE bookings
+    SET project_sync_disabled = true
+    WHERE project_id = ${id}
+  `;
+
+  const rows = await sql`
+    DELETE FROM projects
+    WHERE id = ${id}
+    RETURNING id
+  `;
+
+  return Boolean(rows[0]?.id);
 }

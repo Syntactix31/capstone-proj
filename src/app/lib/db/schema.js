@@ -67,6 +67,7 @@ export async function ensureDatabaseSchema() {
           total_cost numeric NOT NULL DEFAULT 0,
           services_included text NOT NULL DEFAULT '[]',
           payments text NOT NULL DEFAULT '[]',
+          quote_data text NOT NULL DEFAULT '{}',
           owner_notes text NOT NULL DEFAULT '',
           estimate_pdf_url text,
           estimate_pdf_name text,
@@ -103,6 +104,11 @@ export async function ensureDatabaseSchema() {
       await sql`
         ALTER TABLE projects
         ADD COLUMN IF NOT EXISTS payments text NOT NULL DEFAULT '[]'
+      `;
+
+      await sql`
+        ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS quote_data text NOT NULL DEFAULT '{}'
       `;
 
       await sql`
@@ -153,6 +159,11 @@ export async function ensureDatabaseSchema() {
       await sql`
         ALTER TABLE bookings
         ADD COLUMN IF NOT EXISTS visit_type text NOT NULL DEFAULT 'Estimate'
+      `;
+
+      await sql`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS project_sync_disabled boolean NOT NULL DEFAULT false
       `;
 
       await sql`

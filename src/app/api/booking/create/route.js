@@ -424,6 +424,7 @@ export async function POST(req) {
           clientId: client.id,
           service,
           address: address || property?.address || client.address || "",
+          generateQuote: false,
         });
       }
     }
