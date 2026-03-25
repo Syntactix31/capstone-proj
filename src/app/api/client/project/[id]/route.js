@@ -6,16 +6,23 @@ import { normalizeEmail } from "../../../../lib/db/users";
 
 const EDMONTON_TIME_ZONE = "America/Edmonton";
 
+// function formatDateOnly(dateValue) {
+//   if (!dateValue) return "-";
+//   const date = new Date(`${dateValue}`);
+//   if (Number.isNaN(date.getTime())) return "-";
+//   return date.toLocaleDateString("en-CA", {
+//     timeZone: EDMONTON_TIME_ZONE,
+//     year: "numeric",
+//     month: "2-digit",
+//     day: "2-digit",
+//   });
+// }
+
 function formatDateOnly(dateValue) {
   if (!dateValue) return "-";
-  const date = new Date(`${dateValue}T12:00:00-07:00`);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("en-CA", {
-    timeZone: EDMONTON_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
+  const s = String(dateValue).trim();
+  // Take only the first 10 characters (e.g., "2025-03-20")
+  return s.slice(0, 10);
 }
 
 export async function GET(req, { params }) {
@@ -64,12 +71,16 @@ export async function GET(req, { params }) {
     const project = {
       ...projectRow,
       startDate: formatDateOnly(projectRow.startdate),
+      estimatedCompletionDate: formatDateOnly(projectRow.projectedCompletion),
       services: JSON.parse(projectRow.servicesincluded || '[]'),
       payments: JSON.parse(projectRow.payments || '[]'),
-      totalPaid: JSON.parse(projectRow.payments || '[]').reduce((sum, p) => sum + Number(p.amount || 0), 0),
-      ownerNotes: projectRow.ownernotes,          
+      totalPaid: JSON.parse(projectRow.payments || '[]').reduce(
+        (sum, p) => sum + Number(p.amount || 0),
+        0
+      ),
+      ownerNotes: projectRow.ownernotes,
       notesUpdatedAt: formatDateOnly(projectRow.notesUpdatedAt),
-      estimatePdfUrl: projectRow.estimatePdfUrl   
+      estimatePdfUrl: projectRow.estimatePdfUrl
     };
 
     return NextResponse.json({ project });
