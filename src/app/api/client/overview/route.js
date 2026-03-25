@@ -3,6 +3,7 @@ import { getRequestUser } from "../../../lib/auth/server";
 import { getSql } from "../../../lib/db/client";
 import { ensureDatabaseSchema } from "../../../lib/db/schema";
 import { normalizeEmail } from "../../../lib/db/users";
+import { listProjectPayments } from "../../../lib/db/projects";
 
 const EDMONTON_TIME_ZONE = "America/Edmonton";
 
@@ -77,7 +78,9 @@ export async function GET(req) {
       status: b.status === 'confirmed' ? 'Active' : b.status === 'cancelled' ? 'Cancelled' : 'Pending'
     }));
 
-    const payments = [];
+    const payments = (await listProjectPayments({ clientId: client.id }))
+      .filter((payment) => payment.status === "Paid")
+      .slice(0, 5);
 
     console.log(`Overview for ${user.email}: ${estimates.length} estimates, ${projects.length} projects`);
 
