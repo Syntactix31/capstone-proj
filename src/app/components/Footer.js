@@ -14,13 +14,13 @@ export default function Footer() {
             <div className="space-y-2 text-sm md:text-base">
               <a 
                 href="mailto:landscapecraftsmen@yahoo.com" 
-                className="block hover:text-[#F4A261] transition-colors duration-200 font-medium"
+                className="block hover:text-[#477a40] transition-colors duration-200 font-medium"
               >
                 landscapecraftsmen@yahoo.com
               </a>
               <a 
                 href="tel:+15874386672" 
-                className="block hover:text-[#F4A261] transition-colors duration-200 font-medium"
+                className="block hover:text-[#477a40] transition-colors duration-200 font-medium"
               >
                 (587) 438-6672
               </a>
@@ -31,16 +31,16 @@ export default function Footer() {
           <nav className="hidden md:block text-center">
             <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <div className="flex flex-col space-y-2 text-sm">
-              <Link href="/services" className="hover:text-[#F4A261] transition-colors duration-200">
+              <Link href="/services" className="hover:text-[#477a40] transition-colors duration-200">
                 Services
               </Link>
-              <Link href="/quote" className="hover:text-[#F4A261] transition-colors duration-200">
+              <Link href="/quote" className="hover:text-[#477a40] transition-colors duration-200">
                 Get Quote
               </Link>
-              <Link href="/about" className="hover:text-[#F4A261] transition-colors duration-200">
+              <Link href="/about" className="hover:text-[#477a40] transition-colors duration-200">
                 About Us
               </Link>
-              <Link href="/contact" className="hover:text-[#F4A261] transition-colors duration-200">
+              <Link href="/contact" className="hover:text-[#477a40] transition-colors duration-200">
                 Contact
               </Link>
             </div>
@@ -83,16 +83,16 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-8 border-t border-[#31270C]/20">
           
           <nav className="flex flex-wrap justify-center gap-4 text-sm md:hidden">
-            <Link href="/services" className="hover:text-[#F4A261] transition-colors duration-200 font-medium">
+            <Link href="/services" className="hover:text-[#477a40] transition-colors duration-200 font-medium">
               Services
             </Link>
-            <Link href="/quote" className="hover:text-[#F4A261] transition-colors duration-200 font-medium">
+            <Link href="/quote" className="hover:text-[#477a40] transition-colors duration-200 font-medium">
               Get Quote
             </Link>
-            <Link href="/about" className="hover:text-[#F4A261] transition-colors duration-200 font-medium">
+            <Link href="/about" className="hover:text-[#477a40] transition-colors duration-200 font-medium">
               About Us
             </Link>
-            <Link href="/contact" className="hover:text-[#F4A261] transition-colors duration-200 font-medium">
+            <Link href="/contact" className="hover:text-[#477a40] transition-colors duration-200 font-medium">
               Contact
             </Link>
           </nav>
