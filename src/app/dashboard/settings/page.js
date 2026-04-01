@@ -7,7 +7,6 @@ export default function AdminSettingsPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,7 +33,6 @@ export default function AdminSettingsPage() {
         setFormData({
           name: userData.user.name || "",
           email: userData.user.email || "",
-          phone: "",
         });
       } catch (loadError) {
         console.error(loadError);
@@ -81,7 +79,6 @@ export default function AdminSettingsPage() {
         ...prev,
         name: data?.user?.name || prev.name,
         email: data?.user?.email || prev.email,
-        phone: data?.phone ?? prev.phone,
       }));
       setSuccess("Profile updated successfully.");
     } catch (saveError) {
@@ -136,20 +133,6 @@ export default function AdminSettingsPage() {
                 disabled={saving}
               />
             </label>
-
-            <label className="admin-field admin-field--full">
-              <span className="admin-label">Phone</span>
-              <input
-                className="admin-input"
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="1234567890"
-                disabled={saving}
-              />
-            </label>
-
             <div className="admin-modal__actions admin-field--full">
               <div className="admin-modal__actions-right">
                 <button

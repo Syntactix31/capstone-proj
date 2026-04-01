@@ -89,6 +89,43 @@ function paymentSortKey(entry) {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+function invoiceSortKey(entry) {
+  const candidate = entry?.issuedOn || entry?.completionDate || "";
+  const timestamp = candidate ? new Date(candidate).getTime() : 0;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function createInvoiceId(projectId) {
+  const compact = String(projectId || "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(-8)
+    .toUpperCase();
+  return `INV-${compact || "PROJECT"}`;
+}
+
+function buildProjectInvoice(project) {
+  if (!project?.completionDate) return null;
+
+  const status = project.paymentStatus === "Fully Paid" ? "Paid" : "Open";
+  const issuedOn = project.completionDate;
+  const dueOn = project.completionDate;
+
+  return {
+    id: createInvoiceId(project.id),
+    projectId: project.id,
+    client: String(project.client || "").trim(),
+    project: String(project.service || "Project").trim() || "Project",
+    issuedOn,
+    dueOn,
+    completionDate: project.completionDate,
+    amount: normalizeMoney(project.totalCost).toFixed(2),
+    status,
+    address: String(project.address || "").trim(),
+    paymentStatus: String(project.paymentStatus || "Unpaid").trim() || "Unpaid",
+    servicesIncluded: Array.isArray(project.servicesIncluded) ? project.servicesIncluded : [],
+  };
+}
+
 function buildPaymentLedgerEntries(project, { includeRequired = true } = {}) {
   const totalCost = normalizeMoney(project?.totalCost);
   const projectName = String(project?.service || "Project").trim() || "Project";
@@ -339,6 +376,25 @@ export async function listProjectPayments({ clientId, limit, includeRequired = t
   }
 
   return payments;
+}
+
+export async function listProjectInvoices({ clientId, limit } = {}) {
+  const projects = await listProjects(clientId ? { clientId } : {});
+  const invoices = projects
+    .map(buildProjectInvoice)
+    .filter(Boolean)
+    .sort((a, b) => invoiceSortKey(b) - invoiceSortKey(a));
+
+  if (Number.isFinite(limit) && limit > 0) {
+    return invoices.slice(0, limit);
+  }
+
+  return invoices;
+}
+
+export async function findProjectInvoiceById(invoiceId) {
+  const invoices = await listProjectInvoices();
+  return invoices.find((invoice) => invoice.id === invoiceId) || null;
 }
 
 export async function createProject({

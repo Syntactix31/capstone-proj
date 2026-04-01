@@ -1,52 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import AdminLayout from "../../components/AdminLayout.js";
 
-const INITIAL_INVOICES = [
-  {
-    id: "INV-1001",
-    client: "Jordan Lee",
-    service: "Fence Installation",
-    issuedOn: "2026-03-01",
-    dueOn: "2026-03-15",
-    amount: 4200,
-    status: "Sent",
-  },
-  {
-    id: "INV-1002",
-    client: "Avery Chen",
-    service: "Deck & Railing",
-    issuedOn: "2026-02-20",
-    dueOn: "2026-03-06",
-    amount: 6350,
-    status: "Paid",
-  },
-  {
-    id: "INV-1003",
-    client: "Taylor Singh",
-    service: "Pergola",
-    issuedOn: "2026-02-12",
-    dueOn: "2026-02-26",
-    amount: 3900,
-    status: "Overdue",
-  },
-  {
-    id: "INV-1004",
-    client: "Morgan Patel",
-    service: "Fence Repair",
-    issuedOn: "2026-03-03",
-    dueOn: "2026-03-18",
-    amount: 1650,
-    status: "Draft",
-  },
-];
-
 const STATUS_CLASS = {
-  Draft: "admin-badge admin-badge--muted",
-  Sent: "admin-badge admin-badge--pending",
+  Open: "admin-badge admin-badge--pending",
   Paid: "admin-badge admin-badge--active",
-  Overdue: "admin-badge admin-badge--pending",
 };
 
 function formatMoney(value) {
@@ -54,18 +14,67 @@ function formatMoney(value) {
     style: "currency",
     currency: "CAD",
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(Number(value) || 0);
 }
 
 export default function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState("All");
-  const [invoices] = useState(INITIAL_INVOICES);
+  const [query, setQuery] = useState("");
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadInvoices() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const res = await fetch("/api/admin/invoices", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+
+        if (!res.ok) {
+          setInvoices([]);
+          setError(data?.error || "Failed to load invoices.");
+          return;
+        }
+
+        setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
+      } catch (loadError) {
+        console.error(loadError);
+        if (!active) return;
+        setInvoices([]);
+        setError("Failed to load invoices.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadInvoices();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredInvoices = useMemo(() => {
-    return invoices.filter(
-      (invoice) => statusFilter === "All" || invoice.status === statusFilter
-    );
-  }, [invoices, statusFilter]);
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return invoices.filter((invoice) => {
+      const matchesStatus = statusFilter === "All" || invoice.status === statusFilter;
+
+      if (!normalizedQuery) return matchesStatus;
+
+      const matchesQuery =
+        String(invoice.client || "").toLowerCase().includes(normalizedQuery) ||
+        String(invoice.id || "").toLowerCase().includes(normalizedQuery) ||
+        String(invoice.project || "").toLowerCase().includes(normalizedQuery);
+
+      return matchesStatus && matchesQuery;
+    });
+  }, [invoices, query, statusFilter]);
 
   return (
     <AdminLayout>
@@ -73,8 +82,9 @@ export default function InvoicesPage() {
         <div>
           <h1 className="admin-title">Invoices</h1>
           <p className="admin-subtitle">
-            Track invoice status, issue dates, due dates, and amounts in one list.
+            Open, download, and track invoices generated from completed projects.
           </p>
+          {error ? <p className="admin-muted">{error}</p> : null}
         </div>
       </section>
 
@@ -83,7 +93,19 @@ export default function InvoicesPage() {
           <h2 className="admin-card-title">Invoice list</h2>
         </div>
 
-        <div className="admin-actions admin-projects-controls admin-invoices-controls">
+        <div className="admin-actions admin-projects-controls">
+          <div className="admin-projects-control admin-projects-control--search">
+            <input
+              id="invoices-search"
+              className="admin-input"
+              type="search"
+              placeholder="Search invoices..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label="Search invoices"
+            />
+          </div>
+
           <div className="admin-projects-control">
             <label className="admin-projects-control-label" htmlFor="invoices-status-filter">
               Status
@@ -96,44 +118,59 @@ export default function InvoicesPage() {
               aria-label="Filter invoice status"
             >
               <option value="All">All</option>
-              <option value="Draft">Draft</option>
-              <option value="Sent">Sent</option>
-              <option value="Overdue">Overdue</option>
+              <option value="Open">Open</option>
               <option value="Paid">Paid</option>
             </select>
           </div>
         </div>
 
-        <div className="admin-table admin-invoices-table">
-          <div className="admin-table-row admin-table-head admin-invoices-table-row">
-            <div>Invoice</div>
-            <div>Client</div>
-            <div>Service</div>
-            <div>Issued / Due</div>
-            <div>Amount</div>
-            <div>Status</div>
-          </div>
-
-          {filteredInvoices.map((invoice) => (
-            <div className="admin-table-row admin-invoices-table-row" key={invoice.id}>
-              <div className="admin-strong">{invoice.id}</div>
-              <div>{invoice.client}</div>
-              <div>{invoice.service}</div>
-              <div>
-                <div>{invoice.issuedOn}</div>
-                <div className="admin-muted">Due {invoice.dueOn}</div>
-              </div>
-              <div>{formatMoney(invoice.amount)}</div>
-              <div>
-                <span className={STATUS_CLASS[invoice.status]}>{invoice.status}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {!filteredInvoices.length ? (
+        {loading ? (
           <p className="admin-muted" style={{ marginTop: "12px" }}>
-            No invoices match current filters.
+            Loading invoices...
+          </p>
+        ) : (
+          <div className="admin-table admin-invoices-table">
+            <div className="admin-table-row admin-table-head admin-invoices-table-row">
+              <div>Client</div>
+              <div>Invoice ID</div>
+              <div>Project</div>
+              <div>Issued</div>
+              <div>Amount</div>
+              <div>Status</div>
+              <div>Actions</div>
+            </div>
+
+            {filteredInvoices.map((invoice) => (
+              <div className="admin-table-row admin-invoices-table-row" key={invoice.id}>
+                <div>{invoice.client}</div>
+                <div className="admin-strong">{invoice.id}</div>
+                <div>{invoice.project}</div>
+                <div>{invoice.issuedOn || "-"}</div>
+                <div>{formatMoney(invoice.amount)}</div>
+                <div>
+                  <span className={STATUS_CLASS[invoice.status] || "admin-badge"}>
+                    {invoice.status}
+                  </span>
+                </div>
+                <div className="admin-actions">
+                  <Link className="admin-btn admin-btn--ghost admin-btn--small" href={`/dashboard/invoices/${invoice.id}`}>
+                    Open
+                  </Link>
+                  <a
+                    className="admin-btn admin-btn--ghost admin-btn--small"
+                    href={`/api/admin/invoices/${invoice.id}?download=1`}
+                  >
+                    Download
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && !filteredInvoices.length ? (
+          <p className="admin-muted" style={{ marginTop: "12px" }}>
+            No invoices found. Invoices appear here after projects are marked completed.
           </p>
         ) : null}
       </section>

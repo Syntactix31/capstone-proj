@@ -1596,6 +1596,33 @@ body {
   align-items: stretch;
 }
 
+.admin-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-summary-card {
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  padding: 16px 18px;
+}
+
+.admin-summary-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.admin-summary-value {
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
 .admin-summary-column {
   min-width: 0;
 }
@@ -1813,12 +1840,13 @@ body {
 
 .admin-invoices-table-row {
   grid-template-columns:
-    minmax(0, 0.95fr)
-    minmax(0, 1.15fr)
+    minmax(0, 1.1fr)
+    minmax(0, 1fr)
     minmax(0, 1.2fr)
-    minmax(0, 1.15fr)
     minmax(0, 0.9fr)
-    minmax(0, 0.9fr);
+    minmax(0, 0.9fr)
+    minmax(0, 0.8fr)
+    minmax(0, 1fr);
 }
 
 .admin-projects-table .admin-table-head > :last-child {
