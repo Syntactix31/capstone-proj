@@ -89,7 +89,7 @@ function paymentSortKey(entry) {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
-function buildPaymentLedgerEntries(project) {
+function buildPaymentLedgerEntries(project, { includeRequired = true } = {}) {
   const totalCost = normalizeMoney(project?.totalCost);
   const projectName = String(project?.service || "Project").trim() || "Project";
   const orderedPayments = [...(Array.isArray(project?.payments) ? project.payments : [])].sort(
@@ -115,6 +115,7 @@ function buildPaymentLedgerEntries(project) {
     return {
       id: String(payment.id || `payment-${project.id}-${index + 1}`),
       projectId: project.id,
+      client: String(project?.client || "").trim(),
       project: projectName,
       date: payment.date || "",
       dueDate: status === "Paid" ? "" : payment.date || "",
@@ -134,10 +135,11 @@ function buildPaymentLedgerEntries(project) {
     0
   );
 
-  if (remainingBalance > 0.009 && project?.paymentStatus !== "Fully Paid") {
+  if (includeRequired && remainingBalance > 0.009 && project?.paymentStatus !== "Fully Paid") {
     entries.push({
       id: `required-${project.id}`,
       projectId: project.id,
+      client: String(project?.client || "").trim(),
       project: projectName,
       date: "",
       dueDate:
@@ -326,9 +328,11 @@ export async function findProjectById(id) {
   return rows[0] ? mapProjectRow(rows[0]) : null;
 }
 
-export async function listProjectPayments({ clientId, limit } = {}) {
+export async function listProjectPayments({ clientId, limit, includeRequired = true } = {}) {
   const projects = await listProjects(clientId ? { clientId } : {});
-  const payments = projects.flatMap((project) => buildPaymentLedgerEntries(project));
+  const payments = projects.flatMap((project) =>
+    buildPaymentLedgerEntries(project, { includeRequired })
+  );
 
   if (Number.isFinite(limit) && limit > 0) {
     return payments.slice(0, limit);

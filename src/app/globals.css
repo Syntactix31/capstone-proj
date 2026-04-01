@@ -1802,12 +1802,13 @@ body {
 
 .admin-payments-table-row {
   grid-template-columns:
-    minmax(0, 1fr)
-    minmax(0, 1.2fr)
     minmax(0, 0.95fr)
+    minmax(0, 1.1fr)
+    minmax(0, 1.15fr)
     minmax(0, 0.9fr)
-    minmax(0, 0.95fr)
-    minmax(0, 1.15fr);
+    minmax(0, 0.9fr)
+    minmax(0, 0.85fr)
+    minmax(0, 1fr);
 }
 
 .admin-invoices-table-row {

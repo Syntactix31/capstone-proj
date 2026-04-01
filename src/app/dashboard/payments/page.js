@@ -1,80 +1,92 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
 
-const PAYMENT_METHODS = ["E-Transfer", "Cash", "Cheque"];
-const PAYMENT_TYPES = ["Initial Deposit", "Full payment"];
-
-const INITIAL_PAYMENTS = [
-  {
-    id: "PAY-7001",
-    client: "Jordan Lee",
-    date: "2026-03-04",
-    amount: 2100,
-    method: "E-Transfer",
-    type: "Initial Deposit",
-  },
-  {
-    id: "PAY-7002",
-    client: "Avery Chen",
-    date: "2026-03-06",
-    amount: 6350,
-    method: "Cheque",
-    type: "Full payment",
-  },
-  {
-    id: "PAY-7003",
-    client: "Taylor Singh",
-    date: "2026-03-08",
-    amount: 500,
-    method: "Cash",
-    type: "Initial Deposit",
-  },
-  {
-    id: "PAY-7004",
-    client: "Morgan Patel",
-    date: "2026-03-10",
-    amount: 1650,
-    method: "E-Transfer",
-    type: "Full payment",
-  },
-];
+const PAYMENT_STATUSES = ["Paid", "Pending", "Failed", "Refunded"];
 
 function formatMoney(value) {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency: "CAD",
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(Number(value) || 0);
+}
+
+function formatPaymentDate(payment) {
+  return payment.date || payment.dueDate || "-";
 }
 
 export default function PaymentsPage() {
-  const [payments] = useState(INITIAL_PAYMENTS);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [methodFilter, setMethodFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadPayments() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const res = await fetch("/api/admin/payments", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+
+        if (!active) return;
+
+        if (!res.ok) {
+          setPayments([]);
+          setError(data?.error || "Failed to load payments.");
+          return;
+        }
+
+        setPayments(Array.isArray(data.payments) ? data.payments : []);
+      } catch (loadError) {
+        console.error(loadError);
+        if (!active) return;
+        setPayments([]);
+        setError("Failed to load payments.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadPayments();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const paymentTypes = useMemo(
+    () => Array.from(new Set(payments.map((payment) => payment.type).filter(Boolean))).sort(),
+    [payments]
+  );
 
   const filteredPayments = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
     return payments.filter((payment) => {
-      const matchesMethod =
-        methodFilter === "All" || payment.method === methodFilter;
+      const matchesStatus = statusFilter === "All" || payment.status === statusFilter;
       const matchesType = typeFilter === "All" || payment.type === typeFilter;
 
-      if (!normalizedQuery) return matchesMethod && matchesType;
+      if (!normalizedQuery) return matchesStatus && matchesType;
 
       const matchesQuery =
-        payment.id.toLowerCase().includes(normalizedQuery) ||
-        payment.client.toLowerCase().includes(normalizedQuery) ||
-        payment.date.toLowerCase().includes(normalizedQuery) ||
-        payment.method.toLowerCase().includes(normalizedQuery) ||
-        payment.type.toLowerCase().includes(normalizedQuery);
+        String(payment.id || "").toLowerCase().includes(normalizedQuery) ||
+        String(payment.client || "").toLowerCase().includes(normalizedQuery) ||
+        String(payment.project || "").toLowerCase().includes(normalizedQuery) ||
+        String(payment.date || "").toLowerCase().includes(normalizedQuery) ||
+        String(payment.dueDate || "").toLowerCase().includes(normalizedQuery) ||
+        String(payment.status || "").toLowerCase().includes(normalizedQuery) ||
+        String(payment.type || "").toLowerCase().includes(normalizedQuery);
 
-      return matchesMethod && matchesType && matchesQuery;
+      return matchesStatus && matchesType && matchesQuery;
     });
-  }, [methodFilter, payments, query, typeFilter]);
+  }, [payments, query, statusFilter, typeFilter]);
 
   return (
     <AdminLayout>
@@ -82,8 +94,9 @@ export default function PaymentsPage() {
         <div>
           <h1 className="admin-title">Payments</h1>
           <p className="admin-subtitle">
-            Track client payment records by date, amount, method, and payment type.
+            Track payments that were explicitly recorded inside project records.
           </p>
+          {error ? <p className="admin-muted">{error}</p> : null}
         </div>
       </section>
 
@@ -106,20 +119,20 @@ export default function PaymentsPage() {
           </div>
 
           <div className="admin-projects-control">
-            <label className="admin-projects-control-label" htmlFor="payments-method-filter">
-              Method
+            <label className="admin-projects-control-label" htmlFor="payments-status-filter">
+              Status
             </label>
             <select
-              id="payments-method-filter"
+              id="payments-status-filter"
               className="admin-input"
-              value={methodFilter}
-              onChange={(event) => setMethodFilter(event.target.value)}
-              aria-label="Filter payment method"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              aria-label="Filter payment status"
             >
               <option value="All">All</option>
-              {PAYMENT_METHODS.map((method) => (
-                <option key={method} value={method}>
-                  {method}
+              {PAYMENT_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status}
                 </option>
               ))}
             </select>
@@ -137,7 +150,7 @@ export default function PaymentsPage() {
               aria-label="Filter payment type"
             >
               <option value="All">All</option>
-              {PAYMENT_TYPES.map((type) => (
+              {paymentTypes.map((type) => (
                 <option key={type} value={type}>
                   {type}
                 </option>
@@ -146,32 +159,37 @@ export default function PaymentsPage() {
           </div>
         </div>
 
-        <div className="admin-table admin-payments-table">
-          <div className="admin-table-row admin-table-head admin-payments-table-row">
-            <div>Payment ID</div>
-            <div>Client</div>
-            <div>Date</div>
-            <div>Amount</div>
-            <div>Method</div>
-            <div>Type</div>
-          </div>
-
-          {filteredPayments.map((payment) => (
-            <div
-              className="admin-table-row admin-payments-table-row"
-              key={payment.id}
-            >
-              <div className="admin-strong">{payment.id}</div>
-              <div>{payment.client}</div>
-              <div>{payment.date}</div>
-              <div>{formatMoney(payment.amount)}</div>
-              <div>{payment.method}</div>
-              <div>{payment.type}</div>
+        {loading ? (
+          <p className="admin-muted" style={{ marginTop: "12px" }}>
+            Loading payments...
+          </p>
+        ) : (
+          <div className="admin-table admin-payments-table">
+            <div className="admin-table-row admin-table-head admin-payments-table-row">
+              <div>Payment ID</div>
+              <div>Client</div>
+              <div>Project</div>
+              <div>Date</div>
+              <div>Amount</div>
+              <div>Status</div>
+              <div>Type</div>
             </div>
-          ))}
-        </div>
 
-        {!filteredPayments.length ? (
+            {filteredPayments.map((payment) => (
+              <div className="admin-table-row admin-payments-table-row" key={payment.id}>
+                <div className="admin-strong">{payment.id}</div>
+                <div>{payment.client}</div>
+                <div>{payment.project}</div>
+                <div>{formatPaymentDate(payment)}</div>
+                <div>{formatMoney(payment.amount)}</div>
+                <div>{payment.status}</div>
+                <div>{payment.type || "Payment"}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && !filteredPayments.length ? (
           <p className="admin-muted" style={{ marginTop: "12px" }}>
             No payments match current filters.
           </p>
