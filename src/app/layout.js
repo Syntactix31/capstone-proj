@@ -12,6 +12,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
+  icons: {
+    icon: '/icon.svg',
+  },
   title: "Landscape Craftsmen | Calgary, AB",
   description: "Landscape Company · Fence & Gate Contractor · Deck & Patio Builder",
 };

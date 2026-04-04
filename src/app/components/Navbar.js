@@ -64,13 +64,36 @@ export default function NavBar () {
         )}
           <nav className="bg-[#477a40] h-30 w-full p-4 flex text-white items-center justify-between">
 
-            <div className="flex gap-5 items-center">
+          {/* Test padding with ml-2 */}
+          <Link href="/" className="sm:ml-4 flex items-center">
+            <Image 
+              src="/icons/Landscape_craftsmen_official_title_logo.svg" 
+              alt="Company Logo" 
+              height={28}
+              width={75}  
+              className="h-13 w-auto object-contain sm:h-15 sm:scale-110" 
+              priority 
+            />
+          </Link>
+
+
+              {/* Original stuff */}
+              
+              {/* <Link href="/">
+                <h1 className="text-2xl font-bold flex flex-col">
+                  <span>Landscape</span>
+                  <span>Craftsmen</span>
+                </h1>              
+              </Link> */}
+
+
+            {/* <div className="flex gap-5 items-center">
               <Link href="/">
-                <Image src="/icons/Landscapecraftsmen_logo.jpg" alt="Company Logo" height="400" width="400" className="h-20 w-20" priority/>  
+                <Image src="/icons/Landscape_craftsmen_official_title_logo.svg" alt="Company Logo" height="400" width="400" className="h-20 w-20" priority/>   */}
                 
                 {/* PLacehodler image logo */}
                 {/* <div className="w-20 bg-white h-20 text-black font-bold text-2xl text-center pt-5">Logo</div> */}
-              </Link>
+              {/* </Link>
 
               <Link href="/">
                 <h1 className="text-2xl font-bold flex flex-col">
@@ -79,7 +102,9 @@ export default function NavBar () {
                 </h1>              
               </Link>
 
-            </div>
+            </div> */}
+
+
 
             {/* Prefer the thinner font on static nav items (semibold should be used) */}
             <div className="flex justify-center items-center lg:gap-20 md:mr-10 lg:mr-10">
