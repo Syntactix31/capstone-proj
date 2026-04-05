@@ -495,7 +495,7 @@ export default function QuoteClient() {
                   value={formData.client.name}
                   // onChange={(e) => setFormData({ ...formData, client: { ...formData.client, name: e.target.value } })}
                   onChange={(e) => {
-                    const filtered = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                    const filtered = e.target.value.replace(/[^a-zA-Z\s\-']/g, '');
                     setFormData({
                       ...formData,
                       client: { ...formData.client, name: filtered },

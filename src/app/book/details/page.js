@@ -57,6 +57,10 @@ function DetailsContent() {
   const params = useSearchParams();
   const [phone, setPhone] = useState("");
   const [phoneFocused, setPhoneFocused] = useState(false);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const phoneDisplayValue = phoneFocused
@@ -91,6 +95,9 @@ function DetailsContent() {
 
     const formData = new FormData(e.target);
     const payload = Object.fromEntries(formData.entries());
+    payload.firstName = firstName;
+    payload.lastName = lastName;
+
     const normalizedPhone = normalizePhone(phone);
 
     if (!isValidPhone(normalizedPhone)) {
@@ -222,26 +229,56 @@ function DetailsContent() {
                   <label className="details-label" htmlFor="firstName">
                     First name
                   </label>
-                  <input
+                  {/* <input
                     id="firstName"
                     maxLength={BOOKING_FIELD_LIMITS.name}
                     name="firstName"
                     type="text"
                     className="details-input"
                     required
+                  /> */}
+
+                  <input
+                    id="firstName"
+                    maxLength={BOOKING_FIELD_LIMITS.name}
+                    name="firstName"
+                    type="text"
+                    className="details-input"
+                    value={firstName}
+                    onChange={(e) => {
+                      const filtered = e.target.value.replace(/[^a-zA-Z\-']/g, '');
+                      setFirstName(filtered.slice(0, BOOKING_FIELD_LIMITS.name));
+                    }}
+                    required
                   />
+
                 </div>
 
                 <div className="details-field">
                   <label className="details-label" htmlFor="lastName">
                     Last name
                   </label>
+                  {/* <input
+                    id="lastName"
+                    maxLength={BOOKING_FIELD_LIMITS.name}
+                    name="lastName"
+                    type="text"
+                    className="details-input"
+                    required
+                  /> */}
+
+                  {/* ====== Add \s- to allow spaces and dashes in names ======= */}
                   <input
                     id="lastName"
                     maxLength={BOOKING_FIELD_LIMITS.name}
                     name="lastName"
                     type="text"
                     className="details-input"
+                    value={lastName}
+                    onChange={(e) => {
+                      const filtered = e.target.value.replace(/[^a-zA-Z\-']/g, '');
+                      setLastName(filtered.slice(0, BOOKING_FIELD_LIMITS.name));
+                    }}
                     required
                   />
                 </div>
