@@ -16,6 +16,11 @@ export default function ClientSettingsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
   // Load current client data on mount
   useEffect(() => {
     async function loadClientData() {
@@ -56,7 +61,17 @@ export default function ClientSettingsPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    let filteredValue = value;
+
+    if (name === 'name') {
+      filteredValue = value.replace(/[^a-zA-Z\s\-']/g, '');  
+    } else if (name === 'phone') {
+      filteredValue = value.replace(/\D/g, '');  
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: filteredValue }));
+    
     if (error) setError("");
     if (success) setSuccess("");
   };
@@ -93,6 +108,37 @@ export default function ClientSettingsPage() {
       setSaving(false);
     }
   };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm.toLowerCase() !== 'confirm') {
+      setDeleteError("Please type 'confirm' exactly.");
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError("");
+
+    try {
+      const res = await fetch("/api/client/profile", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (res.ok) {
+        // Redirect to homepage or login bc acc is deleted
+        router.push("/"); // or "/auth/register", or "/"
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setDeleteError(data.error || "Failed to delete account.");
+      }
+    } catch (err) {
+      console.error(err);
+      setDeleteError("Something went wrong. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
 
   return (
     <ClientLayout>
@@ -136,6 +182,7 @@ export default function ClientSettingsPage() {
               <p className="text-lg">Loading profile...</p>
             </div>
           ) : (
+            <>
             <form onSubmit={handleSubmit} className="max-w-md space-y-6">
               <div className="space-y-2">
                 <label className="block font-semibold text-gray-900 text-sm uppercase tracking-wide">
@@ -145,6 +192,7 @@ export default function ClientSettingsPage() {
                   id="name"
                   name="name"
                   type="text"
+                  maxLength={35}
                   value={formData.name}
                   onChange={handleChange}
                   required
@@ -162,6 +210,7 @@ export default function ClientSettingsPage() {
                   id="email"
                   name="email"
                   type="email"
+                  maxLength={50}
                   value={formData.email}
                   onChange={handleChange}
                   required
@@ -179,6 +228,8 @@ export default function ClientSettingsPage() {
                   id="phone"
                   name="phone"
                   type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
                   value={formData.phone}
                   onChange={handleChange}
                   className="w-full px-4 py-4 border-2 border-gray-200 rounded-lg text-base focus:outline-none focus:border-[#477a40] transition-all duration-200 bg-white disabled:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -212,9 +263,87 @@ export default function ClientSettingsPage() {
                 </button>
               </div>
             </form>
+
+              <div className="mt-10 pt-8 border-t border-gray-200">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Danger Zone
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Deleting your account is permanent and cannot be undone! All  personal information and records associated with your account will be removed.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg text-sm font-semibold"
+                >
+                  Delete Account
+                </button>
+              </div>
+            </>
           )}
         </article>
       </section>
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-xl max-w-md w-full space-y-4 shadow-xl">
+            <h3 className="text-xl font-semibold text-gray-900">
+              Delete Account
+            </h3>
+            <p className="text-sm text-gray-600">
+              Deleting your account is permanent and cannot be undone. All your data will be removed!
+              <br />
+              <br />
+              To confirm, type <strong className="text-red-600">confirm</strong> in the box below:
+            </p>
+
+            <input
+              type="text"
+              value={deleteConfirm}
+              onChange={(e) => {
+                setDeleteConfirm(e.target.value.trim());
+                if (deleteError) setDeleteError("");
+              }}
+              placeholder="Type 'confirm'"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-[#477a40]"
+            />
+
+            {deleteError && (
+              <p className="text-sm text-red-600">{deleteError}</p>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirm("");
+                  setDeleteError("");
+                }}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleting || deleteConfirm.toLowerCase() !== 'confirm'}
+                className="px-4 py-2 bg-red-600 disabled:bg-red-400 text-white text-sm rounded-md hover:bg-red-700 disabled:cursor-not-allowed"
+              >
+                {deleting ? (
+                  <>
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Account"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </ClientLayout>
   );
 }
