@@ -67,7 +67,8 @@ export default function NavBar () {
           {/* Test padding with ml-2 */}
           <Link href="/" className="sm:ml-4 flex items-center">
             <Image 
-              src="/icons/Landscape_craftsmen_official_title_logo.svg" 
+            // Try _noletters as an alternative
+              src="/icons/official_title_logo.svg" 
               alt="Company Logo" 
               height={28}
               width={75}  
