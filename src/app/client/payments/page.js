@@ -184,28 +184,41 @@ export default function ClientPaymentsPage() {
               </div>
             </div>
           ) : (
-            <div className="client-table">
-              <div className="client-table-row client-table-head">
+            <div className="w-full">
+              {/* Table head */}
+              <div className="grid grid-cols-5 gap-x-4 border-b border-gray-200 py-2 text-xs font-semibold uppercase tracking-wider text-gray-600">
                 <div>Project</div>
                 <div>Type</div>
                 <div>Due Date</div>
                 <div>Amount</div>
                 <div>Status</div>
               </div>
-              {[...pendingPayments, ...requiredPayments]
-                .sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate))
-                .slice(0, 10)
-                .map((payment) => (
-                  <div className="client-table-row" key={payment.id}>
-                    <div className="client-strong">{payment.project}</div>
-                    <div>{payment.type}</div>
-                    <div>{payment.dueDate || "-"}</div>
-                    <div className="font-semibold">${payment.amount}</div>
-                    <span className={STATUS_CLASS[payment.status] || "client-badge"}>
-                      {payment.status}
-                    </span>
-                  </div>
-                ))}
+      {/* Table body – each row stays on one line */}
+      <div className="divide-y divide-gray-100">
+        {[...pendingPayments, ...requiredPayments]
+          .sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate))
+          .slice(0, 10)
+          .map((payment) => (
+            <div
+              key={payment.id}
+              className="grid grid-cols-5 gap-x-4 py-3 text-sm"
+            >
+              <div className="client-strong truncate">{payment.project}</div>
+              <div className="truncate">{payment.type}</div>
+              <div className="truncate">{payment.dueDate || "-"}</div>
+              <div className="font-semibold text-gray-900">
+                ${payment.amount}
+              </div>
+              <span
+                className={
+                  STATUS_CLASS[payment.status] || "client-badge client-badge--pending"
+                }
+              >
+                {payment.status}
+              </span>
+            </div>
+          ))}
+      </div>
             </div>
           )}
         </article>
