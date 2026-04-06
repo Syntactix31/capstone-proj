@@ -18,6 +18,8 @@ export default function ClientDashboardPage() {
 
   const [userName, setUserName] = useState("");
 
+  const [appointments, setAppointments] = useState([]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -69,6 +71,35 @@ export default function ClientDashboardPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+// In your loadAppointments useEffect - add console.log:
+  async function loadAppointments() {
+    try {
+      const res = await fetch("/api/client/appointments", { cache: "no-store" });
+      const data = await res.json();
+      
+      console.log('API Response:', data);
+      console.log('Raw appointments:', data.appointments); 
+      
+      if (!mounted) return;
+      if (!res.ok) {
+        console.error('Failed to load appointments:', data?.error);
+        return;
+      }
+      setAppointments(data.appointments || []);
+    } catch (err) {
+      console.error('Appointments load error:', err);
+    }
+  }
+
+    loadAppointments();
+    return () => {
+      mounted = false;
+    };
+  }, []);  
+
   const activeProjects = projects.filter((p) => 
   p.originalStatus !== "Unpaid"
     ).length;
@@ -78,6 +109,20 @@ export default function ClientDashboardPage() {
     () => payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toFixed(2),
     [payments]
   );
+
+  const upcomingAppointments = appointments
+    .filter(a => {
+      const apptDate = new Date(a.date);
+      const isFuture = apptDate > new Date();
+      console.log('Filtering:', { 
+        status: a.status, 
+        date: a.date,
+        isFuture,
+        apptDate: apptDate.toDateString()
+      });
+      return a.status === "Confirmed" && isFuture;
+    })
+    .slice(0, 3);
 
   return (
     <ClientLayout>
@@ -106,6 +151,10 @@ export default function ClientDashboardPage() {
         <article className="client-card client-card--stat">
           <div className="client-stat-title">Total Paid</div>
           <div className="client-stat-value">${totalPaid}</div>
+        </article>
+        <article className="client-card client-card--stat">
+          <div className="client-stat-title">Upcoming Appointments</div>
+          <div className="client-stat-value">{upcomingAppointments.length}</div>
         </article>
       </section>
 
@@ -180,6 +229,37 @@ export default function ClientDashboardPage() {
             ))}
           </div>
         </article>
+
+  <article className="client-card">
+    <div className="client-card-header">
+      <h2 className="client-card-title">Upcoming Appointments</h2>
+      <Link className="client-link" href="/client/appointments">
+        Manage appointments
+      </Link>
+    </div>
+    <div className="client-list">
+      {upcomingAppointments.length > 0 ? (
+        upcomingAppointments.map((appt) => (
+          <div className="client-list-row" key={appt.id}>
+            <div>
+              <div className="client-strong">{appt.service}</div>
+              <div className="client-muted">
+                {appt.date} at {appt.time}
+              </div>
+            </div>
+            <span className={`client-badge ${appt.status === 'Confirmed' ? 'client-badge--active' : 'client-badge--pending'}`}>
+              {appt.status}
+            </span>
+          </div>
+        ))
+      ) : (
+        <div className="client-list-row">
+          <div className="client-muted">No upcoming appointments</div>
+        </div>
+      )}
+    </div>
+  </article>
+
       </section>
     </ClientLayout>
   );

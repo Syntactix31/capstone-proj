@@ -9,6 +9,7 @@ const CLIENT_MENU = [
   { id: "projects", label: "Projects", href: "/client/projects" },
   { id: "estimates", label: "Estimates", href: "/client/estimates" },
   { id: "payments", label: "Payments", href: "/client/payments" },
+  { id: "appointments", label: "Appointments", href: "/client/appointments" },
   { id: "settings", label: "Settings", href: "/client/settings" },
 ];
 
