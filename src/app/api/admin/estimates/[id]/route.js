@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSql } from "../../../../lib/db/client";
 import { put, del } from "@vercel/blob";
+import { requireAdmin } from "../../../../lib/auth/server";
 
 // Delete a Blob URL safely
 async function deleteBlobPdf(pdfUrl) {
@@ -21,10 +22,12 @@ async function deleteBlobPdf(pdfUrl) {
 }
 
 export async function PUT(req, { params }) {
-  const sql = await getSql();
-  const { id } = await params;
-
   try {
+    const auth = requireAdmin(req);
+    if (auth.error) return auth.error;
+
+    const sql = await getSql();
+    const { id } = await params;
     const formData = await req.formData();
 
     const clientInput = formData.get("client_id") || formData.get("client");
@@ -140,10 +143,12 @@ export async function PUT(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  const sql = await getSql();
-  const { id } = await params;
-
   try {
+    const auth = requireAdmin(req);
+    if (auth.error) return auth.error;
+
+    const sql = await getSql();
+    const { id } = await params;
     // Fetch current PDF URL from DB
     const row = await sql`
       SELECT pdf_url

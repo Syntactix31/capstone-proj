@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { getSql } from "../../../lib/db/client";
+import { requireAdmin } from "../../../lib/auth/server";
 
-export async function GET() {
-  const sql = await getSql();
-
+export async function GET(req) {
   try {
+    const auth = requireAdmin(req);
+    if (auth.error) return auth.error;
+
+    const sql = await getSql();
     const estimates = await sql`
       SELECT
         e.id,
