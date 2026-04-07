@@ -8,7 +8,7 @@ import Footer from "../../components/Footer.js";
 
 const BOOKING_FIELD_LIMITS = {
   name: 30,
-  email: 120,
+  email: 75,
   address: 120,
   notes: 1000,
 };

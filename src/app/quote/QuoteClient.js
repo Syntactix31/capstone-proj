@@ -49,12 +49,20 @@ export default function QuoteClient() {
   const [summary, setSummary] = useState("");
   const [instantEstimates, setInstantEstimates] = useState({}); // Changed to object: {fence: estimate, sod: estimate}
   const [estimateErrors, setEstimateErrors] = useState({});
+  const [displayPhone, setDisplayPhone] = useState('');
 
   const validateForm = () => {
     const newErrors = {};
     if (!formData.client.name) newErrors.clientName = "Required";
     if (!formData.client.email) newErrors.clientEmail = "Required";
-    if (!formData.client.phone) newErrors.client_phone = "Required";
+    if (!formData.client.phone) {
+      newErrors.client_phone = "Phone number is required";
+    } else {
+      const digits = formData.client.phone.replace(/\D/g, '');
+      if (digits.length !== 10) {
+        newErrors.client_phone = "Enter a 10-digit phone number.";
+      }
+    }
     if (selectedServices.length === 0) newErrors.services = "Select services first";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -316,7 +324,7 @@ export default function QuoteClient() {
       const messageHTML = `
         <div style="max-width:600px;margin:auto;background:#fff;font-family:arial,sans-serif;color:#333;">
           <div style="border-top:6px solid #458500;padding:16px;">
-            <img src="https://scontent.fyyc6-1.fna.fbcdn.net/v/t39.30808-6/492498142_122104359134841590_6452344028794744127_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=1d70fc&_nc_ohc=nQ6oTBOfQOoQ7kNvwGpaTf_&_nc_oc=AdqsfsWD6VMtlGEjHfdPSqg754ub3LnSBc52dZ4wzAsxkJOuJzAqmSexJTZn2-yvn1k&_nc_zt=23&_nc_ht=scontent.fyyc6-1.fna&_nc_gid=MoLi2T7xSIyi9hnDRaNHAQ&_nc_ss=8&oh=00_AfwwcKLciGL7WbNPWyzsi6l14JUR6_33Cf-nkAZNylYGlw&oe=69C0B775" style="height:40px;vertical-align:middle;margin-right:8px;">
+            <img src=https://landscape-craftsmen.vercel.app/icon.svg style="height:40px;vertical-align:middle;margin-right:8px;">
             <a href="https://landscape-craftsmen.vercel.app/" style="text-decoration:none;font-weight:bold;color:#333;">Landscape Craftsmen</a>
             <span style="font-size:16px;vertical-align:middle;border-left:1px solid #333;padding-left:8px;"><strong>New Quote Request</strong></span>
           </div>
@@ -446,6 +454,14 @@ export default function QuoteClient() {
     setEstimateErrors({});
     setSummary("");
   };
+  useEffect(() => {
+  const raw = formData.client.phone || '';
+  if (raw.length === 10) {
+    setDisplayPhone(`(${raw.slice(0,3)}) ${raw.slice(3,6)}-${raw.slice(6)}`);
+  } else {
+    setDisplayPhone(raw);  // Partial input shows raw digits
+  }
+}, [formData.client.phone]);
 
   const updateProjectField = (section, field, value) => {
     setFormData(prev => ({
@@ -510,7 +526,9 @@ export default function QuoteClient() {
                 <label className="block text-sm font-bold text-gray-900 mb-2">Email *</label>
                 <input 
                   type="email" 
+                  pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
                   maxLength={35}
+                  placeholder="user@mailservice.com"
                   value={formData.client.email} 
                   onChange={(e) => setFormData({ ...formData, client: { ...formData.client, email: e.target.value } })} 
                   className="w-full p-4 border border-gray-300 rounded-xl" 
@@ -530,7 +548,7 @@ export default function QuoteClient() {
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-900 mb-2">Phone Number *</label>
-                <input 
+                {/* <input 
                   type="tel"
                   inputMode="numeric"
                   maxLength={10} 
@@ -541,6 +559,29 @@ export default function QuoteClient() {
                   }} 
                   className="w-full p-4 border border-gray-300 rounded-xl" 
                   required
+                /> */}
+
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={14}  // Allows for (###) ###-####
+                  pattern="^\(\d{3}\) \d{3}-\d{4}$"
+                  placeholder="(403) 123-4567"
+                  value={displayPhone}
+                  required
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setFormData({
+                      ...formData,
+                      client: { ...formData.client, phone: value }  // Raw 10 digits stored
+                    });
+                    // Format display: (403) 345-8118
+                    const formatted = value === 10
+                      ? `(${value.slice(0,3)}) ${value.slice(3,6)}-${value.slice(6)}`
+                      : '';
+                    setDisplayPhone(formatted);
+                  }}
+                  className="w-full p-4 border border-gray-300 rounded-xl required"
                 />
               </div>
             </div>
@@ -835,9 +876,6 @@ export default function QuoteClient() {
 )}
 
 
-
-
-          
           {/* File upload - shared to resend email template*/}
           <section className="rounded-xl border border-[#477a40]/20 p-8 bg-white/50 shadow-lg">
             <h3 className="text-2xl font-extrabold border-b-2 border-[#477a40] pb-2 mb-6">Optional Media</h3>
