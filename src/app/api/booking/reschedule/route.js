@@ -331,15 +331,12 @@ export async function POST(req) {
       return NextResponse.json({ error: "That time is already booked." }, { status: 409 });
     }
 
-    await calendar.events.delete({
-      calendarId: process.env.GOOGLE_CALENDAR_ID,
-      eventId,
-    });
-
     const startPretty = formatPrettyDate(start);
 
-    const newEvent = await calendar.events.insert({
+    // Update the original event so rescheduling cannot leave a duplicate booking.
+    const updatedEvent = await calendar.events.update({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
+      eventId,
       requestBody: {
         summary: `${service} – ${firstName} ${lastName}`.trim(),
         location: address,
@@ -393,7 +390,7 @@ export async function POST(req) {
       startAt: start.toISOString(),
       endAt: end.toISOString(),
       notes,
-      googleEventId: newEvent.data.id,
+      googleEventId: updatedEvent.data.id || eventId,
       status: "confirmed",
     });
 
@@ -436,7 +433,7 @@ export async function POST(req) {
 
     return NextResponse.json({
       success: true,
-      newEventId: newEvent.data.id,
+      eventId: updatedEvent.data.id || eventId,
       date: newDate,
       time: newTime,
     });

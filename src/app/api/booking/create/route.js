@@ -103,6 +103,11 @@ function brand() {
   };
 }
 
+function siteLoginUrl() {
+  const siteUrl = String(process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "").replace(/\/$/, "");
+  return siteUrl ? `${siteUrl}/login` : "/login";
+}
+
 // Escape user input before placing it inside HTML email markup.
 function escapeHtml(s) {
   return String(s ?? "")
@@ -241,6 +246,7 @@ function pill(text, tone = "success") {
 
 // Customer confirmation email content.
 function emailTemplateCustomer({ firstName, service, startPretty, address }) {
+  const loginUrl = siteLoginUrl();
   const bodyHtml = `
     <div style="font-size:14px; color:#374151; margin:0 0 14px 0;">
       Hi <strong style="color:#111827;">${escapeHtml(
@@ -255,7 +261,11 @@ function emailTemplateCustomer({ firstName, service, startPretty, address }) {
     </table>
 
     <div style="font-size:13px; color:#374151; margin:0;">
-      If you need to reschedule or cancel, you can do it from your confirmation page or just send us an email.
+      If you need to cancel, sign in at <a href="${escapeHtml(
+        loginUrl
+      )}" style="color:${brand().accent}; text-decoration:none;">${escapeHtml(
+        loginUrl
+      )}</a> and open your appointments page, or reply to this email.
     </div>
   `;
 
