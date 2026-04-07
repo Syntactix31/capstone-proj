@@ -186,6 +186,16 @@ export async function ensureDatabaseSchema() {
           updated_at timestamptz NOT NULL
         )
       `;      
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS pdf_url text
+      `;
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS pdf_name text
+      `;
     })().catch((error) => {
       schemaPromise = null;
       throw error;
