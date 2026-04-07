@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hashPassword, isStrongPassword } from "../../../lib/auth/passwords";
 import { createUser, findUserByEmail, normalizeEmail, resolveRoleForEmail } from "../../../lib/auth/users";
 import { setAuthCookie } from "../../../lib/auth/server";
+import { isValidEmail, isValidName, isValidPasswordLength } from "../../../lib/auth/validation";
 
 // Reuse one helper for simple 400 validation responses.
 function badRequest(message) {
@@ -21,6 +22,18 @@ export async function POST(req) {
 
     if (!email || !password || !firstName || !lastName) {
       return badRequest("Missing required fields.");
+    }
+
+    if (!isValidEmail(email)) {
+      return badRequest("Enter a valid email address.");
+    }
+
+    if (!isValidName(firstName) || !isValidName(lastName)) {
+      return badRequest("Names can only use letters, spaces, apostrophes, hyphens, and periods.");
+    }
+
+    if (!isValidPasswordLength(password)) {
+      return badRequest("Password must be 128 characters or fewer.");
     }
 
     if (!agreedToTerms) {
