@@ -3,7 +3,8 @@ import { cookies } from 'next/headers';
 import { verifySessionToken, AUTH_COOKIE_NAME } from '../../../../../lib/auth/session.js';
 import { findBookingById } from '../../../../../lib/db/bookings.js';  
 import { ensureDatabaseSchema } from '../../../../../lib/db/schema.js';
-import { getSql } from '../../../../../lib/db/client.js'; 
+import { getSql } from '../../../../../lib/db/client.js';
+import { getCalendarClient } from "../../../../../lib/googleCalendar"; 
 
 export const dynamic = 'force-dynamic';
 

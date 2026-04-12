@@ -158,7 +158,7 @@ export default function ClientDashboardPage() {
         </article>
       </section>
 
-      <section className="client-grid">
+      <section className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 md:gap-6 lg:gap-8">
         <article className="client-card">
           <div className="client-card-header">
             <h2 className="client-card-title">Projects Overview</h2>
@@ -210,7 +210,7 @@ export default function ClientDashboardPage() {
               View all payments
             </Link>
           </div>
-          <div className="client-table">
+          {/* <div className="client-table">
             <div className="client-table-row client-table-head">
               <div>Date</div>
               <div>Project</div>
@@ -227,7 +227,49 @@ export default function ClientDashboardPage() {
                 </span>
               </div>
             ))}
+          </div> */}
+        <div className="w-full overflow-x-auto rounded-xl border border-gray-200">
+          <table className="w-full min-w-[600px] table-auto">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="text-left py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="text-left py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                  Project
+                </th>
+                <th className="text-right py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="text-center py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-md">
+              {payments.slice(0, 5).map((p) => (
+                <tr key={p.id} className="hover:bg-gray-50 transition-colors duration-150">
+                  <td className="py-4 px-6 text-md text-gray-900">{p.date}</td>
+                  <td className="py-4 px-6 text-md text-gray-900">{p.project}</td>
+                  <td className="py-4 px-6 text-md text-gray-900 text-right">${p.amount}</td>
+                  <td className="py-4 px-6 text-center">
+                      <span className={STATUS_CLASS[p.status] || "client-badge"}>
+                      {p.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {payments.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-6 px-6 text-md text-gray-500 text-center">
+                    No recent payments
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
           </div>
+          
         </article>
 
   <article className="client-card">

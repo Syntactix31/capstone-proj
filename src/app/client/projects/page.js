@@ -66,7 +66,7 @@ export default function ClientProjectsPage() {
         </div>
       </section>
 
-      <section className="client-grid">
+      <section className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 md:gap-6 lg:gap-8">
         <article className="client-card client-card--full">
           <div className="client-card-header">
             <h2 className="client-card-title">Projects</h2>
@@ -95,33 +95,57 @@ export default function ClientProjectsPage() {
               </div>
             </div>
           ) : (
-            <div className="client-table">
-              <div className="client-table-row client-table-head">
-                <div>Project</div>
-                <div>Start Date</div>
-                <div>End Date</div>
-                <div>Status</div>
+  <div className="overflow-x-auto rounded-xl border border-gray-200">
+    <table className="w-full min-w-[600px] table-auto">
+      <thead>
+        <tr className="bg-gray-50 border-b border-gray-200">
+          <th className="text-left py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+            Project
+          </th>
+          <th className="text-left py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+            Start Date
+          </th>
+          <th className="text-left py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+            End Date
+          </th>
+          <th className="text-center py-4 px-6 font-semibold text-sm text-gray-700 uppercase tracking-wider">
+            Status
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-100">
+        {projects.map((proj) => (
+          <tr key={proj.id} className="hover:bg-gray-50 transition-colors duration-150">
+            <td className="py-4 px-6 align-top">
+              <div className="client-strong">
+                <Link href={`/client/projects/${proj.id}`} className="client-link hover:underline">
+                  {proj.name}
+                </Link>
               </div>
-              {projects.map((proj) => (
-                <div className="client-table-row" key={proj.id}>
-                  <div>
-                    <div className="client-strong">
-                      <Link href={`/client/projects/${proj.id}`} className="client-link">
-                        {proj.name}
-                      </Link>
-                    </div>
-                    {proj.description ? (
-                      <div className="client-muted">{proj.description}</div>
-                    ) : null}
-                  </div>
-                  <div>{proj.startDate || "-"}</div>
-                  <div>{proj.endDate || "-"}</div>
-                  <span className={STATUS_CLASS[proj.status] || "client-badge"}>
-                    {proj.status}
-                  </span>
-                </div>
-              ))}
-            </div>
+              {proj.description && (
+                <div className="client-muted text-sm mt-1 line-clamp-2">{proj.description}</div>
+              )}
+            </td>
+            <td className="py-4 px-6 text-sm text-gray-900 font-medium">
+              {proj.startDate || "-"}
+            </td>
+            <td className="py-4 px-6 text-sm text-gray-900 font-medium">
+              {proj.endDate || "-"}
+            </td>
+            <td className="py-4 px-6 text-center">
+              <span
+                className={
+                  STATUS_CLASS[proj.status] || "client-badge client-badge--pending"
+                }
+              >
+                {proj.status}
+              </span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
           )}
         </article>
       </section>

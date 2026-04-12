@@ -4281,12 +4281,13 @@ body {
   color: #477A40;
 }
 
-.client-grid {
+/* ts was wrecking the client dashboard layout */
+/* .client-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
   margin-bottom: 32px;
-}
+} */
 
 .client-card--full {
   grid-column: 1 / -1;
@@ -4374,6 +4375,13 @@ body {
   padding: 12px 0;
   border-bottom: 1px solid #e9ecef;
 }
+.client-table-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9ecef;
+}
 
 .client-table-head {
   font-weight: 600;
@@ -4406,8 +4414,8 @@ body {
   }
   
   .client-table-row {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    /* grid-template-columns: 1fr; */
+    grid-template-columns: 1fr 1fr 1fr ;
   }
 }
 
