@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyPassword } from "../../../lib/auth/passwords";
 import { findUserByEmail, normalizeEmail } from "../../../lib/auth/users";
 import { setAuthCookie } from "../../../lib/auth/server";
+import { isValidEmail, isValidPasswordLength } from "../../../lib/auth/validation";
 
 // Sign in an existing local account and return a session cookie.
 export async function POST(req) {
@@ -12,6 +13,10 @@ export async function POST(req) {
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
+    }
+
+    if (!isValidEmail(email) || !isValidPasswordLength(password)) {
+      return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
     const user = await findUserByEmail(email);

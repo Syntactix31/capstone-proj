@@ -392,8 +392,8 @@ export async function listProjectInvoices({ clientId, limit } = {}) {
   return invoices;
 }
 
-export async function findProjectInvoiceById(invoiceId) {
-  const invoices = await listProjectInvoices();
+export async function findProjectInvoiceById(invoiceId, { clientId = null } = {}) {
+  const invoices = await listProjectInvoices(clientId ? { clientId } : {});
   return invoices.find((invoice) => invoice.id === invoiceId) || null;
 }
 

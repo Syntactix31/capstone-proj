@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSql } from "../../../../lib/db/client";
 import { put } from "@vercel/blob";
+import { requireAdmin } from "../../../../lib/auth/server";
 
 export async function POST(req) {
-  const sql = await getSql();
-
   try {
+    const auth = requireAdmin(req);
+    if (auth.error) return auth.error;
+
+    const sql = await getSql();
     const formData = await req.formData();
 
     const clientInput = formData.get("client_id") || formData.get("client");

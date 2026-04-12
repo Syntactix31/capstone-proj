@@ -248,3 +248,17 @@ export async function updateBookingByGoogleEventId(eventId, patch) {
 
   return findBookingByGoogleEventId(patch.googleEventId ?? eventId);
 }
+
+// Mark a booking cancelled by its DB id after a client-portal cancellation.
+export async function cancelBookingById(id) {
+  await ensureDatabaseSchema();
+  const sql = getSql();
+  const [row] = await sql`
+    UPDATE bookings
+    SET status = 'cancelled', updated_at = ${nowIso()}
+    WHERE id = ${id}
+    RETURNING id
+  `;
+
+  return row ? findBookingById(row.id) : null;
+}

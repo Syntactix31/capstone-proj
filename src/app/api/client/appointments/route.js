@@ -1,21 +1,33 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { verifySessionToken, AUTH_COOKIE_NAME } from '../../../lib/auth/session.js';
-import {
-  listBookings,
-  createBooking,
-} from '../../../lib/db/bookings.js';
-import { ensureDatabaseSchema } from '../../../lib/db/schema.js';
-import { getSql } from '../../../lib/db/client.js';
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { verifySessionToken, AUTH_COOKIE_NAME } from "../../../lib/auth/session.js";
+import { createBooking } from "../../../lib/db/bookings.js";
+import { ensureDatabaseSchema } from "../../../lib/db/schema.js";
+import { getSql } from "../../../lib/db/client.js";
+import { normalizeEmail } from "../../../lib/db/users.js";
+import { getCalendarClient } from "../../../lib/googleCalendar.js";
+
+const EDMONTON_TIME_ZONE = "America/Edmonton";
+const EDMONTON_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: EDMONTON_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+export const dynamic = "force-dynamic";
 
 function formatEdmontonParts(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { date: "", time: "" };
 
-  const date = d.toLocaleDateString("en-CA", { timeZone: "America/Edmonton" });
+  const date = d.toLocaleDateString("en-CA", { timeZone: EDMONTON_TIME_ZONE });
   const time = d
     .toLocaleTimeString("en-CA", {
-      timeZone: "America/Edmonton",
+      timeZone: EDMONTON_TIME_ZONE,
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
@@ -28,124 +40,221 @@ function formatEdmontonParts(iso) {
   return { date, time };
 }
 
-export const dynamic = 'force-dynamic';
+function parseTime12h(timeStr) {
+  const match = String(timeStr || "").trim().match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  if (!match) return null;
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[3].toLowerCase();
+
+  if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) return null;
+  if (meridiem === "am" && hours === 12) hours = 0;
+  if (meridiem === "pm" && hours !== 12) hours += 12;
+  return { hours, minutes };
+}
+
+function buildEdmontonDate(dateStr, timeStr) {
+  const time = parseTime12h(timeStr);
+  const date = String(dateStr || "").trim();
+  if (!time || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+
+  const [year, month, day] = date.split("-").map((value) => Number(value));
+  let utcMillis = Date.UTC(year, month - 1, day, time.hours, time.minutes, 0);
+
+  for (let i = 0; i < 3; i += 1) {
+    const parts = EDMONTON_PARTS_FORMATTER.formatToParts(new Date(utcMillis));
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const zonedAsUtc = Date.UTC(
+      Number(values.year),
+      Number(values.month) - 1,
+      Number(values.day),
+      Number(values.hour),
+      Number(values.minute),
+      0,
+    );
+    const desiredAsUtc = Date.UTC(year, month - 1, day, time.hours, time.minutes, 0);
+    const diffMs = desiredAsUtc - zonedAsUtc;
+    if (diffMs === 0) break;
+    utcMillis += diffMs;
+  }
+
+  return new Date(utcMillis);
+}
+
+function mapAppointmentRow(row) {
+  const pretty = formatEdmontonParts(row.start_at);
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    projectId: row.project_id,
+    propertyId: row.property_id,
+    eventId: row.google_event_id,
+    googleEventId: row.google_event_id,
+    client: row.client_name,
+    firstName: row.client_name?.split(" ")?.[0] || "",
+    email: row.client_email,
+    service: row.service,
+    visitType: row.visit_type || "Estimate",
+    date: pretty.date,
+    time: pretty.time,
+    address: row.address || "",
+    notes: row.notes || "",
+    status: row.status === "cancelled" ? "Canceled" : "Confirmed",
+  };
+}
+
+async function getSession() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+  return verifySessionToken(token);
+}
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
-    const session = verifySessionToken(token);
-    
-    console.log('SESSION:', { sub: session?.sub, email: session?.email });
+    const session = await getSession();
     if (!session?.sub) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await ensureDatabaseSchema();
-    
     const sql = getSql();
     const clientBookingsRaw = await sql`
-      SELECT 
+      SELECT
         b.*,
-        c.name AS client_name, 
+        c.name AS client_name,
         c.email AS client_email,
         p.address
       FROM bookings b
       JOIN clients c ON c.id = b.client_id
       LEFT JOIN client_properties p ON p.id = b.property_id
-      WHERE c.email = ${session.email}
+      WHERE c.email = ${normalizeEmail(session.email)}
       ORDER BY b.start_at ASC
     `;
-    
-    const clientBookings = clientBookingsRaw.map(row => ({
-      id: row.id,
-      clientId: row.client_id,
-      projectId: row.project_id,
-      propertyId: row.property_id,
-      eventId: row.google_event_id,
-      googleEventId: row.google_event_id,
-      client: row.client_name,
-      firstName: row.client_name?.split(" ")?.[0] || "",
-      email: row.client_email,
-      service: row.service,
-      visitType: row.visit_type || "Estimate",
-      date: formatEdmontonParts(row.start_at).date,
-      time: formatEdmontonParts(row.start_at).time,
-      address: row.address || "",
-      notes: row.notes || "",
-      status: row.status === "cancelled" ? "Canceled" : "Confirmed",
-    }));
-    
-    console.log('CLIENT BOOKINGS:', clientBookings.length);
-    
-    return NextResponse.json({ appointments: clientBookings });
+
+    return NextResponse.json({ appointments: clientBookingsRaw.map(mapAppointmentRow) });
   } catch (err) {
-    console.error('CLIENT APPOINTMENTS ERROR:', err);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    console.error("CLIENT APPOINTMENTS ERROR:", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
 export async function POST(request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
-    const session = verifySessionToken(token);
-    
+    const session = await getSession();
     if (!session?.sub) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const payload = await request.json();
-    if (!payload.date || !payload.time || !payload.service) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const service = String(payload?.service || "").trim();
+    const visitType = String(payload?.visitType || "Estimate").trim() || "Estimate";
+    const date = String(payload?.date || "").trim();
+    const time = String(payload?.time || "").trim();
+    const notes = String(payload?.notes || "").trim().slice(0, 1000);
+
+    if (!service || !date || !time) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const start = buildEdmontonDate(date, time);
+    if (!start || Number.isNaN(start.getTime())) {
+      return NextResponse.json({ error: "Invalid date/time" }, { status: 400 });
+    }
+
+    if (start.getTime() < Date.now()) {
+      return NextResponse.json({ error: "Cannot book in the past." }, { status: 400 });
+    }
+
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
     await ensureDatabaseSchema();
     const sql = getSql();
 
-    let clientId = session.sub;
-    const existingClient = await sql`
-      SELECT id FROM clients 
-      WHERE email = ${session.email}
+    const [client] = await sql`
+      INSERT INTO clients (id, email, name, created_at, updated_at)
+      VALUES (
+        ${session.sub},
+        ${normalizeEmail(session.email)},
+        ${String(session.name || "Client").trim()},
+        ${new Date().toISOString()},
+        ${new Date().toISOString()}
+      )
+      ON CONFLICT (email) DO UPDATE
+      SET name = COALESCE(NULLIF(clients.name, ''), EXCLUDED.name),
+          updated_at = EXCLUDED.updated_at
+      RETURNING id, name, email
     `;
-    
-    if (existingClient.length > 0) {
-      clientId = existingClient[0].id; 
-      console.log('Using existing client:', clientId);
-    } else {
-      console.log('Creating new client:', session.sub);
-      await sql`
-        INSERT INTO clients (id, email, name, created_at, updated_at)
-        VALUES (${session.sub}, ${session.email}, ${session.name || 'Client'}, ${new Date().toISOString()}, ${new Date().toISOString()})
-      `;
+
+    const existing = await sql`
+      SELECT id
+      FROM bookings
+      WHERE status <> 'cancelled'
+        AND start_at < ${end.toISOString()}
+        AND end_at > ${start.toISOString()}
+      LIMIT 1
+    `;
+
+    if (existing.length > 0) {
+      return NextResponse.json({ error: "That time is already booked." }, { status: 409 });
     }
 
-    // Time conversion
-    let [hours, minutes, period] = payload.time.match(/(\d+):(\d+)\s*(AM|PM)/i)?.slice(1) || [];
-    let hh = parseInt(hours || 9);
-    if (period?.toUpperCase() === 'PM' && hh !== 12) hh += 12;
-    if (period?.toUpperCase() === 'AM' && hh === 12) hh = 0;
-    const time24h = `${hh.toString().padStart(2, '0')}:${minutes || '00'}`;
+    const calendar = await getCalendarClient();
+    const calendarConflicts = await calendar.events.list({
+      calendarId: process.env.GOOGLE_CALENDAR_ID,
+      timeMin: new Date(start.getTime() - 1).toISOString(),
+      timeMax: end.toISOString(),
+      singleEvents: true,
+    });
 
-    const startDateTime = new Date(`${payload.date}T${time24h}:00-06:00`);
-    const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+    if ((calendarConflicts.data.items || []).length > 0) {
+      return NextResponse.json({ error: "That time is already booked." }, { status: 409 });
+    }
+
+    const event = await calendar.events.insert({
+      calendarId: process.env.GOOGLE_CALENDAR_ID,
+      requestBody: {
+        summary: `${service} - ${client.name}`.trim(),
+        location: "Calgary, AB",
+        description: [
+          `Visit Type: ${visitType}`,
+          `Name: ${client.name}`,
+          `Email: ${client.email}`,
+          `Notes: ${notes || "None"}`,
+          `Booked from client portal`,
+        ].join("\n"),
+        extendedProperties: {
+          private: {
+            service,
+            visitType,
+            firstName: String(client.name || "").split(" ")[0] || "",
+            lastName: String(client.name || "").split(" ").slice(1).join(" "),
+            email: client.email,
+            notes,
+            date,
+            time,
+          },
+        },
+        start: { dateTime: start.toISOString(), timeZone: EDMONTON_TIME_ZONE },
+        end: { dateTime: end.toISOString(), timeZone: EDMONTON_TIME_ZONE },
+      },
+    });
 
     const booking = await createBooking({
-      clientId: clientId, 
-      service: payload.service,
-      visitType: payload.visitType || 'Estimate',
-      status: 'confirmed',
-      bookingDate: payload.date,
-      bookingTime: time24h,
-      startAt: startDateTime.toISOString(),
-      endAt: endDateTime.toISOString(),
-      notes: payload.notes || ''
+      clientId: client.id,
+      service,
+      visitType,
+      status: "confirmed",
+      bookingDate: date,
+      bookingTime: time,
+      startAt: start.toISOString(),
+      endAt: end.toISOString(),
+      notes,
+      googleEventId: event.data.id,
     });
 
     return NextResponse.json(booking);
   } catch (err) {
-    console.error('CREATE CLIENT BOOKING ERROR:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("CREATE CLIENT BOOKING ERROR:", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
-
