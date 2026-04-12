@@ -55,6 +55,51 @@ export async function ensureDatabaseSchema() {
       `;
 
       await sql`
+        CREATE TABLE IF NOT EXISTS services (
+          id text PRIMARY KEY,
+          name text NOT NULL,
+          description text NOT NULL DEFAULT '',
+          duration_value integer NOT NULL DEFAULT 1,
+          duration_unit text NOT NULL DEFAULT 'hours',
+          price numeric NOT NULL DEFAULT 0,
+          quantity integer NOT NULL DEFAULT 1,
+          active boolean NOT NULL DEFAULT true,
+          created_at timestamptz NOT NULL,
+          updated_at timestamptz NOT NULL
+        )
+      `;
+
+      await sql`
+        ALTER TABLE services
+        ADD COLUMN IF NOT EXISTS description text NOT NULL DEFAULT ''
+      `;
+
+      await sql`
+        ALTER TABLE services
+        ADD COLUMN IF NOT EXISTS duration_value integer NOT NULL DEFAULT 1
+      `;
+
+      await sql`
+        ALTER TABLE services
+        ADD COLUMN IF NOT EXISTS duration_unit text NOT NULL DEFAULT 'hours'
+      `;
+
+      await sql`
+        ALTER TABLE services
+        ADD COLUMN IF NOT EXISTS price numeric NOT NULL DEFAULT 0
+      `;
+
+      await sql`
+        ALTER TABLE services
+        ADD COLUMN IF NOT EXISTS quantity integer NOT NULL DEFAULT 1
+      `;
+
+      await sql`
+        ALTER TABLE services
+        ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS projects (
           id text PRIMARY KEY,
           client_id text NOT NULL REFERENCES clients(id) ON DELETE CASCADE,

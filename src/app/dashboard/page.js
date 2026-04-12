@@ -4,45 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminLayout from "../components/AdminLayout.js";
 
-// still need database implementation
-const SERVICES = [
-  {
-    id: "S-01",
-    name: "Fence Installation",
-    duration: "1-2 days",
-    price: "$2,800+",
-    active: true,
-  },
-  {
-    id: "S-02",
-    name: "Deck & Railing",
-    duration: "3-5 days",
-    price: "$4,500+",
-    active: true,
-  },
-  {
-    id: "S-03",
-    name: "Pergola",
-    duration: "1-3 days",
-    price: "$3,200+",
-    active: true,
-  },
-  {
-    id: "S-04",
-    name: "Sod Installation",
-    duration: "1 day",
-    price: "$1,100+",
-    active: true,
-  },
-  {
-    id: "S-05",
-    name: "Trees and Shrubs",
-    duration: "1 day",
-    price: "$1,100+",
-    active: true,
-  },
-];
-
 // status class
 const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
@@ -123,6 +84,7 @@ function getDateParts(value) {
 export default function DashboardPage() {
     const [appointments, setAppointments] = useState([]);
     const [clients, setClients] = useState([]);
+    const [services, setServices] = useState([]);
     const [error, setError] = useState("");
     const [activeClient, setActiveClient] = useState(null);
     const [now, setNow] = useState(() => new Date());
@@ -145,6 +107,7 @@ export default function DashboardPage() {
 
           setAppointments(Array.isArray(data.appointments) ? data.appointments : []);
           setClients(Array.isArray(data.clients) ? data.clients : []);
+          setServices(Array.isArray(data.services) ? data.services : []);
         } catch (loadError) {
           console.error(loadError);
           if (!alive) return;
@@ -164,7 +127,7 @@ export default function DashboardPage() {
     }, []);
 
     const confirmedCount = appointments.filter((appt) => appt.status === "Confirmed").length;
-    const activeServices = SERVICES.filter((service) => service.active).length;
+    const activeServices = services.filter((service) => service.active).length;
     const activeClients = clients.length;
     const nextAppointment = useMemo(
       () =>
@@ -208,6 +171,10 @@ export default function DashboardPage() {
               <span className={STATUS_CLASS.Confirmed}>
                 {confirmedCount} Confirmed
               </span>
+            </article>
+            <article className="admin-card admin-card--stat">
+              <div className="admin-stat-title">Active services</div>
+              <div className="admin-stat-value">{activeServices}</div>
             </article>
             <article className="admin-card admin-card--stat">
               <div className="admin-stat-title">Active clients</div>
@@ -286,17 +253,20 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="admin-list">
-              {SERVICES.map((service) => (
+              {services.filter((service) => service.active).map((service) => (
                 <div className="admin-list-row" key={service.id}>
                   <div>
                     <div className="admin-strong">{service.name}</div>
                     <div className="admin-muted">
-                      {service.duration} - {service.price}
+                      {service.duration} - ${Number(service.price || 0).toFixed(2)}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+            {!services.filter((service) => service.active).length ? (
+              <p className="admin-muted">No active services available.</p>
+            ) : null}
           </article>
           {/*Client Overiew*/}
           <article className="admin-card admin-card--full">

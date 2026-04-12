@@ -26,6 +26,7 @@ export default function AdminClientsPage() {
   const [lastSaveWarnAt, setLastSaveWarnAt] = useState(0);
   const [pendingClientId, setPendingClientId] = useState(null);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   /*  Theo
   - Look through clients
@@ -95,7 +96,7 @@ export default function AdminClientsPage() {
   useEffect(() => {
     setDraft(cloneClientDraft(selectedClient));
     setPhoneFocused(false);
-  }, [selectedClient?.id]);
+  }, [selectedClient]);
 
     /*Field formatting + input rules
 
@@ -352,16 +353,9 @@ ensures that user is prompted with a warning when there is unsaved changes
     setSelectedId(clientId);
   };
 
-  const handleDeleteClientUI = () => {
-    if (!draft?.id) return;
-
-    const shouldDelete = window.confirm(
-      `Delete ${draft.name || "this client"} from the current UI list? This will not affect the backend.`
-    );
-    if (!shouldDelete) return;
-
-    const currentIndex = clients.findIndex((client) => client.id === draft.id);
-    const remainingClients = clients.filter((client) => client.id !== draft.id);
+  const removeClientFromState = (clientId) => {
+    const currentIndex = clients.findIndex((client) => client.id === clientId);
+    const remainingClients = clients.filter((client) => client.id !== clientId);
     const nextSelectedClient =
       remainingClients[currentIndex] ||
       remainingClients[currentIndex - 1] ||
@@ -371,8 +365,48 @@ ensures that user is prompted with a warning when there is unsaved changes
     setClients(remainingClients);
     setSelectedId(nextSelectedClient?.id ?? null);
     setDraft(nextSelectedClient);
-    setAlertMessage("Client removed from the current UI list.");
-    setTimeout(() => setAlertMessage(""), 2500);
+  };
+
+  const requestDeleteClient = () => {
+    if (!draft?.id || busy) return;
+    setDeleteTarget(draft);
+  };
+
+  const handleDeleteClient = async () => {
+    if (!deleteTarget?.id || busy) return;
+
+    if (deleteTarget._isNew) {
+      removeClientFromState(deleteTarget.id);
+      setDeleteTarget(null);
+      setAlertMessage("Unsaved client draft removed.");
+      setTimeout(() => setAlertMessage(""), 2500);
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      const res = await fetch(`/api/admin/clients?id=${encodeURIComponent(deleteTarget.id)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || "Failed to delete client.");
+        return;
+      }
+
+      removeClientFromState(deleteTarget.id);
+      setAlertMessage(`${deleteTarget.name || "Client"} deleted.`);
+      setTimeout(() => setAlertMessage(""), 2500);
+    } catch (deleteError) {
+      console.error(deleteError);
+      setError("Failed to delete client.");
+    } finally {
+      setDeleteTarget(null);
+      setBusy(false);
+    }
   };
 
   return (
@@ -444,6 +478,55 @@ ensures that user is prompted with a warning when there is unsaved changes
                 }}
               >
                 Don&apos;t save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {deleteTarget ? (
+        <div className="admin-modal">
+          <button
+            className="admin-modal__backdrop"
+            onClick={() => setDeleteTarget(null)}
+            aria-label="Close delete confirmation"
+            type="button"
+          />
+          <div className="admin-modal__content" role="dialog" aria-modal="true">
+            <div className="admin-modal__header">
+              <div>
+                <h2 className="admin-title">Are you sure?</h2>
+                <p className="admin-subtitle">
+                  {deleteTarget._isNew
+                    ? `This will remove the unsaved draft for ${deleteTarget.name || "this client"}.`
+                    : `This will permanently delete ${deleteTarget.name || "this client"} from the database.`}
+                </p>
+              </div>
+              <button
+                className="admin-btn admin-btn--ghost admin-btn--small"
+                onClick={() => setDeleteTarget(null)}
+                type="button"
+                disabled={busy}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="admin-modal__actions">
+              <button
+                className="admin-btn admin-btn--danger"
+                type="button"
+                onClick={handleDeleteClient}
+                disabled={busy}
+              >
+                {busy ? "Deleting..." : "Yes, delete it"}
+              </button>
+              <button
+                className="admin-btn admin-btn--ghost"
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={busy}
+              >
+                Keep client
               </button>
             </div>
           </div>
@@ -680,7 +763,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                   <button
                     className="admin-btn admin-btn--danger"
                     type="button"
-                    onClick={handleDeleteClientUI}
+                    onClick={requestDeleteClient}
                     disabled={busy}
                   >
                     Delete client

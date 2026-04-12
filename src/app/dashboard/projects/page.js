@@ -87,19 +87,9 @@ function createProjectForm(service) {
 export default function AdminProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
+  const [services, setServices] = useState(DEFAULT_SERVICES);
   const [loading, setLoading] = useState(true);
   const [clientsLoading, setClientsLoading] = useState(true);
-  const [services] = useState(() => {
-    if (typeof window === "undefined") return DEFAULT_SERVICES;
-
-    try {
-      const stored = window.localStorage.getItem("admin_services");
-      const parsed = stored ? JSON.parse(stored) : null;
-      return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_SERVICES;
-    } catch {
-      return DEFAULT_SERVICES;
-    }
-  });
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("All");
@@ -139,6 +129,35 @@ export default function AdminProjectsPage() {
     }
 
     loadProjects();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadServices() {
+      try {
+        const res = await fetch("/api/admin/services", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+
+        if (!res.ok) {
+          setServices(DEFAULT_SERVICES);
+          return;
+        }
+
+        const nextServices = Array.isArray(data.services) ? data.services : [];
+        setServices(nextServices.length ? nextServices : DEFAULT_SERVICES);
+      } catch (loadError) {
+        console.error(loadError);
+        if (!active) return;
+        setServices(DEFAULT_SERVICES);
+      }
+    }
+
+    loadServices();
     return () => {
       active = false;
     };
