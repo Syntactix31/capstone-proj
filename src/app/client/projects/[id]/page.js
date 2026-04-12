@@ -132,7 +132,7 @@ export default function ClientProjectDetailPage() {
         </article>
       </section>
 
-      <section className="client-grid">
+      <section className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 md:gap-6 lg:gap-8">
         <article className="client-card">
           <div className="client-card-header">
             <h2 className="client-card-title">Services Included</h2>
@@ -167,7 +167,8 @@ export default function ClientProjectDetailPage() {
               Total: ${project.totalPaid?.toLocaleString() || "0"}
             </div>
           </div>
-          <div className="client-table">
+        <div className="w-full overflow-x-auto sm:overflow-x-none">
+          <div className="w-full min-w-[400px] sm:min-w-auto table-auto ">
             <div className="client-table-row client-table-head">
               <div>Date</div>
               <div>Amount</div>
@@ -178,7 +179,7 @@ export default function ClientProjectDetailPage() {
                 <div className="client-table-row" key={payment.id}>
                   <div>{payment.date}</div>
                   <div>${payment.amount}</div>
-                  <span className={STATUS_CLASS[payment.status] || "client-badge"}>
+                  <span className={`h-fit ${STATUS_CLASS[payment.status] || "client-badge"}`}>
                     {payment.status}
                   </span>
                 </div>
@@ -190,6 +191,7 @@ export default function ClientProjectDetailPage() {
                 </div>
               </div>
             )}
+          </div>
           </div>
         </article>
 

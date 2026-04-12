@@ -241,7 +241,7 @@ export default function ClientSettingsPage() {
               <div className="flex flex-col sm:flex-row gap-5 pt-4">
                 <button
                   type="button"
-                  className="flex-1 py-4 px-6 max-h-14 border-2 border-[#477a40] hover:cursor-pointer text-green-700 font-semibold rounded-lg max-w-50 hover:bg-red-400 hover:text-white hover:border-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-4 px-6 max-h-14 border-2 border-[#477a40] hover:cursor-pointer text-green-700 font-semibold rounded-lg sm:max-w-50 hover:bg-red-400 hover:text-white hover:border-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed justify-center"
                   onClick={() => router.back()}
                   disabled={saving}
                 >

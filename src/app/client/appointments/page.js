@@ -48,17 +48,90 @@ export default function ClientAppointmentsPage() {
     return () => { mounted = false; };
   }, []);
 
-  const stats = useMemo(() => {
-    const upcoming = appointments.filter(a => a.status === 'Confirmed').length;
-    const canceled = appointments.length - upcoming;
-    return { total: appointments.length, upcoming, canceled };
-  }, [appointments]);
+useEffect(() => {
+  console.log('Appointments state updated:', appointments);
+}, [appointments]);
 
-  const handleCancel = async (id) => { 
+    // const upcomingAppointments = appointments
+    // .filter(a => {
+    //   const apptDate = new Date(a.date);
+    //   const isFuture = apptDate > new Date();
+    //   console.log('Filtering:', { 
+    //     status: a.status, 
+    //     date: a.date,
+    //     isFuture,
+    //     apptDate: apptDate.toDateString()
+    //   });
+    //   return a.status === "Confirmed" && isFuture;
+    // })
+    // .slice(0, 3);
+
+  // replace the following with something of the above
+  // also do a proper check for cancelled appointments instead of subtracting from total
+
+  // note:OLD USE MEMO DIDNT PROPERLY CALCULATE THE CANCELLED APPOINTMENTS
+
+  // const stats = useMemo(() => {
+  //   const upcoming = appointments.filter(a => a.status === 'Confirmed').length;
+  //   const canceled = appointments.length - upcoming;
+  //   return { total: appointments.length, upcoming, canceled };
+  // }, [appointments]);
+
+const stats = useMemo(() => {
+  console.log('Stats calculating with:', appointments.length, 'appointments'); // DEBUG
+  
+  const now = new Date();
+  const upcoming = appointments.filter(a => {
+    // EXACT SAME LOGIC AS DASHBOARD ✅
+    const apptDate = new Date(a.date);
+    return a.status === 'Confirmed' && apptDate > now;
+  }).length;
+  
+  const canceled = appointments.filter(a => a.status === 'Canceled').length;
+  
+  console.log('Stats result:', { total: appointments.length, upcoming, canceled }); // DEBUG
+  
+  return { 
+    total: appointments.length, 
+    upcoming, 
+    canceled 
+  };
+}, [appointments]);
+
+  //    NOTE: REPLACED
+  // const handleCancel = async (id) => { 
+  //   if (!confirm('Cancel this appointment?')) return;
+  //   setBusy(true);
+  //   try {
+  //     const res = await fetch(`/api/client/appointments/${id}/cancel`, { 
+  //       method: 'POST'
+  //     });
+  //     if (res.ok) {
+  //       window.location.reload();
+  //     } else {
+  //       const data = await res.json();
+  //       alert(data?.error || 'Cancel failed.');
+  //     }
+  //   } catch (err) {
+  //     alert('Cancel failed.');
+  //   } finally {
+  //     setBusy(false);
+  //   }
+  // };
+
+  const handleCancel = async (appt) => { 
     if (!confirm('Cancel this appointment?')) return;
+    
+    // Double-check it's not past before proceeding
+  const apptDateTime = new Date(appt.date);
+  if (apptDateTime <= new Date()) {
+    alert("Cannot cancel appointments that have already passed.");
+    return;
+  }
+    
     setBusy(true);
     try {
-      const res = await fetch(`/api/client/appointments/${id}/cancel`, { 
+      const res = await fetch(`/api/client/appointments/${appt.id || appt.eventId}/cancel`, { 
         method: 'POST'
       });
       if (res.ok) {
@@ -73,6 +146,7 @@ export default function ClientAppointmentsPage() {
       setBusy(false);
     }
   };
+
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -113,6 +187,19 @@ export default function ClientAppointmentsPage() {
     }
   };
 
+// Sort appointments by date DESC (newest first), then time
+const sortedAppointments = useMemo(() => {
+  return [...appointments].sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    
+    if (dateA > dateB) return -1; 
+    if (dateA < dateB) return 1;
+    return 0; 
+  });
+}, [appointments]);
+
+
   return (
     <ClientLayout>
       <section className="client-hero">
@@ -146,7 +233,7 @@ export default function ClientAppointmentsPage() {
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">All Appointments</h2>
               <button
                 onClick={() => setShowForm(true)}
-                className="bg-[#477a40] hover:bg-[#3d652f] text-white text-sm font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transform hover:scale-102 active:scale-95 transition-all duration-200 whitespace-nowrap"
+                className="bg-[#477a40] hover:bg-[#3d652f] text-white text-sm font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transform hover:scale-102 active:scale-95 transition-all duration-200 whitespace-nowrap hover:cursor-pointer"
                 disabled={busy}
               >
                 Schedule New
@@ -174,7 +261,7 @@ export default function ClientAppointmentsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {appointments.map((appt) => (
+                    {sortedAppointments.map((appt) => (
                       <tr key={appt.id || appt.eventId} className="hover:bg-gray-50 transition-colors duration-150">
                         <td className="py-5 px-6 align-top">
                           <div className="font-semibold text-gray-900 text-base leading-tight">{appt.service}</div>
@@ -195,15 +282,25 @@ export default function ClientAppointmentsPage() {
                         </td>
                         <td className="py-5 px-6">
                           <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                            {appt.status === 'Confirmed' ? (
-                              <button
-                                onClick={() => handleCancel(appt.id || appt.eventId)}  // ✅ Pass correct ID
-                                disabled={busy}
-                                className="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transform hover:scale-102 active:scale-95 transition-all duration-200 whitespace-nowrap"
-                              >
-                                Cancel
-                              </button>
-                            ) : null}
+                              {appt.status === 'Confirmed' && (() => {
+                                // Simple date-only check like dashboard
+                                const apptDate = new Date(appt.date);
+                                const isPast = apptDate <= new Date();
+                                
+                                return (
+                                  <button
+                                    onClick={() => handleCancel(appt)}
+                                    disabled={busy || isPast}
+                                    className={`text-sm font-semibold px-6 py-2 rounded-lg shadow-sm transition-all duration-200 whitespace-nowrap ${
+                                      busy || isPast
+                                        ? 'bg-gray-400 cursor-not-allowed text-gray-200 shadow-none'
+                                        : 'bg-red-500 hover:bg-red-600 text-white shadow-sm hover:shadow-md hover:scale-102 active:scale-95 transform'
+                                    }`}
+                                  >
+                                    {busy ? 'Canceling...' : isPast ? 'Passed' : 'Cancel'}
+                                  </button>
+                                );
+                              })()}
                           </div>
                         </td>
                       </tr>
