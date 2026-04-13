@@ -11,6 +11,7 @@ const STATUS_CLASS = {
 };
 
 const EDMONTON_TIME_ZONE = "America/Edmonton";
+const COMPLETED_GRACE_MS = 60 * 1000;
 
 /*
 phone input field formatting
@@ -47,6 +48,12 @@ function getAppointmentDate(appointment) {
   const fallbackDate = new Date(`${appointment.date}T${time24}:00`);
   if (Number.isNaN(fallbackDate.getTime())) return null;
   return fallbackDate;
+}
+
+function getAppointmentStatus(appointment, now) {
+  const endAt = new Date(appointment?.endIso || "");
+  if (Number.isNaN(endAt.getTime())) return appointment?.status || "Confirmed";
+  return now.getTime() > endAt.getTime() + COMPLETED_GRACE_MS ? "Completed" : "Confirmed";
 }
 
 function parseDateOnly(dateStr) {
@@ -126,12 +133,20 @@ export default function DashboardPage() {
       return () => clearInterval(interval);
     }, []);
 
-    const confirmedCount = appointments.filter((appt) => appt.status === "Confirmed").length;
+    const appointmentsWithStatus = useMemo(
+      () =>
+        appointments.map((appointment) => ({
+          ...appointment,
+          status: getAppointmentStatus(appointment, now),
+        })),
+      [appointments, now]
+    );
+    const confirmedCount = appointmentsWithStatus.filter((appt) => appt.status === "Confirmed").length;
     const activeServices = services.filter((service) => service.active).length;
     const activeClients = clients.length;
     const nextAppointment = useMemo(
       () =>
-        appointments
+        appointmentsWithStatus
           .filter((appt) => appt.status === "Confirmed")
           .map((appt) => ({
             ...appt,
@@ -139,7 +154,7 @@ export default function DashboardPage() {
           }))
           .filter((appt) => appt.appointmentDate && appt.appointmentDate.getTime() >= now.getTime())
           .sort((a, b) => a.appointmentDate.getTime() - b.appointmentDate.getTime())[0] || null,
-      [appointments, now]
+      [appointmentsWithStatus, now]
     );
     const nextAppointmentDateParts = useMemo(
       () => getDateParts(nextAppointment?.appointmentDate || nextAppointment?.startIso || `${nextAppointment?.date || ""}T00:00:00`),

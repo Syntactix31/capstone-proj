@@ -17,7 +17,10 @@ const VISIT_TYPES = ["Estimate", "Design Consultation", "Installation"];
 
 const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
+  Completed: "admin-badge admin-badge--muted",
 };
+
+const COMPLETED_GRACE_MS = 60 * 1000;
 
 // uses America/Edmonton as a config value for timezone through the intl api 
 // "en-ca" controls how date and is formatted, which is YYYY-MM-DD
@@ -219,6 +222,12 @@ function getClientFormFields(client) {
   };
 }
 
+function getAppointmentStatus(appointment, now) {
+  const endAt = new Date(appointment?.endIso || "");
+  if (Number.isNaN(endAt.getTime())) return appointment?.status || "Confirmed";
+  return now.getTime() > endAt.getTime() + COMPLETED_GRACE_MS ? "Completed" : "Confirmed";
+}
+
 // Main admin scheduling page for viewing, creating, cancelling, and rescheduling bookings.
 export default function AdminAppointmentsPage() {
   // Core page state: fetched appointments plus loading/error flags.
@@ -298,7 +307,7 @@ export default function AdminAppointmentsPage() {
         date: a.date, 
         time: a.time, 
         address: a.address || "",
-        status: "Confirmed", 
+        status: a.status || "Confirmed",
         email: a.email || "",
         notes: a.notes || "",
         startIso: a.startIso,
@@ -399,8 +408,15 @@ export default function AdminAppointmentsPage() {
     return () => media.removeListener(syncMedia);
   }, []);
 
-  // Since Google events are real bookings, treat them as Confirmed
-  const bookedAppointments = appointments.filter((appt) => appt.status === "Confirmed");
+  const appointmentsWithStatus = useMemo(
+    () =>
+      appointments.map((appointment) => ({
+        ...appointment,
+        status: getAppointmentStatus(appointment, now),
+      })),
+    [appointments, now]
+  );
+  const bookedAppointments = appointmentsWithStatus.filter((appt) => appt.status === "Confirmed");
   const confirmed = bookedAppointments.length;
   // Calculates counts and percentages of each visit type for summary display, recomputing only when relevant data changes
   const visitTypeSummary = useMemo(() => {
@@ -615,8 +631,7 @@ export default function AdminAppointmentsPage() {
 
   // Convert fetched appointments into positioned calendar events for grid rendering.
   const calendarEvents = useMemo(() => {
-    return appointments
-      .filter((appt) => appt.status === "Confirmed")
+    return appointmentsWithStatus
       .map((appt) => {
         const time24 = to24h(appt.time); 
         const hour = Number(time24.split(":")[0] || 0);
@@ -644,7 +659,7 @@ export default function AdminAppointmentsPage() {
         };
       })
       .filter(Boolean);
-  }, [appointments, calendarEndHour, calendarStartHour]);
+  }, [appointmentsWithStatus, calendarEndHour, calendarStartHour]);
 
   /* day
 - useMemo hook
