@@ -57,6 +57,7 @@ function DetailsContent() {
   const params = useSearchParams();
   const [phone, setPhone] = useState("");
   const [phoneFocused, setPhoneFocused] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -91,6 +92,7 @@ function DetailsContent() {
   // Send the selected service/date/time plus the form fields to the booking API.
   async function handleSubmit(e) {
     e.preventDefault();
+    if (isSubmitting) return;
     setSubmitAttempted(true);
 
     const formData = new FormData(e.target);
@@ -105,6 +107,7 @@ function DetailsContent() {
     }
 
     payload.phone = normalizedPhone;
+    setIsSubmitting(true);
 
     try {
       const res = await fetch("/api/booking/create", {
@@ -120,6 +123,7 @@ function DetailsContent() {
           data?.error ||
             "This time slot was just booked. Please choose another time."
         );
+        setIsSubmitting(false);
         return;
       }
 
@@ -139,6 +143,8 @@ function DetailsContent() {
     } catch (err) {
       console.error(err);
       alert("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -349,8 +355,8 @@ function DetailsContent() {
                 />
               </div>
 
-              <button type="submit" className="details-submit">
-                Book appointment
+              <button type="submit" className="details-submit" disabled={isSubmitting}>
+                {isSubmitting ? "Booking..." : "Book appointment"}
               </button>
             </form>
           </section>
