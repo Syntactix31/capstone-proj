@@ -7,6 +7,34 @@ import QuoteSuccessModal from "../components/QuoteSuccessModal.js";
 import { SERVICE_CATALOG } from "../lib/services/catalog.js";
 
 const ESTIMATE_SERVICE_KEYS = new Set(["fence", "deck", "pergola", "sod", "trees-shrubs"]);
+const MAX_ESTIMATE_INPUT = 1000;
+
+function sanitizeEstimateNumber(value, { integer = false } = {}) {
+  if (value === "") return "";
+
+  let normalized = String(value).replace(integer ? /[^0-9]/g : /[^0-9.]/g, "");
+  if (!normalized) return "";
+
+  if (!integer) {
+    const [whole, ...fractionParts] = normalized.split(".");
+    normalized = fractionParts.length > 0 ? `${whole}.${fractionParts.join("")}` : whole;
+  }
+
+  const parsed = Number(normalized);
+  if (Number.isNaN(parsed)) return normalized;
+  if (parsed > MAX_ESTIMATE_INPUT) return String(MAX_ESTIMATE_INPUT);
+
+  return integer ? String(Math.trunc(parsed)) : normalized;
+}
+
+function numberInputProps({ integer = false, allowZero = false } = {}) {
+  return {
+    min: allowZero ? 0 : 0.01,
+    max: MAX_ESTIMATE_INPUT,
+    step: integer ? 1 : "any",
+    inputMode: integer ? "numeric" : "decimal",
+  };
+}
 
 export default function QuoteClient() {
   const searchParams = useSearchParams();
@@ -479,6 +507,10 @@ export default function QuoteClient() {
     }));
   };
 
+  const updateProjectNumberField = (section, field, value, options = {}) => {
+    updateProjectField(section, field, sanitizeEstimateNumber(value, options));
+  };
+
   // Show service selection prompt if no services selected
   if (selectedServices.length === 0) {
     return (
@@ -604,11 +636,11 @@ export default function QuoteClient() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-2">Number of Gates</label>
-                    <input type="number" value={formData.project.fence.gates} onChange={(e) => updateProjectField("fence", "gates", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
+                    <input type="number" {...numberInputProps({ integer: true, allowZero: true })} value={formData.project.fence.gates} onChange={(e) => updateProjectNumberField("fence", "gates", e.target.value, { integer: true })} className="w-full p-4 border border-gray-300 rounded-xl" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-2">Total Linear Feet</label>
-                    <input type="number" value={formData.project.fence.linearFt} onChange={(e) => updateProjectField("fence", "linearFt", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" required />
+                    <input type="number" {...numberInputProps()} value={formData.project.fence.linearFt} onChange={(e) => updateProjectNumberField("fence", "linearFt", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" required />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-2">Height</label>
@@ -637,15 +669,15 @@ export default function QuoteClient() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold mb-2">Length (ft)</label>
-                    <input type="number" value={formData.project.deck.length} onChange={(e) => updateProjectField("deck", "length", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
+                    <input type="number" {...numberInputProps()} value={formData.project.deck.length} onChange={(e) => updateProjectNumberField("deck", "length", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold mb-2">Width (ft)</label>
-                    <input type="number" value={formData.project.deck.width} onChange={(e) => updateProjectField("deck", "width", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
+                    <input type="number" {...numberInputProps()} value={formData.project.deck.width} onChange={(e) => updateProjectNumberField("deck", "width", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold mb-2">Height (ft)</label>
-                    <input type="number" value={formData.project.deck.height} onChange={(e) => updateProjectField("deck", "height", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
+                    <input type="number" {...numberInputProps()} value={formData.project.deck.height} onChange={(e) => updateProjectNumberField("deck", "height", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-bold mb-2">Railing</label>
@@ -660,9 +692,9 @@ export default function QuoteClient() {
               
               {service.key === "pergola" && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div><label className="block text-sm font-bold mb-2">Length (ft)</label><input type="number" value={formData.project.pergola.length} onChange={(e) => updateProjectField("pergola", "length", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" /></div>
-                  <div><label className="block text-sm font-bold mb-2">Width (ft)</label><input type="number" value={formData.project.pergola.width} onChange={(e) => updateProjectField("pergola", "width", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" /></div>
-                  <div><label className="block text-sm font-bold mb-2">Height (ft)</label><input type="number" value={formData.project.pergola.height} onChange={(e) => updateProjectField("pergola", "height", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" /></div>
+                  <div><label className="block text-sm font-bold mb-2">Length (ft)</label><input type="number" {...numberInputProps()} value={formData.project.pergola.length} onChange={(e) => updateProjectNumberField("pergola", "length", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" /></div>
+                  <div><label className="block text-sm font-bold mb-2">Width (ft)</label><input type="number" {...numberInputProps()} value={formData.project.pergola.width} onChange={(e) => updateProjectNumberField("pergola", "width", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" /></div>
+                  <div><label className="block text-sm font-bold mb-2">Height (ft)</label><input type="number" {...numberInputProps()} value={formData.project.pergola.height} onChange={(e) => updateProjectNumberField("pergola", "height", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" /></div>
                 </div>
               )}
               
@@ -670,13 +702,13 @@ export default function QuoteClient() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-2">Total Square Footage</label>
-                    <input type="number" value={formData.project.sod.squareFt} onChange={(e) => updateProjectField("sod", "squareFt", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" required />
+                    <input type="number" {...numberInputProps()} value={formData.project.sod.squareFt} onChange={(e) => updateProjectNumberField("sod", "squareFt", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" required />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-2">Area Dimensions (L x W)</label>
                     <div className="grid grid-cols-2 gap-4">
-                      <input type="number" placeholder="Length (ft)" value={formData.project.sod.length} onChange={(e) => updateProjectField("sod", "length", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
-                      <input type="number" placeholder="Width (ft)" value={formData.project.sod.width} onChange={(e) => updateProjectField("sod", "width", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
+                      <input type="number" {...numberInputProps()} placeholder="Length (ft)" value={formData.project.sod.length} onChange={(e) => updateProjectNumberField("sod", "length", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
+                      <input type="number" {...numberInputProps()} placeholder="Width (ft)" value={formData.project.sod.width} onChange={(e) => updateProjectNumberField("sod", "width", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
                     </div>
                   </div>
                   <div>
@@ -700,11 +732,11 @@ export default function QuoteClient() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-2">Number of Trees</label>
-                    <input type="number" value={formData.project["trees-shrubs"].numTrees} onChange={(e) => updateProjectField("trees-shrubs", "numTrees", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
+                    <input type="number" {...numberInputProps({ integer: true, allowZero: true })} value={formData.project["trees-shrubs"].numTrees} onChange={(e) => updateProjectNumberField("trees-shrubs", "numTrees", e.target.value, { integer: true })} className="w-full p-4 border border-gray-300 rounded-xl" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-2">Number of Shrubs</label>
-                    <input type="number" value={formData.project["trees-shrubs"].numShrubs} onChange={(e) => updateProjectField("trees-shrubs", "numShrubs", e.target.value)} className="w-full p-4 border border-gray-300 rounded-xl" />
+                    <input type="number" {...numberInputProps({ integer: true, allowZero: true })} value={formData.project["trees-shrubs"].numShrubs} onChange={(e) => updateProjectNumberField("trees-shrubs", "numShrubs", e.target.value, { integer: true })} className="w-full p-4 border border-gray-300 rounded-xl" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>

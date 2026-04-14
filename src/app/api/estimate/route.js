@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const PRICING = {
   currency: "CAD",
-  taxRate: 0,
+  taxRate: 0.05,
   fence: { perLfByHeight: { 4: 28, 5: 33, 6: 38 }, gate: 350, postUpgrade: { "4x4": 0, "4x6": 6, "6x6": 10 } },
   deck: {
     perSqft: 55,
@@ -24,6 +24,7 @@ const PRICING = {
 
 };
 
+const MAX_ESTIMATE_INPUT = 1000;
 const TYPE_ALIAS = { fence: "fence", deck: "deck", "deck-railing": "deck", "deck_railing": "deck", pergola: "pergola" };
 const RAILING_ALIAS = { with: "pt", "with-pt": "pt", "with-ppt": "pt", ptt: "pt", "with-alum": "aluminum", aluminium: "aluminum" };
 const money = (n) => Math.round(n * 100) / 100;
@@ -31,6 +32,7 @@ const s = (v) => (typeof v === "string" ? v.trim() : "");
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 const isPos = (v) => isNum(v) && v > 0;
 const isInt = (v) => Number.isInteger(v);
+const inRange = (v, min, max) => isNum(v) && v >= min && v <= max;
 const asLower = (v) => (typeof v === "string" ? s(v).toLowerCase() : v);
 const typeInput = (v) => (v && typeof v === "object" ? v.key ?? v.type ?? v.slug ?? v.name : v);
 const asType = (v) => {
@@ -138,32 +140,41 @@ function validate({ claim, project }) {
   req(!!claim.phone, "claim.phone is required.");
 
   const t = project.projectType;
-  if (!["fence", "deck", "pergola", "sod", "trees-shrubs"].includes(t)) return ["project.projectType must be one of: fence, deck, pergola."];
+  if (!["fence", "deck", "pergola", "sod", "trees-shrubs"].includes(t)) {
+    return ["project.projectType must be one of: fence, deck, pergola, sod, trees-shrubs."];
+  }
 
   if (t === "fence") {
-    req(isPos(project.totalLinearFeet), "project.totalLinearFeet must be a positive number.");
+    req(inRange(project.totalLinearFeet, 0.01, MAX_ESTIMATE_INPUT), `project.totalLinearFeet must be between 0 and ${MAX_ESTIMATE_INPUT}.`);
     req([4, 5, 6].includes(project.heightFeet), "project.heightFeet must be 4, 5, or 6.");
-    req(isInt(project.numberOfGates) && project.numberOfGates >= 0, "project.numberOfGates must be an integer >= 0.");
+    req(isInt(project.numberOfGates) && inRange(project.numberOfGates, 0, MAX_ESTIMATE_INPUT), `project.numberOfGates must be an integer between 0 and ${MAX_ESTIMATE_INPUT}.`);
     req(["4x4", "4x6", "6x6"].includes(project.postSize), "project.postSize must be one of: 4x4, 4x6, 6x6.");
   }
   if (t === "deck") {
-    req(isPos(project.lengthFeet), "project.lengthFeet must be a positive number.");
-    req(isPos(project.widthFeet), "project.widthFeet must be a positive number.");
-    req(isPos(project.heightFeet), "project.heightFeet must be a positive number.");
+    req(inRange(project.lengthFeet, 0.01, MAX_ESTIMATE_INPUT), `project.lengthFeet must be between 0 and ${MAX_ESTIMATE_INPUT}.`);
+    req(inRange(project.widthFeet, 0.01, MAX_ESTIMATE_INPUT), `project.widthFeet must be between 0 and ${MAX_ESTIMATE_INPUT}.`);
+    req(inRange(project.heightFeet, 0.01, MAX_ESTIMATE_INPUT), `project.heightFeet must be between 0 and ${MAX_ESTIMATE_INPUT}.`);
     req(["none", "pt", "aluminum"].includes(project.railing), "project.railing must be one of: none, pt, aluminum.");
   }
   if (t === "pergola") {
-    req(isPos(project.lengthFeet), "project.lengthFeet must be a positive number.");
-    req(isPos(project.widthFeet), "project.widthFeet must be a positive number.");
-    req(isPos(project.heightFeet), "project.heightFeet must be a positive number.");
+    req(inRange(project.lengthFeet, 0.01, MAX_ESTIMATE_INPUT), `project.lengthFeet must be between 0 and ${MAX_ESTIMATE_INPUT}.`);
+    req(inRange(project.widthFeet, 0.01, MAX_ESTIMATE_INPUT), `project.widthFeet must be between 0 and ${MAX_ESTIMATE_INPUT}.`);
+    req(inRange(project.heightFeet, 0.01, MAX_ESTIMATE_INPUT), `project.heightFeet must be between 0 and ${MAX_ESTIMATE_INPUT}.`);
     req(["basic", "standard", "premium"].includes(project.designTier), "project.designTier must be one of: basic, standard, premium.");
   }
   if (t === "sod") {
-    req(isPos(project.sodSquareFt), "project.sodSquareFt must be a positive number.");
+    req(inRange(project.sodSquareFt, 0.01, MAX_ESTIMATE_INPUT), `project.sodSquareFt must be between 0 and ${MAX_ESTIMATE_INPUT}.`);
+    if (project.sodLengthFeet !== undefined && project.sodLengthFeet !== "") {
+      req(inRange(project.sodLengthFeet, 0.01, MAX_ESTIMATE_INPUT), `project.sodLengthFeet must be between 0 and ${MAX_ESTIMATE_INPUT}.`);
+    }
+    if (project.sodWidthFeet !== undefined && project.sodWidthFeet !== "") {
+      req(inRange(project.sodWidthFeet, 0.01, MAX_ESTIMATE_INPUT), `project.sodWidthFeet must be between 0 and ${MAX_ESTIMATE_INPUT}.`);
+    }
   }
 
   if (t === "trees-shrubs") {
-    req(project.numTrees >= 0 && project.numShrubs >= 0, "project.numTrees and project.numShrubs must be >= 0.");
+    req(isInt(project.numTrees) && inRange(project.numTrees, 0, MAX_ESTIMATE_INPUT), `project.numTrees must be an integer between 0 and ${MAX_ESTIMATE_INPUT}.`);
+    req(isInt(project.numShrubs) && inRange(project.numShrubs, 0, MAX_ESTIMATE_INPUT), `project.numShrubs must be an integer between 0 and ${MAX_ESTIMATE_INPUT}.`);
     req(project.numTrees + project.numShrubs > 0, "At least one tree or shrub is required.");
   }
 
