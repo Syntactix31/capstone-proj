@@ -170,23 +170,6 @@
   border-bottom: 0;
 }
 
-@media print {
-  .page {
-    padding: 0;
-    background: #fff;
-  }
-
-  .toolbar {
-    display: none;
-  }
-
-  .sheet {
-    box-shadow: none;
-    max-width: none;
-    min-height: 100vh;
-  }
-}
-
 @media (max-width: 900px) {
   .page {
     padding: 16px;
@@ -214,5 +197,121 @@
 
   .deposit {
     margin-bottom: 64px;
+  }
+}
+
+@page {
+  size: auto;
+  margin: 8mm;
+}
+
+@media print {
+  .page {
+    padding: 0;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .toolbar {
+    display: none;
+  }
+
+  .sheet {
+    box-shadow: none;
+    max-width: none;
+    min-height: auto;
+    padding: 18px 22px 22px;
+  }
+
+  .header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .footer {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 18px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .summary,
+  .totals {
+    width: auto;
+    min-width: 250px;
+  }
+
+  .companyName {
+    font-size: 2rem;
+  }
+
+  .companyMeta {
+    margin-top: 4px;
+    font-size: 0.95rem;
+  }
+
+  .summaryTitle {
+    padding: 12px 14px;
+    font-size: 1rem;
+  }
+
+  .summaryRow,
+  .summaryTotal {
+    padding: 10px 14px;
+  }
+
+  .recipient {
+    margin: 28px 0 18px;
+  }
+
+  .tableHead,
+  .tableRow {
+    grid-template-columns: 1.3fr 2.5fr 0.45fr 0.85fr 0.85fr;
+  }
+
+  .tableHead {
+    padding: 10px 12px;
+  }
+
+  .tableRow {
+    min-height: 0;
+    padding: 10px 12px;
+  }
+
+  .divider {
+    margin: 18px 0 14px;
+  }
+
+  .deposit {
+    margin-bottom: 38px;
+    font-size: 1rem;
+  }
+
+  .signatureLine {
+    margin-bottom: 6px;
+  }
+
+  .signatureMeta {
+    gap: 10px;
+  }
+
+  .note {
+    margin-top: 18px;
+    max-width: 420px;
+    font-size: 0.92rem;
+  }
+
+  .totalsRow {
+    padding: 10px 14px;
+  }
+
+  .totalsRowTotal {
+    font-size: 1.05rem;
   }
 }

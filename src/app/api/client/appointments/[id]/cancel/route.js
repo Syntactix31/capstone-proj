@@ -1,17 +1,14 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifySessionToken, AUTH_COOKIE_NAME } from "../../../../../lib/auth/session.js";
-import { cancelBookingById, findBookingById } from "../../../../../lib/db/bookings.js";
-import { getCalendarClient } from "../../../../../lib/googleCalendar.js";
-import { ensureDatabaseSchema } from "../../../../../lib/db/schema.js";
-import { getSql } from "../../../../../lib/db/client.js";
-import { normalizeEmail } from "../../../../../lib/db/users.js";
+
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifySessionToken, AUTH_COOKIE_NAME } from '../../../../../lib/auth/session.js';
+import { findBookingById } from '../../../../../lib/db/bookings.js';
+import { ensureDatabaseSchema } from '../../../../../lib/db/schema.js';
+import { getSql } from '../../../../../lib/db/client.js';
+import { normalizeEmail } from '../../../../../lib/db/users.js';
+import { cancelBookingWorkflow } from '../../../../../lib/bookings/cancelBooking.js';
 
 export const dynamic = "force-dynamic";
-
-function isNotFoundError(error) {
-  return error?.code === 404 || error?.status === 404 || error?.response?.status === 404;
-}
 
 export async function POST(request, { params }) {
   try {
@@ -44,23 +41,11 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Delete the calendar event first so the appointment slot is freed up.
-    if (booking.googleEventId) {
-      try {
-        const calendar = await getCalendarClient();
-        await calendar.events.delete({
-          calendarId: process.env.GOOGLE_CALENDAR_ID,
-          eventId: booking.googleEventId,
-        });
-      } catch (calendarError) {
-        if (!isNotFoundError(calendarError)) {
-          console.error("CLIENT CALENDAR DELETE ERROR:", calendarError);
-          return NextResponse.json({ error: "Failed to delete Google Calendar event" }, { status: 502 });
-        }
-      }
+    if (!booking.googleEventId) {
+      return NextResponse.json({ error: "Booking is missing its calendar event." }, { status: 409 });
     }
 
-    await cancelBookingById(id);
+    await cancelBookingWorkflow(booking.googleEventId, booking);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("CLIENT APPOINTMENT CANCEL ERROR:", err);

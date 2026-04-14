@@ -2,70 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
-
-
-/*placeholder services until active database implemented*/
-const SERVICES = [
-  {
-    id: "S-01",
-    name: "Fence Installation",
-    description: "Custom fence design, materials, and full installation.",
-    duration: "1-2 days",
-    price: "2800.00",
-    quantity: 1,
-    active: true,
-  },
-  {
-    id: "S-02",
-    name: "Deck & Railing",
-    description: "Deck builds, railing upgrades, and safety repairs.",
-    duration: "3-5 days",
-    price: "4500.00",
-    quantity: 1,
-    active: true,
-  },
-  {
-    id: "S-03",
-    name: "Pergola",
-    description: "Backyard pergola installation and finishing.",
-    duration: "1-3 days",
-    price: "3200.00",
-    quantity: 1,
-    active: true,
-  },
-  {
-    id: "S-04",
-    name: "Sod Installation",
-    description: "Site prep and fresh sod installation.",
-    duration: "1 day",
-    price: "1100.00",
-    quantity: 1,
-    active: false,
-  },
-  {
-    id: "S-05",
-    name: "Trees and Shrubs",
-    description: "Planting, pruning, and seasonal care.",
-    duration: "1 day",
-    price: "1100.00",
-    quantity: 1,
-    active: true,
-  },
-];
+import {
+  FIELD_LIMITS,
+  inputPropsFor,
+  sanitizeIntegerInput,
+  sanitizeMoneyInput,
+  sanitizeTextArea,
+} from "../../lib/validation/fields.js";
 
 // Admin UI for managing service cards/details.
 export default function AdminServicesPage() {
-  const [services, setServices] = useState(() => {
-    if (typeof window === "undefined") return SERVICES;
-
-    try {
-      const stored = window.localStorage.getItem("admin_services");
-      const parsed = stored ? JSON.parse(stored) : null;
-      return Array.isArray(parsed) && parsed.length ? parsed : SERVICES;
-    } catch {
-      return SERVICES;
-    }
-  });
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -78,11 +28,39 @@ export default function AdminServicesPage() {
     durationUnit: "hours",
   });
 
-  // Save service edits locally so the admin UI keeps its state between refreshes.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("admin_services", JSON.stringify(services));
-  }, [services]);
+    let active = true;
+
+    async function loadServices() {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch("/api/admin/services", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+
+        if (!res.ok) {
+          setServices([]);
+          setError(data?.error || "Failed to load services.");
+          return;
+        }
+
+        setServices(Array.isArray(data.services) ? data.services : []);
+      } catch (loadError) {
+        console.error(loadError);
+        if (!active) return;
+        setServices([]);
+        setError("Failed to load services.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadServices();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const activeServices = useMemo(
     () => services.filter((service) => service.active),
@@ -98,9 +76,14 @@ export default function AdminServicesPage() {
   // Update whichever field changed in the service form.
   const handleFormChange = (event) => {
     const { name, value, type, checked } = event.target;
+    let nextValue = value;
+    if (name === "name") nextValue = sanitizeTextArea(value, FIELD_LIMITS.serviceName);
+    if (name === "description") nextValue = sanitizeTextArea(value, FIELD_LIMITS.description);
+    if (name === "price") nextValue = sanitizeMoneyInput(value);
+    if (name === "quantity" || name === "durationValue") nextValue = sanitizeIntegerInput(value);
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: type === "checkbox" ? checked : nextValue,
     }));
   };
 
@@ -118,8 +101,10 @@ export default function AdminServicesPage() {
   };
 
   // Either update an existing service or create a new one in local state.
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    if (busy) return;
+
     const formattedDuration = `${formData.durationValue} ${formData.durationUnit}`;
     const normalizedPrice = (
       Number.parseFloat(formData.price || "0") || 0
@@ -128,36 +113,47 @@ export default function AdminServicesPage() {
       Math.max(1, Number.parseInt(formData.quantity || "1", 10) || 1)
     );
 
-    if (selectedServiceId) {
-      setServices((prev) =>
-        prev.map((service) =>
-          service.id === selectedServiceId
-            ? {
-                ...service,
-                name: formData.name || "Updated Service",
-                description: formData.description || service.description,
-                duration: formattedDuration,
-                price: normalizedPrice,
-                quantity: normalizedQuantity,
-              }
-            : service
-        )
-      );
-    } else {
-      const nextId = `S-${String(services.length + 1).padStart(2, "0")}`;
-      setServices((prev) => [
-        {
-          id: nextId,
+    setBusy(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/admin/services", {
+        method: selectedServiceId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedServiceId || undefined,
           name: formData.name || "New Service",
           description: formData.description || "Service description",
-          duration: formattedDuration,
+          durationValue: formData.durationValue,
+          durationUnit: formData.durationUnit,
           price: normalizedPrice,
           quantity: normalizedQuantity,
           active: true,
-        },
-        ...prev,
-      ]);
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || "Failed to save service.");
+        return;
+      }
+
+      setServices((prev) => {
+        const nextService = data.service;
+        if (!nextService) return prev;
+        if (selectedServiceId) {
+          return prev.map((service) => (service.id === selectedServiceId ? nextService : service));
+        }
+        return [nextService, ...prev];
+      });
+    } catch (saveError) {
+      console.error(saveError);
+      setError("Failed to save service.");
+      return;
+    } finally {
+      setBusy(false);
     }
+
     setIsModalOpen(false);
     handleReset();
   };
@@ -187,10 +183,31 @@ export default function AdminServicesPage() {
     setIsModalOpen(false);
   };
 
-  const handleDeleteService = (serviceId) => {
-    setServices((prev) => prev.filter((service) => service.id !== serviceId));
-    setDeleteTarget(null);
-    handleReset();
+  const handleDeleteService = async (serviceId) => {
+    if (busy) return;
+
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/services?id=${encodeURIComponent(serviceId)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || "Failed to delete service.");
+        return;
+      }
+
+      setServices((prev) => prev.filter((service) => service.id !== serviceId));
+      setDeleteTarget(null);
+      handleReset();
+    } catch (deleteError) {
+      console.error(deleteError);
+      setError("Failed to delete service.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -201,6 +218,7 @@ export default function AdminServicesPage() {
           <p className="admin-subtitle">
             Services currently available for booking.
           </p>
+          {error ? <p className="admin-error">{error}</p> : null}
         </div>
         <div className="admin-hero-actions">
           <button
@@ -225,6 +243,7 @@ export default function AdminServicesPage() {
             <span>Quantity</span>
             <span>Total</span>
           </div>
+          {loading ? <p className="admin-muted">Loading services...</p> : null}
           {activeServices.map((service) => (
             <button
               type="button"
@@ -272,6 +291,7 @@ export default function AdminServicesPage() {
                   setIsModalOpen(false);
                   handleReset();
                 }}
+                disabled={busy}
               >
                 Close
               </button>
@@ -283,10 +303,12 @@ export default function AdminServicesPage() {
                 <input
                   className="admin-input"
                   name="name"
+                  {...inputPropsFor("serviceName")}
                   value={formData.name}
                   onChange={handleFormChange}
                   placeholder="Lawn sprinkler repairs"
                   required
+                  disabled={busy}
                 />
               </label>
 
@@ -295,10 +317,12 @@ export default function AdminServicesPage() {
                 <textarea
                   className="admin-textarea"
                   name="description"
+                  maxLength={FIELD_LIMITS.description}
                   value={formData.description}
                   onChange={handleFormChange}
                   placeholder="Overview of the service, what is included, and how it helps the client."
                   rows={4}
+                  disabled={busy}
                 />
               </label>
 
@@ -308,11 +332,13 @@ export default function AdminServicesPage() {
                   <input
                     className="admin-input"
                     name="price"
+                    {...inputPropsFor("money")}
                     value={formData.price}
                     onChange={handleFormChange}
                     type="number"
                     step="0.01"
                     min="0"
+                    disabled={busy}
                   />
                 </label>
                 <label className="admin-field">
@@ -320,11 +346,13 @@ export default function AdminServicesPage() {
                   <input
                     className="admin-input"
                     name="quantity"
+                    {...inputPropsFor("quantity")}
                     value={formData.quantity}
                     onChange={handleFormChange}
                     type="number"
                     step="1"
                     min="1"
+                    disabled={busy}
                   />
                 </label>
               </div>
@@ -347,6 +375,7 @@ export default function AdminServicesPage() {
                     name="durationValue"
                     value={formData.durationValue}
                     onChange={handleFormChange}
+                    disabled={busy}
                   >
                     {formData.durationUnit === "minutes" &&
                       Array.from({ length: 12 }, (_, index) => (index + 1) * 5).map(
@@ -378,6 +407,7 @@ export default function AdminServicesPage() {
                     name="durationUnit"
                     value={formData.durationUnit}
                     onChange={handleFormChange}
+                    disabled={busy}
                   >
                     <option value="minutes">Minutes</option>
                     <option value="hours">Hours</option>
@@ -398,6 +428,7 @@ export default function AdminServicesPage() {
                         services.find((service) => service.id === selectedServiceId)
                       )
                     }
+                    disabled={busy}
                   >
                     Delete
                   </button>
@@ -411,11 +442,12 @@ export default function AdminServicesPage() {
                     setIsModalOpen(false);
                     handleReset();
                   }}
+                  disabled={busy}
                 >
                   Cancel
                 </button>
-                <button className="admin-btn admin-btn--primary" type="submit">
-                  {selectedServiceId ? "Save changes" : "Create"}
+                <button className="admin-btn admin-btn--primary" type="submit" disabled={busy}>
+                  {busy ? "Saving..." : selectedServiceId ? "Save changes" : "Create"}
                 </button>
               </div>
             </div>
@@ -443,6 +475,7 @@ export default function AdminServicesPage() {
                 className="admin-btn admin-btn--ghost admin-btn--small"
                 onClick={() => setDeleteTarget(null)}
                 type="button"
+                disabled={busy}
               >
                 Close
               </button>
@@ -453,13 +486,15 @@ export default function AdminServicesPage() {
                 className="admin-btn admin-btn--danger"
                 type="button"
                 onClick={() => handleDeleteService(deleteTarget.id)}
+                disabled={busy}
               >
-                Yes, delete it
+                {busy ? "Deleting..." : "Yes, delete it"}
               </button>
               <button
                 className="admin-btn admin-btn--ghost"
                 type="button"
                 onClick={() => setDeleteTarget(null)}
+                disabled={busy}
               >
                 Keep service
               </button>

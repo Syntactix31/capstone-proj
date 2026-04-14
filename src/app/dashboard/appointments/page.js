@@ -2,25 +2,34 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
+import AppointmentCancelModal from "../../components/AppointmentCancelModal.js";
+import { SERVICE_CATALOG, normalizeServiceId, normalizeServiceName } from "../../lib/services/catalog.js";
+import {
+  FIELD_LIMITS,
+  inputPropsFor,
+  sanitizeEmail,
+  sanitizeLetters,
+  sanitizePhone,
+  sanitizeTextArea,
+} from "../../lib/validation/fields.js";
 
-
-const SERVICES = [
-  { id: "fence", name: "Fence Installation", active: true },
-  { id: "deck-railing", name: "Deck & Railing", active: true },
-  { id: "pergola", name: "Pergola", active: true },
-  { id: "sod", name: "Sod Installation", active: false },
-  { id: "trees-shrubs", name: "Trees and Shrubs", active: true },
-];
+const SERVICES = SERVICE_CATALOG.map(({ id, name, active }) => ({ id, name, active }));
 
 const VISIT_TYPES = ["Estimate", "Design Consultation", "Installation"];
 
 
 const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
+  Completed: "admin-badge admin-badge--muted",
 };
 
+const COMPLETED_GRACE_MS = 60 * 1000;
+
+// uses America/Edmonton as a config value for timezone through the intl api 
+// "en-ca" controls how date and is formatted, which is YYYY-MM-DD
 const EDMONTON_TIME_ZONE = "America/Edmonton";
 const EDMONTON_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  // adjusts to Edmonton time and formatted in a numeric style
   timeZone: EDMONTON_TIME_ZONE,
   year: "numeric",
   month: "2-digit",
@@ -32,12 +41,10 @@ const EDMONTON_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
 
 
 function prettyServiceName(serviceIdOrName) {
-  const hit =
-    SERVICES.find((s) => s.id === serviceIdOrName) ||
-    SERVICES.find((s) => s.name === serviceIdOrName);
-  return hit?.name || String(serviceIdOrName || "Appointment");
+  return normalizeServiceName(serviceIdOrName) || String(serviceIdOrName || "Appointment");
 }
 
+// normalization of visitType. Removes whitespaces and converts to lowercase
 function visitTypeTone(label) {
   const normalized = String(label || "").trim().toLowerCase();
   if (normalized === "estimate") return "estimate";
@@ -46,6 +53,8 @@ function visitTypeTone(label) {
   return "installation";
 }
 
+
+// for events on the summary card
 function visitTypeToneStyle(label) {
   const tone = visitTypeTone(label);
 
@@ -78,6 +87,7 @@ function visitTypeToneStyle(label) {
   };
 }
 
+// for events on the grid
 function visitTypeEventToneStyle(label) {
   const tone = visitTypeTone(label);
 
@@ -135,7 +145,9 @@ function to12h(time24) {
 }
 
 function getEdmontonParts(date) {
+  // formatToParts, gives us structured values of data from the date. year=2026, month=03
   const parts = EDMONTON_PARTS_FORMATTER.formatToParts(date);
+  // creates an array of key, value pairs into an object
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return {
     year: Number(values.year),
@@ -148,6 +160,7 @@ function getEdmontonParts(date) {
 
 function formatEdmontonDateKey(date) {
   const parts = getEdmontonParts(date);
+  // eg. "2026-03-20"
   return `${String(parts.year).padStart(4, "0")}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
 }
 
@@ -156,9 +169,11 @@ function buildDateTime(dateStr, time12h) {
   if (!time24 || !dateStr) return null;
 
   const [year, month, day] = String(dateStr)
+  // splits the y/m/d and removes dashes
     .split("-")
+    // creates new array while going through each element turning them into Number
     .map((value) => Number(value));
-  const [hour, minute] = time24.split(":").map((value) => Number(value));
+  const [hour, minute] = time24.split(":").map((value) => Number(value)); // gets the time and initialize the variables with h/m. Converts to true number
 
   if (
     !Number.isFinite(year) ||
@@ -170,6 +185,7 @@ function buildDateTime(dateStr, time12h) {
     return null;
   }
 
+  // creates utc timestamp in MS
   let utcMillis = Date.UTC(year, month - 1, day, hour, minute, 0);
 
   for (let i = 0; i < 3; i += 1) {
@@ -184,24 +200,32 @@ function buildDateTime(dateStr, time12h) {
   return new Date(utcMillis);
 }
 
+
 function splitClientName(fullName) {
   const parts = String(fullName || "")
     .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+    .split(/\s+/) // split between 1 or more whitespace characters
+    .filter(Boolean); // only takes truthy or non empty values
 
   return {
     firstName: parts[0] || "",
-    lastName: parts.slice(1).join(" "),
+    lastName: parts.slice(1).join(" "), //start at index 1 and take everything after and joins the array with a space
   };
 }
 
 function getClientFormFields(client) {
   return {
+    // ?. to safely access to properties, if value is null we get error
     phone: client?.phone || "",
     email: client?.email || "",
     address: client?.address || "",
   };
+}
+
+function getAppointmentStatus(appointment, now) {
+  const endAt = new Date(appointment?.endIso || "");
+  if (Number.isNaN(endAt.getTime())) return appointment?.status || "Confirmed";
+  return now.getTime() > endAt.getTime() + COMPLETED_GRACE_MS ? "Completed" : "Confirmed";
 }
 
 // Main admin scheduling page for viewing, creating, cancelling, and rescheduling bookings.
@@ -278,12 +302,12 @@ export default function AdminAppointmentsPage() {
         eventId: a.eventId,
         client: a.client || "Unknown",
         service: prettyServiceName(a.service),
-        serviceId: a.service,
+        serviceId: normalizeServiceId(a.service),
         visitType: a.visitType || "Estimate",
         date: a.date, 
         time: a.time, 
         address: a.address || "",
-        status: "Confirmed", 
+        status: a.status || "Confirmed",
         email: a.email || "",
         notes: a.notes || "",
         startIso: a.startIso,
@@ -384,9 +408,17 @@ export default function AdminAppointmentsPage() {
     return () => media.removeListener(syncMedia);
   }, []);
 
-  // Since Google events are real bookings, treat them as Confirmed
-  const bookedAppointments = appointments.filter((appt) => appt.status === "Confirmed");
+  const appointmentsWithStatus = useMemo(
+    () =>
+      appointments.map((appointment) => ({
+        ...appointment,
+        status: getAppointmentStatus(appointment, now),
+      })),
+    [appointments, now]
+  );
+  const bookedAppointments = appointmentsWithStatus.filter((appt) => appt.status === "Confirmed");
   const confirmed = bookedAppointments.length;
+  // Calculates counts and percentages of each visit type for summary display, recomputing only when relevant data changes
   const visitTypeSummary = useMemo(() => {
     const counts = new Map(VISIT_TYPES.map((label) => [label, 0]));
 
@@ -428,7 +460,7 @@ export default function AdminAppointmentsPage() {
         value: `project:${project.id}`,
         label: `${prettyServiceName(project.service)}${project.address ? ` - ${project.address}` : ""}`,
         projectId: project.id,
-        service: project.service,
+        service: normalizeServiceId(project.service),
       }));
     }
 
@@ -474,6 +506,7 @@ export default function AdminAppointmentsPage() {
   // time slot intervals - used for when user wants to create a new appointment and has to choose a timeslot
   const timeSlots = useMemo(() => {
     const slots = [];
+    // Converts the selected duration into a number so time calculations can be performed
     const durationHours = Number.parseInt(formState.durationHours || "1", 10) || 1;
     const latestEndMinutes = calendarEndHour * 60;
     for (let hour = calendarStartHour; hour <= calendarEndHour; hour += 1) {
@@ -490,6 +523,7 @@ export default function AdminAppointmentsPage() {
     return slots;
   }, [calendarEndHour, calendarStartHour, formState.durationHours]);
 
+  // Filters out time slots that conflict with existing appointments, ensuring only valid booking times are shown
   const availableTimeSlots = useMemo(() => {
     if (!formState.date) return timeSlots;
 
@@ -501,6 +535,7 @@ export default function AdminAppointmentsPage() {
       if (slotStart.getTime() < Date.now()) return false;
 
       const slotEnd = new Date(slotStart.getTime() + durationMs);
+      // Checks if any existing appointment overlaps with a selected time slot, used for conflict detection
       return !appointments.some((appt) => {
         if (editingId && appt.eventId === editingId) return false;
 
@@ -596,8 +631,7 @@ export default function AdminAppointmentsPage() {
 
   // Convert fetched appointments into positioned calendar events for grid rendering.
   const calendarEvents = useMemo(() => {
-    return appointments
-      .filter((appt) => appt.status === "Confirmed")
+    return appointmentsWithStatus
       .map((appt) => {
         const time24 = to24h(appt.time); 
         const hour = Number(time24.split(":")[0] || 0);
@@ -625,7 +659,7 @@ export default function AdminAppointmentsPage() {
         };
       })
       .filter(Boolean);
-  }, [appointments, calendarEndHour, calendarStartHour]);
+  }, [appointmentsWithStatus, calendarEndHour, calendarStartHour]);
 
   /* day
 - useMemo hook
@@ -896,6 +930,12 @@ export default function AdminAppointmentsPage() {
   // Update the controlled form fields as the admin types/selects values.
   const handleFormChange = (event) => {
     const { name, value } = event.target;
+    let nextValue = value;
+    if (name === "firstName" || name === "lastName") nextValue = sanitizeLetters(value, FIELD_LIMITS.name);
+    if (name === "phone") nextValue = sanitizePhone(value);
+    if (name === "email") nextValue = sanitizeEmail(value);
+    if (name === "address") nextValue = sanitizeTextArea(value, FIELD_LIMITS.address);
+    if (name === "notes") nextValue = sanitizeTextArea(value, FIELD_LIMITS.notes);
     if (name === "clientId") {
       const nextClient = clients.find((client) => client.id === value) || null;
       const nextProjects = projects.filter((project) => project.clientId === value);
@@ -925,7 +965,7 @@ export default function AdminAppointmentsPage() {
       }));
       return;
     }
-    setFormState((prev) => ({ ...prev, [name]: value }));
+    setFormState((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   // Shared submit handler: creates a new booking or reschedules an existing one.
@@ -1577,6 +1617,7 @@ return (
                       id="clientPhone"
                       name="phone"
                       className="admin-input"
+                      {...inputPropsFor("phone")}
                       value={formState.phone}
                       onChange={handleFormChange}
                     />
@@ -1589,6 +1630,7 @@ return (
                       name="email"
                       type="email"
                       className="admin-input"
+                      {...inputPropsFor("email")}
                       value={formState.email}
                       onChange={handleFormChange}
                     />
@@ -1723,6 +1765,7 @@ return (
                   id="address"
                   name="address"
                   className="admin-input"
+                  {...inputPropsFor("address")}
                   value={formState.address}
                   onChange={handleFormChange}
                 />
@@ -1734,6 +1777,7 @@ return (
                   id="notes"
                   name="notes"
                   className="admin-input"
+                  maxLength={FIELD_LIMITS.notes}
                   rows={4}
                   value={formState.notes}
                   onChange={handleFormChange}
@@ -1811,62 +1855,22 @@ return (
         </div>
       )}
 {/* confirmation modal for canceling an appointment */}
-      {cancelTarget && (
-        <div className="admin-modal">
-          <button
-            className="admin-modal__backdrop"
-            onClick={() => setCancelTarget(null)}
-            aria-label="Close cancel confirmation"
-            type="button"
-          />
-          <div className="admin-modal__content" role="dialog" aria-modal="true">
-            <div className="admin-modal__header">
-              <div>
-                <h2 className="admin-title">Are you sure?</h2>
-                <p className="admin-subtitle">
-                  This will remove it from Google Calendar and send cancel emails.
-                </p>
-              </div>
-              <button
-                className="admin-btn admin-btn--ghost admin-btn--small"
-                onClick={() => setCancelTarget(null)}
-                type="button"
-                disabled={busy}
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="admin-modal__actions">
-              <button
-                className="admin-btn admin-btn--danger"
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  const ok = await cancelOnServer(cancelTarget.eventId);
-                  setCancelTarget(null);
-                  if (ok && cancelSource === "booked") setShowBookedModal(true);
-                  setCancelSource(null);
-                }}
-              >
-                {busy ? "Canceling…" : "Yes, cancel it"}
-              </button>
-              <button
-                className="admin-btn admin-btn--ghost"
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setCancelTarget(null);
-                  if (cancelSource === "booked") setShowBookedModal(true);
-                  setCancelSource(null);
-                }}
-              >
-                Keep appointment
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppointmentCancelModal
+        open={Boolean(cancelTarget)}
+        busy={busy}
+        onConfirm={async () => {
+          if (!cancelTarget?.eventId) return;
+          const ok = await cancelOnServer(cancelTarget.eventId);
+          setCancelTarget(null);
+          if (ok && cancelSource === "booked") setShowBookedModal(true);
+          setCancelSource(null);
+        }}
+        onClose={() => {
+          setCancelTarget(null);
+          if (cancelSource === "booked") setShowBookedModal(true);
+          setCancelSource(null);
+        }}
+      />
       </div>
     </AdminLayout>
   );

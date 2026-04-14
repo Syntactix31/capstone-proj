@@ -80,6 +80,8 @@ npm install @neondatabase/serverless
 npm install @vercel/blob
 # and
 npm install busboy
+# and
+npm install @aws-sdk/client-rekognition
 ```
 
 Run the Production Build:

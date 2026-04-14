@@ -320,3 +320,57 @@ export async function updateClient(clientId, patch) {
 
   return rows[0] ? mapClientRow(rows[0]) : null;
 }
+
+// Delete a client when no restricted child records still depend on it.
+export async function deleteClient(clientId) {
+  await ensureDatabaseSchema();
+  const sql = getSql();
+
+  const [client] = await sql`
+    SELECT id, name
+    FROM clients
+    WHERE id = ${clientId}
+    LIMIT 1
+  `;
+
+  if (!client) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  const [dependencyCounts] = await sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM bookings WHERE client_id = ${clientId}) AS bookings_count,
+      (SELECT COUNT(*)::int FROM estimates WHERE client_id = ${clientId}) AS estimates_count
+  `;
+
+  const bookingsCount = Number(dependencyCounts?.bookings_count || 0);
+  const estimatesCount = Number(dependencyCounts?.estimates_count || 0);
+
+  if (bookingsCount > 0 || estimatesCount > 0) {
+    return {
+      ok: false,
+      reason: "has_dependencies",
+      client: {
+        id: client.id,
+        name: client.name,
+      },
+      blockers: {
+        bookings: bookingsCount,
+        estimates: estimatesCount,
+      },
+    };
+  }
+
+  await sql`
+    DELETE FROM clients
+    WHERE id = ${clientId}
+  `;
+
+  return {
+    ok: true,
+    client: {
+      id: client.id,
+      name: client.name,
+    },
+  };
+}

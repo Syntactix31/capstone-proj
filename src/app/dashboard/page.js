@@ -4,45 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminLayout from "../components/AdminLayout.js";
 
-// still need database implementation
-const SERVICES = [
-  {
-    id: "S-01",
-    name: "Fence Installation",
-    duration: "1-2 days",
-    price: "$2,800+",
-    active: true,
-  },
-  {
-    id: "S-02",
-    name: "Deck & Railing",
-    duration: "3-5 days",
-    price: "$4,500+",
-    active: true,
-  },
-  {
-    id: "S-03",
-    name: "Pergola",
-    duration: "1-3 days",
-    price: "$3,200+",
-    active: true,
-  },
-  {
-    id: "S-04",
-    name: "Sod Installation",
-    duration: "1 day",
-    price: "$1,100+",
-    active: true,
-  },
-  {
-    id: "S-05",
-    name: "Trees and Shrubs",
-    duration: "1 day",
-    price: "$1,100+",
-    active: true,
-  },
-];
-
 // status class
 const STATUS_CLASS = {
   Confirmed: "admin-badge admin-badge--active",
@@ -50,6 +11,7 @@ const STATUS_CLASS = {
 };
 
 const EDMONTON_TIME_ZONE = "America/Edmonton";
+const COMPLETED_GRACE_MS = 60 * 1000;
 
 /*
 phone input field formatting
@@ -88,6 +50,12 @@ function getAppointmentDate(appointment) {
   return fallbackDate;
 }
 
+function getAppointmentStatus(appointment, now) {
+  const endAt = new Date(appointment?.endIso || "");
+  if (Number.isNaN(endAt.getTime())) return appointment?.status || "Confirmed";
+  return now.getTime() > endAt.getTime() + COMPLETED_GRACE_MS ? "Completed" : "Confirmed";
+}
+
 function parseDateOnly(dateStr) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ""))) return null;
   return new Date(`${dateStr}T12:00:00-07:00`);
@@ -123,6 +91,7 @@ function getDateParts(value) {
 export default function DashboardPage() {
     const [appointments, setAppointments] = useState([]);
     const [clients, setClients] = useState([]);
+    const [services, setServices] = useState([]);
     const [error, setError] = useState("");
     const [activeClient, setActiveClient] = useState(null);
     const [now, setNow] = useState(() => new Date());
@@ -145,6 +114,7 @@ export default function DashboardPage() {
 
           setAppointments(Array.isArray(data.appointments) ? data.appointments : []);
           setClients(Array.isArray(data.clients) ? data.clients : []);
+          setServices(Array.isArray(data.services) ? data.services : []);
         } catch (loadError) {
           console.error(loadError);
           if (!alive) return;
@@ -163,12 +133,20 @@ export default function DashboardPage() {
       return () => clearInterval(interval);
     }, []);
 
-    const confirmedCount = appointments.filter((appt) => appt.status === "Confirmed").length;
-    const activeServices = SERVICES.filter((service) => service.active).length;
+    const appointmentsWithStatus = useMemo(
+      () =>
+        appointments.map((appointment) => ({
+          ...appointment,
+          status: getAppointmentStatus(appointment, now),
+        })),
+      [appointments, now]
+    );
+    const confirmedCount = appointmentsWithStatus.filter((appt) => appt.status === "Confirmed").length;
+    const activeServices = services.filter((service) => service.active).length;
     const activeClients = clients.length;
     const nextAppointment = useMemo(
       () =>
-        appointments
+        appointmentsWithStatus
           .filter((appt) => appt.status === "Confirmed")
           .map((appt) => ({
             ...appt,
@@ -176,7 +154,7 @@ export default function DashboardPage() {
           }))
           .filter((appt) => appt.appointmentDate && appt.appointmentDate.getTime() >= now.getTime())
           .sort((a, b) => a.appointmentDate.getTime() - b.appointmentDate.getTime())[0] || null,
-      [appointments, now]
+      [appointmentsWithStatus, now]
     );
     const nextAppointmentDateParts = useMemo(
       () => getDateParts(nextAppointment?.appointmentDate || nextAppointment?.startIso || `${nextAppointment?.date || ""}T00:00:00`),
@@ -286,17 +264,20 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="admin-list">
-              {SERVICES.map((service) => (
+              {services.filter((service) => service.active).map((service) => (
                 <div className="admin-list-row" key={service.id}>
                   <div>
                     <div className="admin-strong">{service.name}</div>
                     <div className="admin-muted">
-                      {service.duration} - {service.price}
+                      {service.duration} - ${Number(service.price || 0).toFixed(2)}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+            {!services.filter((service) => service.active).length ? (
+              <p className="admin-muted">No active services available.</p>
+            ) : null}
           </article>
           {/*Client Overiew*/}
           <article className="admin-card admin-card--full">

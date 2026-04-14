@@ -111,7 +111,7 @@ export default function ClientPaymentsPage() {
         </article>
       </section>
 
-      <section className="client-grid">
+      <section className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 md:gap-6 lg:gap-8">
         {/* Paid payments */}
         <article className="client-card">
           <div className="client-card-header">
@@ -137,21 +137,23 @@ export default function ClientPaymentsPage() {
               </div>
             </div>
           ) : (
-            <div className="client-table">
-              <div className="client-table-row client-table-head">
+        <div className="w-full overflow-x-auto sm:overflow-x-none">
+          <div className="w-full min-w-[400px] sm:min-w-auto table-auto ">
+              <div className="client-table-row-2 client-table-head">
                 <div>Date</div>
                 <div>Project</div>
                 <div>Type</div>
                 <div>Amount</div>
               </div>
               {paidPayments.slice(0, 10).map((payment) => (
-                <div className="client-table-row" key={payment.id}>
+                <div className="client-table-row-2" key={payment.id}>
                   <div>{payment.date}</div>
                   <div className="client-strong">{payment.project}</div>
                   <div>{payment.type || "Payment"}</div>
                   <div className="font-semibold">${payment.amount}</div>
                 </div>
               ))}
+            </div>
             </div>
           )}
         </article>
@@ -184,17 +186,18 @@ export default function ClientPaymentsPage() {
               </div>
             </div>
           ) : (
-            <div className="w-full">
+        <div className="w-full overflow-x-auto rounded-xl border border-gray-200">
+          <div className="w-full min-w-[600px] table-auto">
               {/* Table head */}
-              <div className="grid grid-cols-5 gap-x-4 border-b border-gray-200 py-2 text-xs font-semibold uppercase tracking-wider text-gray-600">
+              <div className="grid grid-cols-5 gap-x-4 border-b border-gray-200 py-2 px-4 text-xs font-semibold uppercase tracking-wider text-gray-600">
                 <div>Project</div>
                 <div>Type</div>
                 <div>Due Date</div>
                 <div>Amount</div>
-                <div>Status</div>
+                <div className="text-left">Status</div>
               </div>
       {/* Table body – each row stays on one line */}
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-gray-100 px-4">
         {[...pendingPayments, ...requiredPayments]
           .sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate))
           .slice(0, 10)
@@ -203,15 +206,15 @@ export default function ClientPaymentsPage() {
               key={payment.id}
               className="grid grid-cols-5 gap-x-4 py-3 text-sm"
             >
-              <div className="client-strong truncate">{payment.project}</div>
-              <div className="truncate">{payment.type}</div>
-              <div className="truncate">{payment.dueDate || "-"}</div>
+              <div className="client-strong">{payment.project}</div>
+              <div className="">{payment.type}</div>
+              <div className="truncate">{payment.dueDate?.slice(0, 10) || "-"}</div>
               <div className="font-semibold text-gray-900">
                 ${payment.amount}
               </div>
               <span
                 className={
-                  STATUS_CLASS[payment.status] || "client-badge client-badge--pending"
+                  `h-fit text-center ${STATUS_CLASS[payment.status] || "client-badge client-badge--pending"}`
                 }
               >
                 {payment.status}
@@ -219,6 +222,7 @@ export default function ClientPaymentsPage() {
             </div>
           ))}
       </div>
+            </div>
             </div>
           )}
         </article>

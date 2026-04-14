@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import QuoteSuccessModal from "../components/QuoteSuccessModal.js"; 
+import { SERVICE_CATALOG } from "../lib/services/catalog.js";
 
 const ESTIMATE_SERVICE_KEYS = new Set(["fence", "deck", "pergola", "sod", "trees-shrubs"]);
 
@@ -18,11 +19,11 @@ export default function QuoteClient() {
     .filter(Boolean);
   
   const services = {
-    fence: { title: "Fence", key: "fence" },
-    "deck-railing": { title: "Deck & Railing", key: "deck" },
-    pergola: { title: "Pergola", key: "pergola" },
-    sod: { title: "Sod", key: "sod" },
-    "trees-shrubs": { title: "Trees & Shrubs", key: "trees-shrubs" },
+    fence: { title: SERVICE_CATALOG[0].shortName, key: "fence" },
+    "deck-railing": { title: SERVICE_CATALOG[1].name, key: "deck" },
+    pergola: { title: SERVICE_CATALOG[2].name, key: "pergola" },
+    sod: { title: SERVICE_CATALOG[3].shortName, key: "sod" },
+    "trees-shrubs": { title: SERVICE_CATALOG[4].name, key: "trees-shrubs" },
   };
 
   const selectedServices = serviceSlugs
@@ -381,10 +382,15 @@ export default function QuoteClient() {
         }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const errText = await res.text();
-        console.error("Backend response:", errText);
-        throw new Error("Send failed");
+        if (data.blocked) {
+          alert(`Upload blocked for safety:\n${data.details.join("\n")}\nPlease remove problematic files and try again.`);
+        } else {
+          throw new Error("Send failed");
+        }
+        return;
       }
 
       setSummary(`Thanks ${formData.client.name}! Details for ${selectedServices.length} service${selectedServices.length > 1 ? 's' : ''} sent to our team.`);

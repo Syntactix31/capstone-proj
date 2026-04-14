@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../lib/auth/server";
-import { listClients, updateClient, upsertClient } from "../../../lib/db/clients";
+import { deleteClient, listClients, updateClient, upsertClient } from "../../../lib/db/clients";
 
 const CLIENT_FIELD_LIMITS = {
   name: 30,
@@ -104,6 +104,53 @@ export async function PATCH(req) {
     return NextResponse.json({ client });
   } catch (error) {
     console.error("ADMIN CLIENTS PATCH ERROR:", error);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+// Delete an existing client from the admin page.
+export async function DELETE(req) {
+  const auth = requireAdmin(req);
+  if (auth.error) return auth.error;
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const clientId = String(searchParams.get("id") || "").trim();
+
+    if (!clientId) {
+      return NextResponse.json({ error: "Missing client id" }, { status: 400 });
+    }
+
+    const result = await deleteClient(clientId);
+
+    if (!result?.ok) {
+      if (result?.reason === "not_found") {
+        return NextResponse.json({ error: "Client not found" }, { status: 404 });
+      }
+
+      if (result?.reason === "has_dependencies") {
+        const bookings = Number(result?.blockers?.bookings || 0);
+        const estimates = Number(result?.blockers?.estimates || 0);
+        const dependencyParts = [
+          bookings ? `${bookings} booking${bookings === 1 ? "" : "s"}` : "",
+          estimates ? `${estimates} estimate${estimates === 1 ? "" : "s"}` : "",
+        ].filter(Boolean);
+
+        return NextResponse.json(
+          {
+            error: `Cannot delete this client while ${dependencyParts.join(" and ")} still reference them.`,
+            blockers: result.blockers,
+          },
+          { status: 409 },
+        );
+      }
+
+      return NextResponse.json({ error: "Failed to delete client" }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, client: result.client });
+  } catch (error) {
+    console.error("ADMIN CLIENTS DELETE ERROR:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

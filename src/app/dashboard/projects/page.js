@@ -10,50 +10,25 @@ import {
   formatCurrency,
   todayDateValue,
 } from "../../lib/quotes.js";
+import { SERVICE_CATALOG, normalizeServiceDisplay, normalizeServiceList, normalizeServiceName } from "../../lib/services/catalog.js";
+import {
+  FIELD_LIMITS,
+  inputPropsFor,
+  sanitizeIntegerInput,
+  sanitizeMoneyInput,
+  sanitizePercentInput,
+  sanitizeTextArea,
+} from "../../lib/validation/fields.js";
 
 const PAYMENT_STATUSES = ["Unpaid", "Deposit Paid", "Fully Paid"];
-const DEFAULT_SERVICES = [
-  {
-    id: "S-01",
-    name: "Fence Installation",
-    description: "Custom fence design, materials, and full installation.",
-    price: "2800.00",
-    quantity: "1",
-    active: true,
-  },
-  {
-    id: "S-02",
-    name: "Deck & Railing",
-    description: "Deck builds, railing upgrades, and safety repairs.",
-    price: "4500.00",
-    quantity: "1",
-    active: true,
-  },
-  {
-    id: "S-03",
-    name: "Pergola",
-    description: "Backyard pergola installation and finishing.",
-    price: "3200.00",
-    quantity: "1",
-    active: true,
-  },
-  {
-    id: "S-04",
-    name: "Sod Installation",
-    description: "Site prep and fresh sod installation.",
-    price: "1100.00",
-    quantity: "1",
-    active: false,
-  },
-  {
-    id: "S-05",
-    name: "Trees and Shrubs",
-    description: "Planting, pruning, and seasonal care.",
-    price: "1100.00",
-    quantity: "1",
-    active: true,
-  },
-];
+const DEFAULT_SERVICES = SERVICE_CATALOG.map((service, index) => ({
+  id: `S-${String(index + 1).padStart(2, "0")}`,
+  name: service.name,
+  description: service.description,
+  price: service.price,
+  quantity: String(service.quantity),
+  active: service.active,
+}));
 
 const PAYMENT_CLASS = {
   Unpaid: "admin-badge admin-badge--muted",
@@ -87,19 +62,9 @@ function createProjectForm(service) {
 export default function AdminProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
+  const [services, setServices] = useState(DEFAULT_SERVICES);
   const [loading, setLoading] = useState(true);
   const [clientsLoading, setClientsLoading] = useState(true);
-  const [services] = useState(() => {
-    if (typeof window === "undefined") return DEFAULT_SERVICES;
-
-    try {
-      const stored = window.localStorage.getItem("admin_services");
-      const parsed = stored ? JSON.parse(stored) : null;
-      return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_SERVICES;
-    } catch {
-      return DEFAULT_SERVICES;
-    }
-  });
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("All");
@@ -139,6 +104,37 @@ export default function AdminProjectsPage() {
     }
 
     loadProjects();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadServices() {
+      try {
+        const res = await fetch("/api/admin/services", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+
+        if (!res.ok) {
+          setServices(DEFAULT_SERVICES);
+          return;
+        }
+
+        const nextServices = Array.isArray(data.services)
+          ? data.services.map((service) => ({ ...service, name: normalizeServiceName(service.name) }))
+          : [];
+        setServices(nextServices.length ? nextServices : DEFAULT_SERVICES);
+      } catch (loadError) {
+        console.error(loadError);
+        if (!active) return;
+        setServices(DEFAULT_SERVICES);
+      }
+    }
+
+    loadServices();
     return () => {
       active = false;
     };
@@ -191,21 +187,29 @@ export default function AdminProjectsPage() {
       const matchesPayment =
         paymentFilter === "All" || project.paymentStatus === paymentFilter;
       const matchesService =
-        serviceFilter === "All" || project.service === serviceFilter;
+        serviceFilter === "All" || normalizeServiceName(project.service) === serviceFilter;
 
       if (!q) return matchesPayment && matchesService;
 
       const matchesQuery =
         project.id.toLowerCase().includes(q) ||
         project.client.toLowerCase().includes(q) ||
-        project.service.toLowerCase().includes(q);
+        normalizeServiceName(project.service).toLowerCase().includes(q);
 
       return matchesPayment && matchesService && matchesQuery;
     });
   }, [paymentFilter, projects, query, serviceFilter]);
 
   const serviceOptions = useMemo(
-    () => ["All", ...Array.from(new Set([...services.map((service) => service.name), ...projects.map((project) => project.service)])).sort()],
+    () => [
+      "All",
+      ...Array.from(
+        new Set([
+          ...services.map((service) => normalizeServiceName(service.name)),
+          ...projects.flatMap((project) => normalizeServiceList(project.service)),
+        ])
+      ).sort(),
+    ],
     [projects, services]
   );
 
@@ -274,6 +278,11 @@ export default function AdminProjectsPage() {
 
   const handleProjectFormChange = (event) => {
     const { name, value } = event.target;
+    let nextValue = value;
+    if (name === "quantity") nextValue = sanitizeIntegerInput(value);
+    if (name === "unitPrice") nextValue = sanitizeMoneyInput(value);
+    if (name === "gstRate" || name === "depositRate") nextValue = sanitizePercentInput(value);
+    if (name === "description") nextValue = sanitizeTextArea(value, FIELD_LIMITS.description);
     if (name === "service") {
       const nextService =
         availableServices.find((service) => service.name === value) || null;
@@ -304,7 +313,7 @@ export default function AdminProjectsPage() {
       return;
     }
 
-    setProjectForm((prev) => ({ ...prev, [name]: value }));
+    setProjectForm((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   const handleProjectCreate = async (event) => {
@@ -443,7 +452,7 @@ export default function AdminProjectsPage() {
                   <div className="admin-strong">{project.client}</div>
                   <div className="admin-muted">{project.address || "Address not added"}</div>
                 </div>
-                <div>{project.service}</div>
+                  <div>{normalizeServiceDisplay(project.service)}</div>
                 <div>
                   <div>{formatVisitLabel(project)}</div>
                   <div className="admin-muted">
@@ -551,6 +560,7 @@ export default function AdminProjectsPage() {
                 <input
                   id="project-quantity"
                   name="quantity"
+                  {...inputPropsFor("quantity")}
                   className="admin-input"
                   type="number"
                   min="1"
@@ -584,6 +594,7 @@ export default function AdminProjectsPage() {
                 <input
                   id="project-unit-price"
                   name="unitPrice"
+                  {...inputPropsFor("money")}
                   className="admin-input"
                   type="number"
                   min="0"
@@ -617,6 +628,7 @@ export default function AdminProjectsPage() {
                 <input
                   id="project-gst-rate"
                   name="gstRate"
+                  {...inputPropsFor("percent")}
                   className="admin-input"
                   type="number"
                   min="0"
@@ -633,6 +645,7 @@ export default function AdminProjectsPage() {
                 <input
                   id="project-deposit-rate"
                   name="depositRate"
+                  {...inputPropsFor("percent")}
                   className="admin-input"
                   type="number"
                   min="0"
@@ -649,6 +662,7 @@ export default function AdminProjectsPage() {
                 <textarea
                   id="project-description"
                   name="description"
+                  maxLength={FIELD_LIMITS.description}
                   className="admin-textarea"
                   rows={5}
                   value={projectForm.description}
@@ -731,7 +745,7 @@ export default function AdminProjectsPage() {
               <div>
                 <h2 className="admin-title">{selectedProject.client}</h2>
                 <p className="admin-subtitle">
-                  {selectedProject.service}
+                  {normalizeServiceDisplay(selectedProject.service)}
                   {selectedProject.address ? ` - ${selectedProject.address}` : ""}
                 </p>
               </div>

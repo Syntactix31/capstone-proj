@@ -3,6 +3,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ClientLayout from "../../components/ClientLayout.js";
+import {
+  FIELD_LIMITS,
+  inputPropsFor,
+  sanitizeEmail,
+  sanitizeLetters,
+  sanitizePhone,
+} from "../../lib/validation/fields.js";
 
 export default function ClientSettingsPage() {
   const router = useRouter();
@@ -65,9 +72,11 @@ export default function ClientSettingsPage() {
     let filteredValue = value;
 
     if (name === 'name') {
-      filteredValue = value.replace(/[^a-zA-Z\s\-']/g, '');  
+      filteredValue = sanitizeLetters(value, FIELD_LIMITS.name);
     } else if (name === 'phone') {
-      filteredValue = value.replace(/\D/g, '');  
+      filteredValue = sanitizePhone(value);
+    } else if (name === "email") {
+      filteredValue = sanitizeEmail(value);
     }
 
     setFormData((prev) => ({ ...prev, [name]: filteredValue }));
@@ -192,7 +201,7 @@ export default function ClientSettingsPage() {
                   id="name"
                   name="name"
                   type="text"
-                  maxLength={35}
+                  {...inputPropsFor("name")}
                   value={formData.name}
                   onChange={handleChange}
                   required
@@ -210,7 +219,7 @@ export default function ClientSettingsPage() {
                   id="email"
                   name="email"
                   type="email"
-                  maxLength={50}
+                  {...inputPropsFor("email")}
                   value={formData.email}
                   onChange={handleChange}
                   required
@@ -228,8 +237,7 @@ export default function ClientSettingsPage() {
                   id="phone"
                   name="phone"
                   type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
+                  {...inputPropsFor("phone")}
                   value={formData.phone}
                   onChange={handleChange}
                   className="w-full px-4 py-4 border-2 border-gray-200 rounded-lg text-base focus:outline-none focus:border-[#477a40] transition-all duration-200 bg-white disabled:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -241,7 +249,7 @@ export default function ClientSettingsPage() {
               <div className="flex flex-col sm:flex-row gap-5 pt-4">
                 <button
                   type="button"
-                  className="flex-1 py-4 px-6 max-h-14 border-2 border-[#477a40] hover:cursor-pointer text-green-700 font-semibold rounded-lg max-w-50 hover:bg-red-400 hover:text-white hover:border-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-4 px-6 max-h-14 border-2 border-[#477a40] hover:cursor-pointer text-green-700 font-semibold rounded-lg sm:max-w-50 hover:bg-red-400 hover:text-white hover:border-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed justify-center"
                   onClick={() => router.back()}
                   disabled={saving}
                 >

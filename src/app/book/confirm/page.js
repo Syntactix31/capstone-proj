@@ -57,18 +57,18 @@ function ConfirmInner() {
 
 
   const [busy, setBusy] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Let the customer cancel the booking from the confirmation page.
   const onCancel = async () => {
     if (!eventId) {
-      alert("Missing eventId.");
+      setErrorMessage("Missing eventId.");
       return;
     }
 
-    const ok = window.confirm("Are you sure you want to cancel this appointment?");
-    if (!ok) return;
-
     setBusy(true);
+    setErrorMessage("");
     try {
       const res = await fetch("/api/booking/cancel", {
         method: "POST",
@@ -78,18 +78,17 @@ function ConfirmInner() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data?.error || "Could not cancel. Try again.");
-        setBusy(false);
+        setErrorMessage(data?.error || "Could not cancel. Try again.");
         return;
       }
 
-      alert("Your appointment has been cancelled.");
       router.push("/");
     } catch (e) {
       console.error(e);
-      alert("Could not cancel. Try again.");
+      setErrorMessage("Could not cancel. Try again.");
     } finally {
       setBusy(false);
+      setShowCancelModal(false);
     }
   };
 
@@ -114,6 +113,7 @@ function ConfirmInner() {
             ? `${firstName}, your appointment is confirmed.`
             : "Your appointment is confirmed."}
         </p>
+        {errorMessage ? <p className="admin-error">{errorMessage}</p> : null}
 
         <section className="confirm-card">
           <div className="confirm-with">
@@ -143,7 +143,7 @@ function ConfirmInner() {
             <button
               type="button"
               className="confirm-secondary"
-              onClick={onCancel}
+              onClick={() => setShowCancelModal(true)}
               disabled={busy || !eventId}
               title={!eventId ? "Missing event id" : ""}
             >
@@ -152,6 +152,57 @@ function ConfirmInner() {
           </div>
         </section>
       </main>
+
+      {showCancelModal ? (
+        <div className="admin-modal">
+          <button
+            className="admin-modal__backdrop"
+            onClick={() => {
+              if (busy) return;
+              setShowCancelModal(false);
+            }}
+            aria-label="Close cancel confirmation"
+            type="button"
+          />
+          <div className="admin-modal__content" role="dialog" aria-modal="true">
+            <div className="admin-modal__header">
+              <div>
+                <h2 className="admin-title">Are you sure?</h2>
+                <p className="admin-subtitle">
+                  This will cancel your appointment.
+                </p>
+              </div>
+              <button
+                className="admin-btn admin-btn--ghost admin-btn--small"
+                onClick={() => setShowCancelModal(false)}
+                type="button"
+                disabled={busy}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="admin-modal__actions">
+              <button
+                className="admin-btn admin-btn--danger"
+                type="button"
+                onClick={onCancel}
+                disabled={busy}
+              >
+                {busy ? "Cancelling..." : "Yes, cancel it"}
+              </button>
+              <button
+                className="admin-btn admin-btn--ghost"
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                disabled={busy}
+              >
+                Keep appointment
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Footer />
     </div>

@@ -4,6 +4,13 @@ import { getGmailTransporter } from "../../../lib/gmail";
 import { createBooking } from "../../../lib/db/bookings";
 import { fetchClientById, upsertClient, upsertClientProperty } from "../../../lib/db/clients";
 import { createProject, findProjectById, listProjects } from "../../../lib/db/projects";
+import {
+  FIELD_LIMITS,
+  sanitizeEmail,
+  sanitizeLetters,
+  sanitizePhone,
+  sanitizeTextArea,
+} from "../../../lib/validation/fields.js";
 
 const EDMONTON_TIME_ZONE = "America/Edmonton";
 const EDMONTON_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
@@ -329,11 +336,17 @@ export async function POST(req) {
       projectId,
     } = body;
 
-    const normalizedPhone = normalizePhone(phone);
+    const normalizedPhone = sanitizePhone(phone);
     const normalizedDurationHours = normalizeDurationHours(durationHours);
     const normalizedVisitType = String(visitType || "Estimate").trim() || "Estimate";
+    const normalizedFirstName = sanitizeLetters(firstName, FIELD_LIMITS.name).trim();
+    const normalizedLastName = sanitizeLetters(lastName, FIELD_LIMITS.name).trim();
+    const normalizedEmail = sanitizeEmail(email).trim();
+    const normalizedService = sanitizeTextArea(service, FIELD_LIMITS.serviceName).trim();
+    const normalizedAddress = sanitizeTextArea(address, FIELD_LIMITS.address).trim();
+    const normalizedNotes = sanitizeTextArea(notes, FIELD_LIMITS.notes).trim();
 
-    if (!date || !time || !email || !firstName || !service) {
+    if (!date || !time || !normalizedEmail || !normalizedFirstName || !normalizedService) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -371,27 +384,27 @@ export async function POST(req) {
       calendarId: process.env.GOOGLE_CALENDAR_ID,
       requestBody: {
         summary: `${service} – ${firstName} ${lastName}`,
-        location: address || "Calgary, AB",
+        location: normalizedAddress || "Calgary, AB",
         description: [
           `Visit Type: ${normalizedVisitType}`,
-          `Name: ${firstName} ${lastName}`,
-          `Email: ${email}`,
+          `Name: ${normalizedFirstName} ${normalizedLastName}`,
+          `Email: ${normalizedEmail}`,
           `Phone: ${normalizedPhone || "N/A"}`,
           `Duration: ${normalizedDurationHours} ${normalizedDurationHours === 1 ? "hour" : "hours"}`,
-          `Address: ${address || "N/A"}`,
-          `Notes: ${notes || "None"}`,
+          `Address: ${normalizedAddress || "N/A"}`,
+          `Notes: ${normalizedNotes || "None"}`,
         ].join("\n"),
         extendedProperties: {
           private: {
-            service: String(service || ""),
+            service: normalizedService,
             visitType: normalizedVisitType,
             durationHours: String(normalizedDurationHours),
-            firstName: String(firstName || ""),
-            lastName: String(lastName || ""),
-            email: String(email || ""),
+            firstName: normalizedFirstName,
+            lastName: normalizedLastName,
+            email: normalizedEmail,
             phone: String(normalizedPhone || ""),
-            address: String(address || ""),
-            notes: String(notes || ""),
+            address: normalizedAddress,
+            notes: normalizedNotes,
             date: String(date || ""),
             time: String(time || ""),
           },
@@ -411,14 +424,14 @@ export async function POST(req) {
     const client =
       (clientId ? await fetchClientById(String(clientId)) : null) ||
       (await upsertClient({
-        name: `${firstName} ${lastName}`.trim(),
-        email,
+        name: `${normalizedFirstName} ${normalizedLastName}`.trim(),
+        email: normalizedEmail,
         phone: normalizedPhone,
       }));
 
     const property = await upsertClientProperty({
       clientId: client.id,
-      address,
+      address: normalizedAddress,
     });
 
     let linkedProject = null;
@@ -427,13 +440,13 @@ export async function POST(req) {
       if (!linkedProject || linkedProject.clientId !== client.id) {
         return NextResponse.json({ error: "Invalid project selected." }, { status: 400 });
       }
-    } else {
+    } else if (normalizedVisitType !== "Estimate") {
       const existingProjects = await listProjects({ clientId: client.id });
       if (existingProjects.length === 0) {
         linkedProject = await createProject({
           clientId: client.id,
-          service,
-          address: address || property?.address || client.address || "",
+          service: normalizedService,
+          address: normalizedAddress || property?.address || client.address || "",
           generateQuote: false,
         });
       }
@@ -443,13 +456,13 @@ export async function POST(req) {
       clientId: client.id,
       projectId: linkedProject?.id || null,
       propertyId: property?.id || null,
-      service,
+      service: normalizedService,
       visitType: normalizedVisitType,
       bookingDate: date,
       bookingTime: time,
       startAt: start.toISOString(),
       endAt: end.toISOString(),
-      notes,
+      notes: normalizedNotes,
       googleEventId: event.data.id,
     });
 
@@ -457,9 +470,9 @@ export async function POST(req) {
 
     await transporter.sendMail({
       from: `"${brand().name}" <${process.env.OWNER_EMAIL}>`,
-      to: email,
+      to: normalizedEmail,
       subject: `Booking Confirmed – ${brand().name}`,
-      html: emailTemplateCustomer({ firstName, service, startPretty, address }),
+      html: emailTemplateCustomer({ firstName: normalizedFirstName, service: normalizedService, startPretty, address: normalizedAddress }),
       attachments: [
         {
           filename: "Landscapecraftsmen_logo.jpg",
@@ -474,13 +487,13 @@ export async function POST(req) {
       to: process.env.OWNER_EMAIL,
       subject: "New Booking Received",
       html: emailTemplateOwner({
-        firstName,
-        lastName,
-        email,
-        service,
+        firstName: normalizedFirstName,
+        lastName: normalizedLastName,
+        email: normalizedEmail,
+        service: normalizedService,
         startPretty,
-        address,
-        notes,
+        address: normalizedAddress,
+        notes: normalizedNotes,
       }),
       attachments: [
         {

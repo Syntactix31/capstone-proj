@@ -12,6 +12,7 @@
     "db:reset-appointments-sync": "node scripts/reset-appointments.mjs --google"
   },
   "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.1030.0",
     "@emailjs/browser": "^4.4.1",
     "@neondatabase/serverless": "^1.0.2",
     "@vercel/blob": "^2.3.1",

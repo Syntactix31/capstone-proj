@@ -5,6 +5,7 @@ import { createBooking } from "../../../lib/db/bookings.js";
 import { ensureDatabaseSchema } from "../../../lib/db/schema.js";
 import { getSql } from "../../../lib/db/client.js";
 import { normalizeEmail } from "../../../lib/db/users.js";
+import { fetchClientJoinedByEmail } from "../../../lib/db/clients.js";
 import { getCalendarClient } from "../../../lib/googleCalendar.js";
 
 const EDMONTON_TIME_ZONE = "America/Edmonton";
@@ -100,6 +101,8 @@ function mapAppointmentRow(row) {
     time: pretty.time,
     address: row.address || "",
     notes: row.notes || "",
+    startIso: row.start_at,
+    endIso: row.end_at,
     status: row.status === "cancelled" ? "Canceled" : "Confirmed",
   };
 }
@@ -152,9 +155,17 @@ export async function POST(request) {
     const date = String(payload?.date || "").trim();
     const time = String(payload?.time || "").trim();
     const notes = String(payload?.notes || "").trim().slice(0, 1000);
+    const allowedVisitTypes = new Set(["Estimate", "Design Consultation"]);
 
     if (!service || !date || !time) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (!allowedVisitTypes.has(visitType)) {
+      return NextResponse.json(
+        { error: "Clients can only book estimate or design consultation appointments." },
+        { status: 400 }
+      );
     }
 
     const start = buildEdmontonDate(date, time);
@@ -185,6 +196,14 @@ export async function POST(request) {
       RETURNING id, name, email
     `;
 
+    const clientProfile = await fetchClientJoinedByEmail(client.email);
+    if (!clientProfile?.propertyId || !clientProfile?.address) {
+      return NextResponse.json(
+        { error: "Please add your property address to your client profile before booking an appointment." },
+        { status: 400 }
+      );
+    }
+
     const existing = await sql`
       SELECT id
       FROM bookings
@@ -214,11 +233,12 @@ export async function POST(request) {
       calendarId: process.env.GOOGLE_CALENDAR_ID,
       requestBody: {
         summary: `${service} - ${client.name}`.trim(),
-        location: "Calgary, AB",
+        location: clientProfile.address,
         description: [
           `Visit Type: ${visitType}`,
           `Name: ${client.name}`,
           `Email: ${client.email}`,
+          `Address: ${clientProfile.address}`,
           `Notes: ${notes || "None"}`,
           `Booked from client portal`,
         ].join("\n"),
@@ -229,6 +249,7 @@ export async function POST(request) {
             firstName: String(client.name || "").split(" ")[0] || "",
             lastName: String(client.name || "").split(" ").slice(1).join(" "),
             email: client.email,
+            address: clientProfile.address,
             notes,
             date,
             time,
@@ -241,6 +262,7 @@ export async function POST(request) {
 
     const booking = await createBooking({
       clientId: client.id,
+      propertyId: clientProfile.propertyId,
       service,
       visitType,
       status: "confirmed",
