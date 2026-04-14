@@ -2,6 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/app/components/AdminLayout.js";
+import {
+  sanitizeAlphaSpace,
+  sanitizeEmail,
+  sanitizePhone,
+  sanitizeTextArea,
+} from "@/app/lib/validation/fields.js";
 
 const CLIENT_FIELD_LIMITS = {
   name: 30,
@@ -629,7 +635,10 @@ ensures that user is prompted with a warning when there is unsaved changes
                       maxLength={CLIENT_FIELD_LIMITS.name}
                       value={draft.name}
                       onChange={(event) =>
-                        setDraft((current) => ({ ...current, name: event.target.value }))
+                        setDraft((current) => ({
+                          ...current,
+                          name: sanitizeAlphaSpace(event.target.value, CLIENT_FIELD_LIMITS.name),
+                        }))
                       }
                     />
                   </label>
@@ -643,7 +652,10 @@ ensures that user is prompted with a warning when there is unsaved changes
                       title="Use a valid email like name@example.com."
                       value={draft.email}
                       onChange={(event) =>
-                        setDraft((current) => ({ ...current, email: event.target.value }))
+                        setDraft((current) => ({
+                          ...current,
+                          email: sanitizeEmail(event.target.value),
+                        }))
                       }
                     />
                     {draft.email && !isValidEmail(draft.email) ? (
@@ -665,7 +677,7 @@ ensures that user is prompted with a warning when there is unsaved changes
                       onFocus={() => setPhoneFocused(true)}
                       onBlur={() => setPhoneFocused(false)}
                       onChange={(event) => {
-                        const digits = normalizePhone(event.target.value).slice(0, 10);
+                        const digits = sanitizePhone(event.target.value);
                         setDraft((current) => ({ ...current, phone: digits }));
                       }}
                     />
@@ -682,7 +694,10 @@ ensures that user is prompted with a warning when there is unsaved changes
                       rows={4}
                       value={draft.notes}
                       onChange={(event) =>
-                        setDraft((current) => ({ ...current, notes: event.target.value }))
+                        setDraft((current) => ({
+                          ...current,
+                          notes: sanitizeTextArea(event.target.value, CLIENT_FIELD_LIMITS.notes),
+                        }))
                       }
                     />
                   </label>
@@ -701,7 +716,10 @@ ensures that user is prompted with a warning when there is unsaved changes
                       maxLength={CLIENT_FIELD_LIMITS.address}
                       value={draft.address}
                       onChange={(event) =>
-                        setDraft((current) => ({ ...current, address: event.target.value }))
+                        setDraft((current) => ({
+                          ...current,
+                          address: sanitizeTextArea(event.target.value, CLIENT_FIELD_LIMITS.address),
+                        }))
                       }
                     />
                   </label>
@@ -712,7 +730,10 @@ ensures that user is prompted with a warning when there is unsaved changes
                       maxLength={CLIENT_FIELD_LIMITS.city}
                       value={draft.city}
                       onChange={(event) =>
-                        setDraft((current) => ({ ...current, city: event.target.value }))
+                        setDraft((current) => ({
+                          ...current,
+                          city: sanitizeAlphaSpace(event.target.value, CLIENT_FIELD_LIMITS.city),
+                        }))
                       }
                     />
                   </label>
@@ -723,7 +744,10 @@ ensures that user is prompted with a warning when there is unsaved changes
                       maxLength={CLIENT_FIELD_LIMITS.province}
                       value={draft.province}
                       onChange={(event) =>
-                        setDraft((current) => ({ ...current, province: event.target.value }))
+                        setDraft((current) => ({
+                          ...current,
+                          province: sanitizeAlphaSpace(event.target.value, CLIENT_FIELD_LIMITS.province),
+                        }))
                       }
                     />
                   </label>
@@ -753,7 +777,10 @@ ensures that user is prompted with a warning when there is unsaved changes
                       onChange={(event) =>
                         setDraft((current) => ({
                           ...current,
-                          additionalInstructions: event.target.value,
+                          additionalInstructions: sanitizeTextArea(
+                            event.target.value,
+                            CLIENT_FIELD_LIMITS.additionalInstructions
+                          ),
                         }))
                       }
                     />

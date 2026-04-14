@@ -219,18 +219,59 @@ export async function ensureDatabaseSchema() {
       await sql`
         CREATE TABLE IF NOT EXISTS estimates (
           id text PRIMARY KEY,
-          client_id text NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
+          client_id text REFERENCES clients(id) ON DELETE RESTRICT,
           title text NOT NULL,
           service text NOT NULL,
           price numeric NOT NULL,
           status text NOT NULL DEFAULT 'Pending',
           notes text NOT NULL DEFAULT '',
+          recipient_name text NOT NULL DEFAULT '',
+          recipient_address text NOT NULL DEFAULT '',
+          recipient_email text NOT NULL DEFAULT '',
+          recipient_phone text NOT NULL DEFAULT '',
+          services_included text NOT NULL DEFAULT '[]',
+          quote_data text NOT NULL DEFAULT '{}',
           pdf_url text,
           pdf_name text,
           created_at timestamptz NOT NULL,
           updated_at timestamptz NOT NULL
         )
       `;      
+
+      await sql`
+        ALTER TABLE estimates
+        ALTER COLUMN client_id DROP NOT NULL
+      `;
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS recipient_name text NOT NULL DEFAULT ''
+      `;
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS recipient_address text NOT NULL DEFAULT ''
+      `;
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS recipient_email text NOT NULL DEFAULT ''
+      `;
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS recipient_phone text NOT NULL DEFAULT ''
+      `;
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS services_included text NOT NULL DEFAULT '[]'
+      `;
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS quote_data text NOT NULL DEFAULT '{}'
+      `;
 
       await sql`
         ALTER TABLE estimates

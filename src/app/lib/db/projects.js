@@ -39,6 +39,47 @@ function normalizeQuantity(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+function normalizePaymentType(value, fallback = "Partial") {
+  const normalized = String(value || "").trim();
+  if (normalized === "Initial Deposit" || normalized === "Partial" || normalized === "Full payment") {
+    return normalized;
+  }
+  return fallback;
+}
+
+function sumPaidPayments(payments) {
+  return (Array.isArray(payments) ? payments : []).reduce((sum, payment) => {
+    const status = String(payment?.status || "Paid").trim() || "Paid";
+    if (status !== "Paid") return sum;
+    return sum + normalizeMoney(payment?.amount);
+  }, 0);
+}
+
+function deriveProjectPaymentStatus({
+  totalCost,
+  payments,
+  quoteData,
+  servicesIncluded,
+  fallbackService = "",
+}) {
+  const normalizedServicesIncluded = normalizeServiceLineItems(servicesIncluded, fallbackService);
+  const primaryServiceLine = normalizedServicesIncluded[0] || null;
+  const normalizedQuoteData = buildQuoteData(quoteData || {}, {
+    unitPrice: primaryServiceLine?.price || normalizeMoney(totalCost).toFixed(2),
+    quantity: primaryServiceLine?.quantity || "1",
+    description: primaryServiceLine?.description || "",
+  });
+
+  const total = normalizeMoney(normalizedQuoteData.total);
+  const depositAmount = normalizeMoney(normalizedQuoteData.depositAmount);
+  const totalPaid = sumPaidPayments(payments);
+  const remainingBalance = Math.max(total - totalPaid, 0);
+
+  if (total > 0 && remainingBalance <= 0.009) return "Fully Paid";
+  if (depositAmount > 0 && totalPaid + 0.009 >= depositAmount) return "Deposit Paid";
+  return "Unpaid";
+}
+
 function normalizeServiceLineItems(items, fallbackService = "") {
   const normalized = (Array.isArray(items) ? items : [])
     .map((item, index) => {
@@ -77,7 +118,8 @@ function normalizePayments(value) {
       id: String(item?.id || `payment-${index + 1}`),
       date: String(item?.date || "").trim(),
       amount: normalizeMoney(item?.amount).toFixed(2),
-      status: String(item?.status || "Pending").trim() || "Pending",
+      type: normalizePaymentType(item?.type, index === 0 ? "Initial Deposit" : "Partial"),
+      status: String(item?.status || "Paid").trim() || "Paid",
       notes: String(item?.notes || "").trim(),
     }))
     .filter((item) => item.date || Number(item.amount) > 0 || item.notes);
@@ -144,10 +186,13 @@ function buildPaymentLedgerEntries(project, { includeRequired = true } = {}) {
       runningPaid += amount;
     }
 
-    let type = index === 0 ? "Initial Deposit" : "Payment";
-    if (isPaid && Math.max(totalCost - runningPaid, 0) <= 0.009) {
-      type = "Full payment";
-    }
+    const fallbackType =
+      isPaid && Math.max(totalCost - runningPaid, 0) <= 0.009
+        ? "Full payment"
+        : index === 0
+          ? "Initial Deposit"
+          : "Partial";
+    const type = normalizePaymentType(payment.type, fallbackType);
 
     return {
       id: String(payment.id || `payment-${project.id}-${index + 1}`),
@@ -210,6 +255,14 @@ function mapProjectRow(row) {
         description: primaryServiceLine?.description || "",
       })
     : null;
+  const payments = normalizePayments(parseJsonArray(row.payments));
+  const paymentStatus = deriveProjectPaymentStatus({
+    totalCost,
+    payments,
+    quoteData,
+    servicesIncluded,
+    fallbackService: row.service,
+  });
 
   return {
     id: row.id,
@@ -217,14 +270,14 @@ function mapProjectRow(row) {
     client: row.client_name,
     service: row.service,
     address: row.address || "",
-    paymentStatus: row.payment_status || "Unpaid",
+    paymentStatus,
     startDate: row.start_date || null,
     estimatedCompletionDate: row.estimated_completion_date || null,
     completionDate: row.completion_date || null,
     totalCost,
     servicesIncluded,
     quoteData,
-    payments: normalizePayments(parseJsonArray(row.payments)),
+    payments,
     ownerNotes: row.owner_notes || "",
     estimatePdfUrl: row.estimate_pdf_url || "",
     estimatePdfName: row.estimate_pdf_name || "",
@@ -250,6 +303,7 @@ export async function syncProjectsFromBookings() {
     LEFT JOIN client_properties p ON p.id = b.property_id
     WHERE b.project_id IS NULL
       AND b.project_sync_disabled = false
+      AND COALESCE(b.visit_type, 'Estimate') <> 'Estimate'
     ORDER BY b.created_at ASC
   `;
 
@@ -401,7 +455,6 @@ export async function createProject({
   clientId,
   service,
   address = "",
-  paymentStatus = "Unpaid",
   totalCost = 0,
   servicesIncluded = [],
   quoteData = {},
@@ -426,6 +479,13 @@ export async function createProject({
       description: primaryServiceLine?.description || "",
     });
   }
+  const derivedPaymentStatus = deriveProjectPaymentStatus({
+    totalCost: normalizedTotalCost,
+    payments: [],
+    quoteData: normalizedQuoteData,
+    servicesIncluded: normalizedServicesIncluded,
+    fallbackService: service,
+  });
 
   const [row] = await sql`
     INSERT INTO projects (
@@ -445,7 +505,7 @@ export async function createProject({
       ${clientId},
       ${String(service || "")},
       ${String(address || "")},
-      ${String(paymentStatus || "Unpaid")},
+      ${derivedPaymentStatus},
       ${normalizedTotalCost},
       ${JSON.stringify(normalizedServicesIncluded)},
       ${JSON.stringify(normalizedQuoteData)},
@@ -472,7 +532,6 @@ export async function updateProject(
   {
     service,
     address,
-    paymentStatus,
     startDate,
     estimatedCompletionDate,
     completionDate,
@@ -488,6 +547,17 @@ export async function updateProject(
   await ensureDatabaseSchema();
   const sql = getSql();
   const timestamp = nowIso();
+  const existingRows = await sql`
+    SELECT service, quote_data
+    FROM projects
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+  const existingProject = existingRows[0];
+
+  if (!existingProject) {
+    return null;
+  }
 
   const normalizedServicesIncluded = normalizeServiceLineItems(servicesIncluded, service);
   const normalizedPayments = normalizePayments(payments);
@@ -503,13 +573,23 @@ export async function updateProject(
         description: primaryServiceLine?.description || "",
       })
     : null;
+  const nextQuoteData = shouldUpdateQuoteData
+    ? normalizedQuoteData
+    : parseJsonObject(existingProject.quote_data);
+  const derivedPaymentStatus = deriveProjectPaymentStatus({
+    totalCost: normalizedTotalCost,
+    payments: normalizedPayments,
+    quoteData: nextQuoteData,
+    servicesIncluded: normalizedServicesIncluded,
+    fallbackService: service || existingProject.service,
+  });
 
   const rows = await sql`
     UPDATE projects
     SET
       service = ${String(service || "")},
       address = ${String(address || "")},
-      payment_status = ${String(paymentStatus || "Unpaid")},
+      payment_status = ${derivedPaymentStatus},
       start_date = ${startDate ? String(startDate) : null},
       estimated_completion_date = ${estimatedCompletionDate ? String(estimatedCompletionDate) : null},
       completion_date = ${completionDate ? String(completionDate) : null},

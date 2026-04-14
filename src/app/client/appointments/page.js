@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ClientLayout from '../../components/ClientLayout.js';
 import AppointmentCancelModal from '../../components/AppointmentCancelModal.js';
 import { SERVICE_CATALOG, normalizeServiceName } from '../../lib/services/catalog.js';
+import { FIELD_LIMITS, sanitizeTextArea } from '../../lib/validation/fields.js';
 
 const STATUS_CLASSES = {
   Confirmed: 'client-badge client-badge--active',
@@ -94,7 +95,8 @@ export default function ClientAppointmentsPage() {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setFormState((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === 'notes' ? sanitizeTextArea(value, FIELD_LIMITS.notes) : value;
+    setFormState((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   const loadSlots = async (date) => {
@@ -321,7 +323,7 @@ export default function ClientAppointmentsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
-                  <textarea name="notes" value={formState.notes} onChange={handleFormChange} rows={3} className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#477a40] transition-all" />
+                  <textarea name="notes" maxLength={FIELD_LIMITS.notes} value={formState.notes} onChange={handleFormChange} rows={3} className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#477a40] transition-all" />
                 </div>
               </div>
               <div className="flex gap-3 pt-4">

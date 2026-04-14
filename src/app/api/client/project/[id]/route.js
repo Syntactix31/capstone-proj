@@ -3,8 +3,7 @@ import { getRequestUser } from "../../../../lib/auth/server";
 import { getSql } from "../../../../lib/db/client";
 import { ensureDatabaseSchema } from "../../../../lib/db/schema";
 import { normalizeEmail } from "../../../../lib/db/users";
-
-const EDMONTON_TIME_ZONE = "America/Edmonton";
+import { listProjects } from "../../../../lib/db/projects";
 
 // function formatDateOnly(dateValue) {
 //   if (!dateValue) return "-";
@@ -45,42 +44,33 @@ export async function GET(req, { params }) {
 
     const resolvedParams = await params;
 
-    const projectRows = await sql`
-      SELECT 
-        id, service as name, COALESCE(address, '') as description,
-        COALESCE(start_date, NULL) as startdate,
-        COALESCE(estimated_completion_date, NULL) as "projectedCompletion",
-        COALESCE(completion_date, NULL) as "endDate", 
-        COALESCE(total_cost, 0) as "totalAmount",
-        COALESCE(payment_status, 'Unpaid') as status,
-        services_included as servicesincluded,
-        payments as payments,
-        owner_notes as ownernotes,
-        estimate_pdf_url as "estimatePdfUrl",
-        COALESCE(updated_at, created_at) as "notesUpdatedAt"
-      FROM projects 
-      WHERE id = ${resolvedParams.id} AND client_id = ${client.id}
-      LIMIT 1
-    `;
-
-    const projectRow = projectRows[0];
-    if (!projectRow) {
+    const projectRecord = (await listProjects({ clientId: client.id })).find(
+      (project) => project.id === resolvedParams.id
+    );
+    if (!projectRecord) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
     const project = {
-      ...projectRow,
-      startDate: formatDateOnly(projectRow.startdate),
-      estimatedCompletionDate: formatDateOnly(projectRow.projectedCompletion),
-      services: JSON.parse(projectRow.servicesincluded || '[]'),
-      payments: JSON.parse(projectRow.payments || '[]'),
-      totalPaid: JSON.parse(projectRow.payments || '[]').reduce(
-        (sum, p) => sum + (String(p?.status || "Paid").trim() === "Paid" ? Number(p.amount || 0) : 0),
+      id: projectRecord.id,
+      name: projectRecord.service,
+      description: projectRecord.address || "",
+      startDate: formatDateOnly(projectRecord.startDate),
+      projectedCompletion: formatDateOnly(projectRecord.estimatedCompletionDate),
+      estimatedCompletionDate: formatDateOnly(projectRecord.estimatedCompletionDate),
+      endDate: formatDateOnly(projectRecord.completionDate),
+      totalAmount: Number(projectRecord.totalCost || 0),
+      status: projectRecord.paymentStatus,
+      services: Array.isArray(projectRecord.servicesIncluded) ? projectRecord.servicesIncluded : [],
+      payments: Array.isArray(projectRecord.payments) ? projectRecord.payments : [],
+      totalPaid: (Array.isArray(projectRecord.payments) ? projectRecord.payments : []).reduce(
+        (sum, payment) =>
+          sum + (String(payment?.status || "Paid").trim() === "Paid" ? Number(payment.amount || 0) : 0),
         0
       ),
-      ownerNotes: projectRow.ownernotes,
-      notesUpdatedAt: formatDateOnly(projectRow.notesUpdatedAt),
-      estimatePdfUrl: projectRow.estimatePdfUrl
+      ownerNotes: projectRecord.ownerNotes || "",
+      notesUpdatedAt: formatDateOnly(projectRecord.updatedAt),
+      estimatePdfUrl: projectRecord.estimatePdfUrl,
     };
 
     return NextResponse.json({ project });

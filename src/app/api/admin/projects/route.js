@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../lib/auth/server";
 import { createProject, listProjects } from "../../../lib/db/projects";
 import { buildQuoteData } from "../../../lib/quotes.js";
+import { FIELD_LIMITS, sanitizeTextArea } from "../../../lib/validation/fields.js";
 
 function normalizeServiceItem(value) {
   return {
@@ -42,8 +43,8 @@ export async function POST(req) {
   try {
     const body = await req.json();
     const clientId = String(body?.clientId || "").trim();
-    const service = String(body?.service || "").trim();
-    const address = String(body?.address || "").trim();
+    const service = sanitizeTextArea(body?.service, FIELD_LIMITS.serviceName).trim();
+    const address = sanitizeTextArea(body?.address, FIELD_LIMITS.address).trim();
     const servicesIncluded = Array.isArray(body?.servicesIncluded)
       ? body.servicesIncluded.map(normalizeServiceItem).filter((item) => item.name)
       : [];

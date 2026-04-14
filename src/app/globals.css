@@ -1829,12 +1829,10 @@ body {
 
 .admin-payments-table-row {
   grid-template-columns:
-    minmax(0, 0.95fr)
-    minmax(0, 1.1fr)
     minmax(0, 1.15fr)
+    minmax(0, 1.3fr)
     minmax(0, 0.9fr)
     minmax(0, 0.9fr)
-    minmax(0, 0.85fr)
     minmax(0, 1fr);
 }
 
@@ -1867,6 +1865,33 @@ body {
 .admin-payments-table .admin-table-row > :last-child {
   justify-self: start;
   text-align: left;
+}
+
+.admin-payments-controls {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.55fr);
+}
+
+.admin-payments-table {
+  gap: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.admin-payments-table .admin-table-row {
+  border: 0;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+  padding: 14px 16px;
+}
+
+.admin-payments-table .admin-table-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-payments-table .admin-table-head {
+  background: #f8fafc;
 }
 
 .admin-invoices-table .admin-table-head > :last-child {
@@ -3097,6 +3122,10 @@ body {
 
   .admin-projects-controls {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-payments-controls {
+    grid-template-columns: 1fr;
   }
 
   .admin-invoices-controls {

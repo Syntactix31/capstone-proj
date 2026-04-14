@@ -11,7 +11,7 @@ const MENU_ITEMS = [
   { id: "clients", label: "Clients", href: "/dashboard/clients" },
   { id: "projects", label: "Projects", href: "/dashboard/projects" },
   { id: "invoices", label: "Invoices", href: "/dashboard/invoices" },
-  { id: "estimates", label: "Quotations", href: "/dashboard/estimates" },
+  { id: "estimates", label: "Estimates", href: "/dashboard/estimates" },
   { id: "payments", label: "Payments", href: "/dashboard/payments" },
   { id: "gallery", label: "Gallery", href: "/dashboard/gallery" },  
   { id: "settings", label: "Settings", href: "/dashboard/settings" },

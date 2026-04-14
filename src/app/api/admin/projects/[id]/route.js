@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/auth/server";
 import { deleteProject, findProjectById, updateProject } from "../../../../lib/db/projects";
 import { buildQuoteData } from "../../../../lib/quotes.js";
+import { FIELD_LIMITS, sanitizeTextArea } from "../../../../lib/validation/fields.js";
 
 function normalizeServiceItems(value) {
   if (!Array.isArray(value)) return [];
@@ -26,7 +27,8 @@ function normalizePayments(value) {
       id: String(item?.id || `payment-${index + 1}`),
       date: String(item?.date || "").trim(),
       amount: String(item?.amount || "").trim(),
-      status: String(item?.status || "Pending").trim() || "Pending",
+      type: String(item?.type || "").trim(),
+      status: String(item?.status || "Paid").trim() || "Paid",
       notes: String(item?.notes || "").trim(),
     }))
     .filter((item) => item.date || item.amount || item.notes);
@@ -74,8 +76,7 @@ export async function PATCH(req, { params }) {
 
     const project = await updateProject(resolvedParams.id, {
       service: primaryServiceName,
-      address: String(body?.address || "").trim(),
-      paymentStatus: String(body?.paymentStatus || "Unpaid").trim() || "Unpaid",
+      address: sanitizeTextArea(body?.address, FIELD_LIMITS.address).trim(),
       startDate: String(body?.startDate || "").trim(),
       estimatedCompletionDate: String(body?.estimatedCompletionDate || "").trim(),
       completionDate: String(body?.completionDate || "").trim(),
@@ -85,7 +86,7 @@ export async function PATCH(req, { params }) {
         ? { quoteData: normalizeQuoteData(body?.quoteData || {}) }
         : {}),
       payments: normalizePayments(body?.payments),
-      ownerNotes: String(body?.ownerNotes || ""),
+      ownerNotes: sanitizeTextArea(body?.ownerNotes, FIELD_LIMITS.notes),
       estimatePdfUrl: String(body?.estimatePdfUrl || "").trim(),
       estimatePdfName: String(body?.estimatePdfName || "").trim(),
     });

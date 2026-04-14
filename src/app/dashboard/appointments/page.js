@@ -4,6 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
 import AppointmentCancelModal from "../../components/AppointmentCancelModal.js";
 import { SERVICE_CATALOG, normalizeServiceId, normalizeServiceName } from "../../lib/services/catalog.js";
+import {
+  FIELD_LIMITS,
+  inputPropsFor,
+  sanitizeEmail,
+  sanitizeLetters,
+  sanitizePhone,
+  sanitizeTextArea,
+} from "../../lib/validation/fields.js";
 
 const SERVICES = SERVICE_CATALOG.map(({ id, name, active }) => ({ id, name, active }));
 
@@ -922,6 +930,12 @@ export default function AdminAppointmentsPage() {
   // Update the controlled form fields as the admin types/selects values.
   const handleFormChange = (event) => {
     const { name, value } = event.target;
+    let nextValue = value;
+    if (name === "firstName" || name === "lastName") nextValue = sanitizeLetters(value, FIELD_LIMITS.name);
+    if (name === "phone") nextValue = sanitizePhone(value);
+    if (name === "email") nextValue = sanitizeEmail(value);
+    if (name === "address") nextValue = sanitizeTextArea(value, FIELD_LIMITS.address);
+    if (name === "notes") nextValue = sanitizeTextArea(value, FIELD_LIMITS.notes);
     if (name === "clientId") {
       const nextClient = clients.find((client) => client.id === value) || null;
       const nextProjects = projects.filter((project) => project.clientId === value);
@@ -951,7 +965,7 @@ export default function AdminAppointmentsPage() {
       }));
       return;
     }
-    setFormState((prev) => ({ ...prev, [name]: value }));
+    setFormState((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   // Shared submit handler: creates a new booking or reschedules an existing one.
@@ -1603,6 +1617,7 @@ return (
                       id="clientPhone"
                       name="phone"
                       className="admin-input"
+                      {...inputPropsFor("phone")}
                       value={formState.phone}
                       onChange={handleFormChange}
                     />
@@ -1615,6 +1630,7 @@ return (
                       name="email"
                       type="email"
                       className="admin-input"
+                      {...inputPropsFor("email")}
                       value={formState.email}
                       onChange={handleFormChange}
                     />
@@ -1749,6 +1765,7 @@ return (
                   id="address"
                   name="address"
                   className="admin-input"
+                  {...inputPropsFor("address")}
                   value={formState.address}
                   onChange={handleFormChange}
                 />
@@ -1760,6 +1777,7 @@ return (
                   id="notes"
                   name="notes"
                   className="admin-input"
+                  maxLength={FIELD_LIMITS.notes}
                   rows={4}
                   value={formState.notes}
                   onChange={handleFormChange}

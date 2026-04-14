@@ -12,14 +12,23 @@ import {
   formatRateInputValue,
   todayDateValue,
 } from "../../../lib/quotes.js";
+import {
+  FIELD_LIMITS,
+  inputPropsFor,
+  sanitizeIntegerInput,
+  sanitizeMoneyInput,
+  sanitizePercentInput,
+  sanitizeTextArea,
+} from "../../../lib/validation/fields.js";
 
-const PAYMENT_STATUSES = ["Unpaid", "Deposit Paid", "Fully Paid"];
+const PAYMENT_TYPES = ["Initial Deposit", "Partial", "Full payment"];
 
 function createPaymentItem() {
   return {
     id: globalThis.crypto?.randomUUID?.() || `payment-${Date.now()}-${Math.random()}`,
     date: "",
     amount: "",
+    type: "Initial Deposit",
     notes: "",
   };
 }
@@ -73,6 +82,19 @@ function calculateServiceTotal(serviceItem) {
     Number.parseInt(serviceItem?.quantity || "1", 10) || 1
   );
   return (price * quantity).toFixed(2);
+}
+
+function calculateTotalPaid(payments) {
+  return (Array.isArray(payments) ? payments : []).reduce((sum, payment) => {
+    if (String(payment?.status || "Paid").trim() !== "Paid") return sum;
+    return sum + (Number.parseFloat(payment?.amount || "0") || 0);
+  }, 0);
+}
+
+function derivePaymentStatus({ total, depositAmount, totalPaid }) {
+  if (total > 0 && Math.max(total - totalPaid, 0) <= 0.009) return "Fully Paid";
+  if (depositAmount > 0 && totalPaid + 0.009 >= depositAmount) return "Deposit Paid";
+  return "Unpaid";
 }
 
 export default function AdminProjectDetailPage() {
@@ -146,40 +168,53 @@ export default function AdminProjectDetailPage() {
     [formState.quoteData, formState.serviceItem]
   );
 
-  const totalPaid = useMemo(
-    () =>
-      formState.payments.reduce((sum, payment) => {
-        if (String(payment?.status || "").trim() !== "Paid") return sum;
-        return sum + (Number.parseFloat(payment?.amount || "0") || 0);
-      }, 0),
-    [formState.payments]
-  );
+  const totalPaid = useMemo(() => calculateTotalPaid(formState.payments), [formState.payments]);
 
   const remainingBalance = useMemo(() => {
     const quoteTotal = Number.parseFloat(quoteTotals.total || "0") || 0;
     return Math.max(quoteTotal - totalPaid, 0);
   }, [quoteTotals.total, totalPaid]);
 
+  const derivedPaymentStatus = useMemo(
+    () =>
+      derivePaymentStatus({
+        total: Number.parseFloat(quoteTotals.total || "0") || 0,
+        depositAmount: Number.parseFloat(quoteTotals.depositAmount || "0") || 0,
+        totalPaid,
+      }),
+    [quoteTotals.total, quoteTotals.depositAmount, totalPaid]
+  );
+
   const handleFieldChange = (event) => {
     const { name, value } = event.target;
+    let nextValue = value;
+    if (name === "address") nextValue = sanitizeTextArea(value, FIELD_LIMITS.address);
+    if (name === "ownerNotes") nextValue = sanitizeTextArea(value, FIELD_LIMITS.notes);
     setSuccess("");
-    setFormState((prev) => ({ ...prev, [name]: value }));
+    setFormState((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   const handleServiceChange = (field, value) => {
+    let nextValue = value;
+    if (field === "price") nextValue = sanitizeMoneyInput(value);
+    if (field === "quantity") nextValue = sanitizeIntegerInput(value);
+    if (field === "description") nextValue = sanitizeTextArea(value, FIELD_LIMITS.description);
     setSuccess("");
     setFormState((prev) => ({
       ...prev,
-      serviceItem: { ...prev.serviceItem, [field]: value },
+      serviceItem: { ...prev.serviceItem, [field]: nextValue },
     }));
   };
 
   const handleQuoteChange = (event) => {
     const { name, value } = event.target;
+    let nextValue = value;
+    if (name === "quoteNumber") nextValue = sanitizeTextArea(value, FIELD_LIMITS.quoteNumber);
+    if (name === "depositRate") nextValue = sanitizePercentInput(value);
     setSuccess("");
     setFormState((prev) => ({
       ...prev,
-      quoteData: { ...prev.quoteData, [name]: value },
+      quoteData: { ...prev.quoteData, [name]: nextValue },
     }));
   };
 
@@ -195,6 +230,7 @@ export default function AdminProjectDetailPage() {
       id: payment.id,
       date: payment.date || "",
       amount: String(payment.amount || ""),
+      type: payment.type || "Partial",
       notes: payment.notes || "",
     });
     setIsPaymentModalOpen(true);
@@ -202,7 +238,10 @@ export default function AdminProjectDetailPage() {
 
   const handlePaymentFormChange = (event) => {
     const { name, value } = event.target;
-    setPaymentForm((prev) => ({ ...prev, [name]: value }));
+    let nextValue = value;
+    if (name === "amount") nextValue = sanitizeMoneyInput(value);
+    if (name === "notes") nextValue = sanitizeTextArea(value, FIELD_LIMITS.notes);
+    setPaymentForm((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   const persistProject = async ({ nextPayments, successMessage = "Project details saved.", generateQuote = false, completionDate } = {}) => {
@@ -218,7 +257,7 @@ export default function AdminProjectDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address: formState.address,
-          paymentStatus: formState.paymentStatus,
+          paymentStatus: derivedPaymentStatus,
           startDate: formState.startDate,
           estimatedCompletionDate: formState.estimatedCompletionDate,
           completionDate: completionDate ?? formState.completionDate,
@@ -436,24 +475,14 @@ export default function AdminProjectDetailPage() {
               </label>
               <label className="admin-field">
                 <span className="admin-label">Payment status</span>
-                <select
-                  className="admin-input"
-                  name="paymentStatus"
-                  value={formState.paymentStatus}
-                  onChange={handleFieldChange}
-                >
-                  {PAYMENT_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
+                <input className="admin-input" value={derivedPaymentStatus} disabled readOnly />
               </label>
               <label className="admin-field">
                 <span className="admin-label">Address</span>
                 <input
                   className="admin-input"
                   name="address"
+                  {...inputPropsFor("address")}
                   value={formState.address}
                   onChange={handleFieldChange}
                 />
@@ -506,6 +535,7 @@ export default function AdminProjectDetailPage() {
                     type="number"
                     min="0"
                     step="0.01"
+                    {...inputPropsFor("money")}
                     value={formState.serviceItem.price}
                     onChange={(event) =>
                       handleServiceChange("price", event.target.value)
@@ -519,6 +549,7 @@ export default function AdminProjectDetailPage() {
                     type="number"
                     min="1"
                     step="1"
+                    {...inputPropsFor("quantity")}
                     value={formState.serviceItem.quantity}
                     onChange={(event) =>
                       handleServiceChange("quantity", event.target.value)
@@ -529,6 +560,7 @@ export default function AdminProjectDetailPage() {
                   <span className="admin-label">Description</span>
                   <textarea
                     className="admin-textarea"
+                    maxLength={FIELD_LIMITS.description}
                     rows={4}
                     value={formState.serviceItem.description}
                     onChange={(event) =>
@@ -563,8 +595,8 @@ export default function AdminProjectDetailPage() {
                         <div className="admin-strong">
                           ${Number.parseFloat(payment.amount || "0").toFixed(2)}
                         </div>
-                        <div className="admin-muted">
-                          {payment.date || "No date"}
+                      <div className="admin-muted">
+                          {payment.type || "Payment"} · {payment.date || "No date"}
                         </div>
                       </div>
                       <button
@@ -601,6 +633,7 @@ export default function AdminProjectDetailPage() {
                 <input
                   className="admin-input"
                   name="quoteNumber"
+                  {...inputPropsFor("quoteNumber")}
                   value={formState.quoteData.quoteNumber}
                   onChange={handleQuoteChange}
                 />
@@ -632,6 +665,7 @@ export default function AdminProjectDetailPage() {
                   min="0"
                   step="0.1"
                   name="depositRate"
+                  {...inputPropsFor("percent")}
                   value={formatRateInputValue(formState.quoteData.depositRate)}
                   onChange={handleQuoteChange}
                 />
@@ -660,6 +694,7 @@ export default function AdminProjectDetailPage() {
                   className="admin-textarea"
                   rows={5}
                   name="ownerNotes"
+                  maxLength={FIELD_LIMITS.notes}
                   value={formState.ownerNotes}
                   onChange={handleFieldChange}
                 />
@@ -729,17 +764,7 @@ export default function AdminProjectDetailPage() {
             </div>
 
             <div className="admin-form">
-              <label className="admin-field">
-                <span className="admin-label">Payment date</span>
-                <input
-                  className="admin-input"
-                  type="date"
-                  name="date"
-                  value={paymentForm.date}
-                  onChange={handlePaymentFormChange}
-                />
-              </label>
-              <label className="admin-field">
+              <label className="admin-field admin-field--full">
                 <span className="admin-label">Amount ($)</span>
                 <input
                   className="admin-input"
@@ -747,14 +772,43 @@ export default function AdminProjectDetailPage() {
                   min="0"
                   step="0.01"
                   name="amount"
+                  {...inputPropsFor("money")}
                   value={paymentForm.amount}
                   onChange={handlePaymentFormChange}
                 />
               </label>
+              <div className="admin-form__row admin-form__row--two admin-field--full">
+                <label className="admin-field">
+                  <span className="admin-label">Payment date</span>
+                  <input
+                    className="admin-input"
+                    type="date"
+                    name="date"
+                    value={paymentForm.date}
+                    onChange={handlePaymentFormChange}
+                  />
+                </label>
+                <label className="admin-field">
+                  <span className="admin-label">Payment type</span>
+                  <select
+                    className="admin-input"
+                    name="type"
+                    value={paymentForm.type}
+                    onChange={handlePaymentFormChange}
+                  >
+                    {PAYMENT_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               <label className="admin-field admin-field--full">
                 <span className="admin-label">Notes</span>
                 <textarea
                   className="admin-textarea"
+                  maxLength={FIELD_LIMITS.notes}
                   rows={4}
                   name="notes"
                   value={paymentForm.notes}
@@ -838,7 +892,7 @@ export default function AdminProjectDetailPage() {
                   if (
                     confirmAction === "complete" &&
                     (
-                      formState.paymentStatus !== "Fully Paid" ||
+                      derivedPaymentStatus !== "Fully Paid" ||
                       formState.payments.length < 1
                     )
                   ) {

@@ -99,7 +99,7 @@ export default function PaymentsPage() {
           <h2 className="admin-card-title">Payment list</h2>
         </div>
 
-        <div className="admin-actions admin-projects-controls">
+        <div className="admin-actions admin-projects-controls admin-payments-controls">
           <div className="admin-projects-control admin-projects-control--search">
             <input
               id="payments-search"

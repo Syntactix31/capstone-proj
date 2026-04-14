@@ -11,6 +11,14 @@ import {
   todayDateValue,
 } from "../../lib/quotes.js";
 import { SERVICE_CATALOG, normalizeServiceDisplay, normalizeServiceList, normalizeServiceName } from "../../lib/services/catalog.js";
+import {
+  FIELD_LIMITS,
+  inputPropsFor,
+  sanitizeIntegerInput,
+  sanitizeMoneyInput,
+  sanitizePercentInput,
+  sanitizeTextArea,
+} from "../../lib/validation/fields.js";
 
 const PAYMENT_STATUSES = ["Unpaid", "Deposit Paid", "Fully Paid"];
 const DEFAULT_SERVICES = SERVICE_CATALOG.map((service, index) => ({
@@ -270,6 +278,11 @@ export default function AdminProjectsPage() {
 
   const handleProjectFormChange = (event) => {
     const { name, value } = event.target;
+    let nextValue = value;
+    if (name === "quantity") nextValue = sanitizeIntegerInput(value);
+    if (name === "unitPrice") nextValue = sanitizeMoneyInput(value);
+    if (name === "gstRate" || name === "depositRate") nextValue = sanitizePercentInput(value);
+    if (name === "description") nextValue = sanitizeTextArea(value, FIELD_LIMITS.description);
     if (name === "service") {
       const nextService =
         availableServices.find((service) => service.name === value) || null;
@@ -300,7 +313,7 @@ export default function AdminProjectsPage() {
       return;
     }
 
-    setProjectForm((prev) => ({ ...prev, [name]: value }));
+    setProjectForm((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   const handleProjectCreate = async (event) => {
@@ -547,6 +560,7 @@ export default function AdminProjectsPage() {
                 <input
                   id="project-quantity"
                   name="quantity"
+                  {...inputPropsFor("quantity")}
                   className="admin-input"
                   type="number"
                   min="1"
@@ -580,6 +594,7 @@ export default function AdminProjectsPage() {
                 <input
                   id="project-unit-price"
                   name="unitPrice"
+                  {...inputPropsFor("money")}
                   className="admin-input"
                   type="number"
                   min="0"
@@ -613,6 +628,7 @@ export default function AdminProjectsPage() {
                 <input
                   id="project-gst-rate"
                   name="gstRate"
+                  {...inputPropsFor("percent")}
                   className="admin-input"
                   type="number"
                   min="0"
@@ -629,6 +645,7 @@ export default function AdminProjectsPage() {
                 <input
                   id="project-deposit-rate"
                   name="depositRate"
+                  {...inputPropsFor("percent")}
                   className="admin-input"
                   type="number"
                   min="0"
@@ -645,6 +662,7 @@ export default function AdminProjectsPage() {
                 <textarea
                   id="project-description"
                   name="description"
+                  maxLength={FIELD_LIMITS.description}
                   className="admin-textarea"
                   rows={5}
                   value={projectForm.description}

@@ -2,6 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
+import {
+  FIELD_LIMITS,
+  inputPropsFor,
+  sanitizeIntegerInput,
+  sanitizeMoneyInput,
+  sanitizeTextArea,
+} from "../../lib/validation/fields.js";
 
 // Admin UI for managing service cards/details.
 export default function AdminServicesPage() {
@@ -69,9 +76,14 @@ export default function AdminServicesPage() {
   // Update whichever field changed in the service form.
   const handleFormChange = (event) => {
     const { name, value, type, checked } = event.target;
+    let nextValue = value;
+    if (name === "name") nextValue = sanitizeTextArea(value, FIELD_LIMITS.serviceName);
+    if (name === "description") nextValue = sanitizeTextArea(value, FIELD_LIMITS.description);
+    if (name === "price") nextValue = sanitizeMoneyInput(value);
+    if (name === "quantity" || name === "durationValue") nextValue = sanitizeIntegerInput(value);
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: type === "checkbox" ? checked : nextValue,
     }));
   };
 
@@ -291,6 +303,7 @@ export default function AdminServicesPage() {
                 <input
                   className="admin-input"
                   name="name"
+                  {...inputPropsFor("serviceName")}
                   value={formData.name}
                   onChange={handleFormChange}
                   placeholder="Lawn sprinkler repairs"
@@ -304,6 +317,7 @@ export default function AdminServicesPage() {
                 <textarea
                   className="admin-textarea"
                   name="description"
+                  maxLength={FIELD_LIMITS.description}
                   value={formData.description}
                   onChange={handleFormChange}
                   placeholder="Overview of the service, what is included, and how it helps the client."
@@ -318,6 +332,7 @@ export default function AdminServicesPage() {
                   <input
                     className="admin-input"
                     name="price"
+                    {...inputPropsFor("money")}
                     value={formData.price}
                     onChange={handleFormChange}
                     type="number"
@@ -331,6 +346,7 @@ export default function AdminServicesPage() {
                   <input
                     className="admin-input"
                     name="quantity"
+                    {...inputPropsFor("quantity")}
                     value={formData.quantity}
                     onChange={handleFormChange}
                     type="number"

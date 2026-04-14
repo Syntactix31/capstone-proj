@@ -3,96 +3,198 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
+import {
+  buildQuoteData,
+  DEFAULT_DEPOSIT_RATE,
+  DEFAULT_GST_RATE,
+  formatCurrency,
+  todayDateValue,
+} from "../../lib/quotes.js";
+import { SERVICE_CATALOG, normalizeServiceName } from "../../lib/services/catalog.js";
+import {
+  FIELD_LIMITS,
+  inputPropsFor,
+  sanitizeAlphaSpace,
+  sanitizeEmail,
+  sanitizeIntegerInput,
+  sanitizeMoneyInput,
+  sanitizePhone,
+  sanitizePercentInput,
+  sanitizeTextArea,
+} from "../../lib/validation/fields.js";
 
-const PAYMENT_STATUS_CLASS = {
-  "Fully Paid": "admin-badge admin-badge--active",
-  "Deposit Paid": "admin-badge admin-badge--pending",
-  Unpaid: "admin-badge admin-badge--muted",
+const DEFAULT_SERVICES = SERVICE_CATALOG.map((service, index) => ({
+  id: `S-${String(index + 1).padStart(2, "0")}`,
+  name: service.name,
+  description: service.description,
+  price: service.price,
+  quantity: String(service.quantity),
+  active: service.active,
+}));
+
+const STATUS_CLASS = {
+  Pending: "admin-badge admin-badge--pending",
+  Approved: "admin-badge admin-badge--active",
+  Rejected: "admin-badge admin-badge--muted",
 };
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat("en-CA", {
-    style: "currency",
-    currency: "CAD",
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
+function createEstimateForm(service) {
+  return {
+    recipientName: "",
+    recipientAddress: "",
+    recipientEmail: "",
+    recipientPhone: "",
+    service: service?.name || DEFAULT_SERVICES[0].name,
+    priceMode: "default",
+    unitPrice: String(service?.price || "0.00"),
+    quantity: String(service?.quantity || "1"),
+    description: service?.description || "",
+    sentDate: todayDateValue(),
+    gstRate: String(DEFAULT_GST_RATE * 100),
+    depositRate: String(DEFAULT_DEPOSIT_RATE * 100),
+    notes: "",
+  };
 }
 
-function formatDate(value) {
-  if (!value) return "Not set";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not set";
-  return date.toLocaleDateString("en-CA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-export default function AdminQuotationsDashboard() {
-  const [quotations, setQuotations] = useState([]);
+export default function AdminEstimatesPage() {
+  const [estimates, setEstimates] = useState([]);
+  const [services, setServices] = useState(DEFAULT_SERVICES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [paymentFilter, setPaymentFilter] = useState("All");
+  const [serviceFilter, setServiceFilter] = useState("All");
   const [sortBy, setSortBy] = useState("date-desc");
+  const [isEstimateModalOpen, setIsEstimateModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [estimateForm, setEstimateForm] = useState(() =>
+    createEstimateForm(DEFAULT_SERVICES[0])
+  );
+
+  async function refreshEstimates() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/estimates", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setEstimates([]);
+        setError(data?.error || "Failed to load estimates.");
+        return;
+      }
+
+      setEstimates(Array.isArray(data.estimates) ? data.estimates : []);
+    } catch (loadError) {
+      console.error(loadError);
+      setEstimates([]);
+      setError("Failed to load estimates.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refreshEstimates();
+  }, []);
 
   useEffect(() => {
     let active = true;
 
-    async function loadQuotations() {
-      setLoading(true);
-      setError("");
+    async function loadServices() {
       try {
-        const res = await fetch("/api/admin/estimates", { cache: "no-store" });
+        const res = await fetch("/api/admin/services", { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
         if (!active) return;
 
         if (!res.ok) {
-          setQuotations([]);
-          setError(data?.error || "Failed to load quotations.");
+          setServices(DEFAULT_SERVICES);
           return;
         }
 
-        setQuotations(Array.isArray(data.quotations) ? data.quotations : []);
-      } catch (error) {
-        console.error(error);
+        const nextServices = Array.isArray(data.services)
+          ? data.services.map((service) => ({
+              ...service,
+              name: normalizeServiceName(service.name),
+              quantity: String(service.quantity || 1),
+            }))
+          : [];
+        setServices(nextServices.length ? nextServices : DEFAULT_SERVICES);
+      } catch (loadError) {
+        console.error(loadError);
         if (!active) return;
-        setQuotations([]);
-        setError("Failed to load quotations.");
-      } finally {
-        if (active) setLoading(false);
+        setServices(DEFAULT_SERVICES);
       }
     }
 
-    loadQuotations();
+    loadServices();
     return () => {
       active = false;
     };
   }, []);
 
-  const filteredQuotations = useMemo(() => {
+  const availableServices = useMemo(
+    () => services.filter((service) => service.active !== false),
+    [services]
+  );
+
+  const selectedService = useMemo(
+    () =>
+      availableServices.find((service) => service.name === estimateForm.service) ||
+      availableServices[0] ||
+      null,
+    [availableServices, estimateForm.service]
+  );
+
+  const estimateQuote = useMemo(
+    () =>
+      buildQuoteData({
+        priceMode: estimateForm.priceMode,
+        unitPrice: estimateForm.unitPrice,
+        quantity: estimateForm.quantity,
+        description: estimateForm.description,
+        sentDate: estimateForm.sentDate,
+        gstRate: estimateForm.gstRate,
+        depositRate: estimateForm.depositRate,
+      }),
+    [
+      estimateForm.depositRate,
+      estimateForm.description,
+      estimateForm.gstRate,
+      estimateForm.priceMode,
+      estimateForm.quantity,
+      estimateForm.sentDate,
+      estimateForm.unitPrice,
+    ]
+  );
+
+  const serviceOptions = useMemo(
+    () => ["All", ...Array.from(new Set(availableServices.map((service) => service.name))).sort()],
+    [availableServices]
+  );
+
+  const filteredEstimates = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    const filtered = quotations.filter((quotation) => {
-      const matchesPayment =
-        paymentFilter === "All" || quotation.paymentStatus === paymentFilter;
+    const filtered = estimates.filter((estimate) => {
+      const matchesService =
+        serviceFilter === "All" || normalizeServiceName(estimate.service) === serviceFilter;
 
-      if (!normalizedQuery) return matchesPayment;
+      if (!normalizedQuery) return matchesService;
 
       const matchesQuery =
-        String(quotation.client || "").toLowerCase().includes(normalizedQuery) ||
-        String(quotation.service || "").toLowerCase().includes(normalizedQuery) ||
-        String(quotation.quoteNumber || "").toLowerCase().includes(normalizedQuery) ||
-        String(quotation.projectId || "").toLowerCase().includes(normalizedQuery);
+        String(estimate.recipientName || "").toLowerCase().includes(normalizedQuery) ||
+        String(estimate.recipientEmail || "").toLowerCase().includes(normalizedQuery) ||
+        String(estimate.recipientPhone || "").toLowerCase().includes(normalizedQuery) ||
+        String(estimate.service || "").toLowerCase().includes(normalizedQuery) ||
+        String(estimate.id || "").toLowerCase().includes(normalizedQuery);
 
-      return matchesPayment && matchesQuery;
+      return matchesService && matchesQuery;
     });
 
     return [...filtered].sort((a, b) => {
       if (sortBy === "date-asc" || sortBy === "date-desc") {
-        const aTime = new Date(a.sentDate || a.updatedAt || a.createdAt || 0).getTime();
-        const bTime = new Date(b.sentDate || b.updatedAt || b.createdAt || 0).getTime();
+        const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
         return sortBy === "date-asc" ? aTime - bTime : bTime - aTime;
       }
 
@@ -100,147 +202,515 @@ export default function AdminQuotationsDashboard() {
       const bTotal = Number(b.total || 0);
       return sortBy === "total-asc" ? aTotal - bTotal : bTotal - aTotal;
     });
-  }, [paymentFilter, query, quotations, sortBy]);
+  }, [estimates, query, serviceFilter, sortBy]);
+
+  const openEstimateModal = () => {
+    const defaultService = availableServices[0] || DEFAULT_SERVICES[0];
+    setEstimateForm(createEstimateForm(defaultService));
+    setIsEstimateModalOpen(true);
+  };
+
+  const handleEstimateFormChange = (event) => {
+    const { name, value } = event.target;
+    let nextValue = value;
+
+    if (name === "recipientName") nextValue = sanitizeAlphaSpace(value, FIELD_LIMITS.name);
+    if (name === "recipientAddress") nextValue = sanitizeTextArea(value, FIELD_LIMITS.address);
+    if (name === "recipientEmail") nextValue = sanitizeEmail(value);
+    if (name === "recipientPhone") nextValue = sanitizePhone(value);
+    if (name === "quantity") nextValue = sanitizeIntegerInput(value);
+    if (name === "unitPrice") nextValue = sanitizeMoneyInput(value);
+    if (name === "gstRate" || name === "depositRate") nextValue = sanitizePercentInput(value);
+    if (name === "description") nextValue = sanitizeTextArea(value, FIELD_LIMITS.description);
+    if (name === "notes") nextValue = sanitizeTextArea(value, FIELD_LIMITS.notes);
+
+    if (name === "service") {
+      const nextService =
+        availableServices.find((service) => service.name === value) || null;
+      setEstimateForm((prev) => ({
+        ...prev,
+        service: value,
+        unitPrice:
+          prev.priceMode === "default"
+            ? String(nextService?.price || "0.00")
+            : prev.unitPrice,
+        quantity: String(nextService?.quantity || prev.quantity || "1"),
+        description:
+          !prev.description || prev.description === selectedService?.description
+            ? nextService?.description || ""
+            : prev.description,
+      }));
+      return;
+    }
+
+    if (name === "priceMode") {
+      setEstimateForm((prev) => ({
+        ...prev,
+        priceMode: value,
+        unitPrice:
+          value === "default"
+            ? String(selectedService?.price || "0.00")
+            : prev.unitPrice,
+      }));
+      return;
+    }
+
+    setEstimateForm((prev) => ({ ...prev, [name]: nextValue }));
+  };
+
+  async function handleEstimateCreate(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/admin/estimates/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientName: estimateForm.recipientName,
+          recipientAddress: estimateForm.recipientAddress,
+          recipientEmail: estimateForm.recipientEmail,
+          recipientPhone: estimateForm.recipientPhone,
+          service: estimateForm.service,
+          notes: estimateForm.notes,
+          servicesIncluded: [
+            {
+              id: selectedService?.id || "service-1",
+              name: estimateForm.service,
+              description: estimateForm.description,
+              price: estimateQuote.unitPrice,
+              quantity: estimateQuote.quantity,
+              total: estimateQuote.subtotal,
+            },
+          ],
+          quoteData: estimateQuote,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || "Failed to create estimate.");
+        return;
+      }
+
+      const nextEstimateId = data?.estimate?.id;
+      setIsEstimateModalOpen(false);
+      await refreshEstimates();
+      if (nextEstimateId && typeof window !== "undefined") {
+        window.open(`/dashboard/estimates/${nextEstimateId}`, "_blank", "noopener,noreferrer");
+      }
+    } catch (createError) {
+      console.error(createError);
+      setError("Failed to create estimate.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <AdminLayout>
-      <div className="admin-appointments">
-        <section className="admin-hero">
-          <div>
-            <h1 className="admin-title">Quotations</h1>
-            <p className="admin-subtitle">
-              View quotations generated from the projects dashboard.
-            </p>
-            {error ? <p className="admin-muted">{error}</p> : null}
+      <section className="admin-hero">
+        <div>
+          <h1 className="admin-title">Estimates</h1>
+          <p className="admin-subtitle">
+            Build standalone free estimates for potential clients using your service pricing and tax settings.
+          </p>
+          {error ? <p className="admin-error">{error}</p> : null}
+        </div>
+      </section>
+
+      <section className="admin-card">
+        <div className="admin-card-header admin-projects-header">
+          <h2 className="admin-card-title">Estimate list</h2>
+          <button className="admin-btn admin-btn--primary" type="button" onClick={openEstimateModal}>
+            New estimate
+          </button>
+        </div>
+
+        <div className="admin-actions admin-projects-controls">
+          <div className="admin-projects-control admin-projects-control--search">
+            <input
+              id="estimates-search"
+              className="admin-input"
+              type="search"
+              placeholder="Search estimates..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label="Search estimates"
+            />
           </div>
-        </section>
 
-        <section className="admin-card">
-          <div className="admin-card-header admin-projects-header">
-            <h2 className="admin-card-title">Quotation list</h2>
+          <div className="admin-projects-control">
+            <label className="admin-projects-control-label" htmlFor="estimates-service-filter">
+              Service
+            </label>
+            <select
+              id="estimates-service-filter"
+              className="admin-input"
+              value={serviceFilter}
+              onChange={(event) => setServiceFilter(event.target.value)}
+              aria-label="Filter estimate service"
+            >
+              {serviceOptions.map((service) => (
+                <option key={service} value={service}>
+                  {service}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="admin-actions admin-projects-controls">
-            <div className="admin-projects-control admin-projects-control--search">
-              <input
-                id="quotations-search"
-                className="admin-input"
-                type="search"
-                placeholder="Search quotations..."
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                aria-label="Search quotations"
-              />
-            </div>
+          <div className="admin-projects-control">
+            <label className="admin-projects-control-label" htmlFor="estimates-sort">
+              Sort by
+            </label>
+            <select
+              id="estimates-sort"
+              className="admin-input"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value)}
+              aria-label="Sort estimates"
+            >
+              <option value="date-desc">Newest first</option>
+              <option value="date-asc">Oldest first</option>
+              <option value="total-desc">High to low</option>
+              <option value="total-asc">Low to high</option>
+            </select>
+          </div>
+        </div>
 
-            <div className="admin-projects-control">
-              <label className="admin-projects-control-label" htmlFor="quotations-payment-filter">
-                Payment
-              </label>
-              <select
-                id="quotations-payment-filter"
-                className="admin-input"
-                value={paymentFilter}
-                onChange={(event) => setPaymentFilter(event.target.value)}
-                aria-label="Filter quotation payment status"
+        {loading ? (
+          <p className="admin-muted" style={{ marginTop: "12px" }}>
+            Loading estimates...
+          </p>
+        ) : !estimates.length ? (
+          <p>No estimates found yet.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filteredEstimates.map((estimate) => (
+              <div
+                key={estimate.id}
+                className="grid items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:p-4 transition-colors duration-200 hover:bg-slate-50 grid-cols-1 sm:grid-cols-[1.4fr_0.8fr_0.8fr_1.2fr] sm:gap-4"
               >
-                <option value="All">All</option>
-                <option value="Unpaid">Unpaid</option>
-                <option value="Deposit Paid">Deposit Paid</option>
-                <option value="Fully Paid">Fully Paid</option>
-              </select>
-            </div>
-
-            <div className="admin-projects-control">
-              <label className="admin-projects-control-label" htmlFor="quotations-sort">
-                Sort by
-              </label>
-              <select
-                id="quotations-sort"
-                className="admin-input"
-                value={sortBy}
-                onChange={(event) => setSortBy(event.target.value)}
-                aria-label="Sort quotations"
-              >
-                <option value="date-desc">Newest first</option>
-                <option value="date-asc">Oldest first</option>
-                <option value="total-desc">High to low</option>
-                <option value="total-asc">Low to high</option>
-              </select>
-            </div>
-          </div>
-
-          {loading ? (
-            <p className="admin-muted" style={{ marginTop: "12px" }}>
-              Loading quotations...
-            </p>
-          ) : !quotations.length ? (
-            <p>No quotations found. Generate a quotation from the projects page first.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {filteredQuotations.map((quotation) => (
-                <div
-                  key={quotation.projectId}
-                  className="grid items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:p-4 transition-colors duration-200 hover:bg-slate-50 grid-cols-1 sm:grid-cols-[1.4fr_0.8fr_0.8fr_1.2fr] sm:gap-4"
-                >
-                  <div>
-                    <div className="font-semibold text-slate-900">{quotation.client}</div>
-                    <div className="text-sm text-slate-500">{quotation.service}</div>
-                    <div className="text-xs text-slate-400">
-                      Quote #{quotation.quoteNumber} · Sent {formatDate(quotation.sentDate)}
-                    </div>
-                  </div>
-
-                  <div className="justify-self-start sm:justify-self-end sm:text-right">
-                    <div className="text-slate-900 font-semibold">{formatCurrency(quotation.total)}</div>
-                    <div className="text-xs text-slate-500">
-                      Deposit {formatCurrency(quotation.depositAmount)}
-                    </div>
-                  </div>
-
-                  <div className="justify-self-start sm:justify-self-end">
-                    <span className={PAYMENT_STATUS_CLASS[quotation.paymentStatus] || "admin-badge admin-badge--muted"}>
-                      {quotation.paymentStatus}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap justify-start sm:justify-end items-center gap-2 sm:gap-3">
-                    <Link
-                      className="admin-btn admin-btn--ghost"
-                      href={`/dashboard/projects/${quotation.projectId}`}
-                    >
-                      Open Project
-                    </Link>
-                    <Link
-                      className="admin-btn admin-btn--primary"
-                      href={`/dashboard/projects/${quotation.projectId}/quote`}
-                      target="_blank"
-                    >
-                      Open Quotation
-                    </Link>
-                    {quotation.pdfUrl ? (
-                      <a
-                        href={quotation.pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="admin-btn admin-btn--ghost"
-                      >
-                        View PDF
-                      </a>
-                    ) : null}
+                <div>
+                  <div className="font-semibold text-slate-900">{estimate.recipientName}</div>
+                  <div className="text-sm text-slate-500">{estimate.service}</div>
+                  <div className="text-xs text-slate-400">
+                    Estimate #{estimate.id.slice(0, 8)} · {estimate.recipientEmail || "No email"}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
 
-          {!loading && quotations.length > 0 && !filteredQuotations.length ? (
-            <p className="admin-muted" style={{ marginTop: "12px" }}>
-              No quotations match current filters.
-            </p>
-          ) : null}
-        </section>
-      </div>
+                <div className="justify-self-start sm:justify-self-end sm:text-right">
+                  <div className="text-slate-900 font-semibold">{formatCurrency(estimate.total)}</div>
+                  <div className="text-xs text-slate-500">
+                    GST {formatCurrency(estimate.gstAmount)}
+                  </div>
+                </div>
+
+                <div className="justify-self-start sm:justify-self-end">
+                  <span className={STATUS_CLASS[estimate.status] || "admin-badge admin-badge--muted"}>
+                    {estimate.status}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap justify-start sm:justify-end items-center gap-2 sm:gap-3">
+                  <Link
+                    className="admin-btn admin-btn--primary"
+                    href={`/dashboard/estimates/${estimate.id}`}
+                    target="_blank"
+                  >
+                    Open Estimate
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && estimates.length > 0 && !filteredEstimates.length ? (
+          <p className="admin-muted" style={{ marginTop: "12px" }}>
+            No estimates match current filters.
+          </p>
+        ) : null}
+      </section>
+
+      {isEstimateModalOpen ? (
+        <div className="admin-modal">
+          <button
+            className="admin-modal__backdrop"
+            type="button"
+            aria-label="Close estimate modal"
+            onClick={() => setIsEstimateModalOpen(false)}
+          />
+          <form className="admin-modal__content" role="dialog" aria-modal="true" onSubmit={handleEstimateCreate}>
+            <div className="admin-modal__header">
+              <div>
+                <h2 className="admin-title">New estimate</h2>
+                <p className="admin-subtitle">
+                  Create a free estimate for a potential client using service defaults or custom pricing.
+                </p>
+              </div>
+              <button
+                className="admin-btn admin-btn--ghost admin-btn--small"
+                type="button"
+                onClick={() => setIsEstimateModalOpen(false)}
+                disabled={saving}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="admin-modal__grid">
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-recipient-name">
+                  Recipient full name
+                </label>
+                <input
+                  id="estimate-recipient-name"
+                  name="recipientName"
+                  {...inputPropsFor("name")}
+                  className="admin-input"
+                  value={estimateForm.recipientName}
+                  onChange={handleEstimateFormChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="admin-label" htmlFor="estimate-recipient-email">
+                  Email
+                </label>
+                <input
+                  id="estimate-recipient-email"
+                  name="recipientEmail"
+                  type="email"
+                  {...inputPropsFor("email")}
+                  className="admin-input"
+                  value={estimateForm.recipientEmail}
+                  onChange={handleEstimateFormChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="admin-label" htmlFor="estimate-recipient-phone">
+                  Phone
+                </label>
+                <input
+                  id="estimate-recipient-phone"
+                  name="recipientPhone"
+                  {...inputPropsFor("phone")}
+                  className="admin-input"
+                  value={estimateForm.recipientPhone}
+                  onChange={handleEstimateFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-recipient-address">
+                  Address
+                </label>
+                <input
+                  id="estimate-recipient-address"
+                  name="recipientAddress"
+                  {...inputPropsFor("address")}
+                  className="admin-input"
+                  value={estimateForm.recipientAddress}
+                  onChange={handleEstimateFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-service">
+                  Service
+                </label>
+                <select
+                  id="estimate-service"
+                  name="service"
+                  className="admin-input"
+                  value={estimateForm.service}
+                  onChange={handleEstimateFormChange}
+                  required
+                >
+                  {availableServices.map((service) => (
+                    <option key={service.id || service.name} value={service.name}>
+                      {service.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-quantity">
+                  Quantity
+                </label>
+                <input
+                  id="estimate-quantity"
+                  name="quantity"
+                  {...inputPropsFor("quantity")}
+                  className="admin-input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={estimateForm.quantity}
+                  onChange={handleEstimateFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-price-mode">
+                  Pricing mode
+                </label>
+                <select
+                  id="estimate-price-mode"
+                  name="priceMode"
+                  className="admin-input"
+                  value={estimateForm.priceMode}
+                  onChange={handleEstimateFormChange}
+                >
+                  <option value="default">Use default service price</option>
+                  <option value="custom">Use custom unit price</option>
+                </select>
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-unit-price">
+                  Unit price ($)
+                </label>
+                <input
+                  id="estimate-unit-price"
+                  name="unitPrice"
+                  {...inputPropsFor("money")}
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={estimateForm.unitPrice}
+                  onChange={handleEstimateFormChange}
+                  disabled={estimateForm.priceMode === "default"}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-sent-date">
+                  Estimate date
+                </label>
+                <input
+                  id="estimate-sent-date"
+                  name="sentDate"
+                  className="admin-input"
+                  type="date"
+                  value={estimateForm.sentDate}
+                  onChange={handleEstimateFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-gst-rate">
+                  GST (%)
+                </label>
+                <input
+                  id="estimate-gst-rate"
+                  name="gstRate"
+                  {...inputPropsFor("percent")}
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={estimateForm.gstRate}
+                  onChange={handleEstimateFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-deposit-rate">
+                  Deposit required (%)
+                </label>
+                <input
+                  id="estimate-deposit-rate"
+                  name="depositRate"
+                  {...inputPropsFor("percent")}
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={estimateForm.depositRate}
+                  onChange={handleEstimateFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-description">
+                  Service description
+                </label>
+                <textarea
+                  id="estimate-description"
+                  name="description"
+                  maxLength={FIELD_LIMITS.description}
+                  className="admin-textarea"
+                  rows={5}
+                  value={estimateForm.description}
+                  onChange={handleEstimateFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-notes">
+                  Notes
+                </label>
+                <textarea
+                  id="estimate-notes"
+                  name="notes"
+                  maxLength={FIELD_LIMITS.notes}
+                  className="admin-textarea"
+                  rows={4}
+                  value={estimateForm.notes}
+                  onChange={handleEstimateFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Estimate subtotal</label>
+                <input className="admin-input" value={formatCurrency(estimateQuote.subtotal)} disabled readOnly />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">GST amount</label>
+                <input className="admin-input" value={formatCurrency(estimateQuote.gstAmount)} disabled readOnly />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Deposit amount</label>
+                <input className="admin-input" value={formatCurrency(estimateQuote.depositAmount)} disabled readOnly />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Estimate total</label>
+                <input className="admin-input" value={formatCurrency(estimateQuote.total)} disabled readOnly />
+              </div>
+            </div>
+
+            <div className="admin-modal__actions">
+              <button className="admin-btn admin-btn--primary" type="submit" disabled={saving}>
+                {saving ? "Creating..." : "Create estimate"}
+              </button>
+              <button
+                className="admin-btn admin-btn--ghost"
+                type="button"
+                onClick={() => setIsEstimateModalOpen(false)}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </AdminLayout>
   );
 }

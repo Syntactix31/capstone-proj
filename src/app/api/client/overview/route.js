@@ -3,9 +3,7 @@ import { getRequestUser } from "../../../lib/auth/server";
 import { getSql } from "../../../lib/db/client";
 import { ensureDatabaseSchema } from "../../../lib/db/schema";
 import { normalizeEmail } from "../../../lib/db/users";
-import { listProjectPayments } from "../../../lib/db/projects";
-
-const EDMONTON_TIME_ZONE = "America/Edmonton";
+import { listProjectPayments, listProjects } from "../../../lib/db/projects";
 
 // function formatDateOnly(dateValue) {
 //   if (!dateValue) return "-";
@@ -85,31 +83,22 @@ export async function GET(req) {
     `;
 
 
-    const projectRows = await sql`
-      SELECT 
-        p.id, 
-        p.service as name, 
-        COALESCE(p.address, '') as description,
-        COALESCE(p.start_date, NULL) as "startDate", 
-        COALESCE(p.estimated_completion_date, NULL) as "endDate", 
-        COALESCE(p.payment_status, 'Unpaid') as status,
-        COALESCE(p.total_cost, 0) as "totalCost",
-        p.created_at as "createdAt"
-      FROM projects p
-      WHERE p.client_id = ${client.id}  
-      ORDER BY p.created_at DESC
-    `;
-
-    const projects = projectRows.map(p => ({
-      id: p.id,
-      name: p.name,
-      description: p.description || '-',
-      startDate: formatDateOnly(p.startDate),
-      endDate: formatDateOnly(p.endDate),
-      status: p.status === 'Unpaid' ? 'Pending' :
-              p.status === 'Deposit Paid' ? 'Active' :
-              p.status === 'Fully Paid' ? 'Complete' : p.status,
-      totalAmount: Number(p.totalCost || 0).toLocaleString()
+    const projectRecords = await listProjects({ clientId: client.id });
+    const projects = projectRecords.map((project) => ({
+      id: project.id,
+      name: project.service,
+      description: project.address || "-",
+      startDate: formatDateOnly(project.startDate),
+      endDate: formatDateOnly(project.estimatedCompletionDate),
+      status:
+        project.paymentStatus === "Unpaid"
+          ? "Pending"
+          : project.paymentStatus === "Deposit Paid"
+            ? "Active"
+            : project.paymentStatus === "Fully Paid"
+              ? "Complete"
+              : project.paymentStatus,
+      totalAmount: Number(project.totalCost || 0).toLocaleString(),
     }));
 
 
