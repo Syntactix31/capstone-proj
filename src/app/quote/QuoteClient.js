@@ -392,6 +392,7 @@ export default function QuoteClient() {
                   resolve({
                     filename: file.name,
                     content: base64,
+                    contentType: file.type,
                   });
                 };
               });
@@ -413,19 +414,19 @@ export default function QuoteClient() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (data.blocked) {
+        console.error("Backend response:", data);
+        if (data?.blocked && Array.isArray(data.details)) {
           alert(`Upload blocked for safety:\n${data.details.join("\n")}\nPlease remove problematic files and try again.`);
-        } else {
-          throw new Error("Send failed");
+          return;
         }
-        return;
+        throw new Error(data?.error || "Send failed");
       }
 
       setSummary(`Thanks ${formData.client.name}! Details for ${selectedServices.length} service${selectedServices.length > 1 ? 's' : ''} sent to our team.`);
       setShowSuccess(true);
     } catch (err) {
       console.error(err);
-      alert("Send failed—try again or contact us.");
+      alert(err.message || "Send failed—try again or contact us.");
     } finally {
       setIsSubmitting(false);
     }

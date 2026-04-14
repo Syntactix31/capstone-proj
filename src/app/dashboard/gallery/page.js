@@ -31,30 +31,51 @@ export default function AdminUploadPage() {
     setUploading(true);
 
     const uploadedFiles = [];
+    const uploadErrors = [];
     
-    for (const file of selectedFiles) {
-      const formData = new FormData();
-      formData.append('file', file);
+    try {
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-      
-      if (data.url) {
-        uploadedFiles.push({
-          name: file.name,
-          url: data.url,
-          type: file.type.startsWith('video/') ? 'video' : 'image'
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
         });
-      }
-    }
 
-    setFiles(prev => [...prev, ...uploadedFiles]);
-    setUploading(false);
-    alert(`${uploadedFiles.length} files uploaded!`);
+        const data = await res.json();
+        
+        if (res.ok && data.url) {
+          uploadedFiles.push({
+            name: file.name,
+            url: data.url,
+            type: file.type.startsWith('video/') ? 'video' : 'image'
+          });
+          continue;
+        }
+
+        uploadErrors.push(`${file.name}: ${data.error || 'Upload failed'}`);
+      }
+
+      setFiles(prev => [...prev, ...uploadedFiles]);
+
+      if (uploadedFiles.length > 0) {
+        const refreshed = await fetch("/api/ScanMedia");
+        const refreshedData = await refreshed.json();
+        setGalleryFiles(refreshedData || []);
+      }
+
+      const messages = [];
+      if (uploadedFiles.length > 0) messages.push(`${uploadedFiles.length} files uploaded.`);
+      if (uploadErrors.length > 0) messages.push(uploadErrors.join("\n"));
+
+      alert(messages.join("\n\n") || "No files were uploaded.");
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleDelete(fileUrl) {
