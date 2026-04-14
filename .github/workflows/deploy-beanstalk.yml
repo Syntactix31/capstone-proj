@@ -1,0 +1,105 @@
+name: Deploy To Elastic Beanstalk
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_suffix:
+        description: Optional suffix for the Elastic Beanstalk version label
+        required: false
+        default: manual
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EB_APPLICATION_NAME: ${{ vars.AWS_EB_APPLICATION_NAME }}
+      EB_ENVIRONMENT_NAME: ${{ vars.AWS_EB_ENVIRONMENT_NAME }}
+      EB_S3_BUCKET: ${{ vars.AWS_EB_S3_BUCKET }}
+      DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+      AUTH_SESSION_SECRET: placeholder-secret
+      ADMIN_EMAILS: admin@example.com
+      NEXT_PUBLIC_SITE_URL: https://example.com
+      SITE_URL: https://example.com
+      OWNER_EMAIL: owner@example.com
+      GMAIL_APP_PASSWORD: placeholder
+      GOOGLE_CLIENT_EMAIL: placeholder@example.com
+      GOOGLE_PRIVATE_KEY: placeholder
+      GOOGLE_CALENDAR_ID: placeholder@example.com
+      GOOGLE_OAUTH_CLIENT_ID: placeholder
+      GOOGLE_OAUTH_CLIENT_SECRET: placeholder
+      GOOGLE_OAUTH_REDIRECT_URI: https://example.com/api/auth/google/callback
+      RESEND_API_KEY: placeholder
+      RESEND_FROM_EMAIL: noreply@example.com
+      QUOTE_TO_EMAIL: quotes@example.com
+      SERP_API_KEY: placeholder
+      BLOB_READ_WRITE_TOKEN: placeholder
+      PDF_READ_WRITE_TOKEN: placeholder
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Build production app
+        run: npm run build
+
+      - name: Create version label
+        id: version
+        shell: bash
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          suffix="${{ github.event.inputs.version_suffix }}"
+          label="gha-${GITHUB_RUN_NUMBER}-${short_sha}-${suffix}"
+          echo "label=$label" >> "$GITHUB_OUTPUT"
+
+      - name: Package Elastic Beanstalk bundle
+        shell: bash
+        run: |
+          zip -r deploy-bundle.zip . \
+            -x "node_modules/*" \
+               ".git/*" \
+               ".github/*" \
+               ".env*" \
+               "deploy/*" \
+               ".next/cache/*" \
+               ".next/dev/*" \
+               ".vercel/*"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload deploy bundle to S3
+        run: aws s3 cp deploy-bundle.zip "s3://${EB_S3_BUCKET}/${{ steps.version.outputs.label }}.zip"
+
+      - name: Create Elastic Beanstalk application version
+        run: >
+          aws elasticbeanstalk create-application-version
+          --application-name "${EB_APPLICATION_NAME}"
+          --version-label "${{ steps.version.outputs.label }}"
+          --source-bundle S3Bucket="${EB_S3_BUCKET}",S3Key="${{ steps.version.outputs.label }}.zip"
+
+      - name: Deploy application version to environment
+        run: >
+          aws elasticbeanstalk update-environment
+          --environment-name "${EB_ENVIRONMENT_NAME}"
+          --version-label "${{ steps.version.outputs.label }}"
+
+      - name: Wait for deployment readiness
+        run: aws elasticbeanstalk wait environment-updated --environment-names "${EB_ENVIRONMENT_NAME}"
