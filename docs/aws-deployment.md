@@ -46,7 +46,6 @@ These values belong in Elastic Beanstalk environment properties and should not b
 - `GOOGLE_OAUTH_REDIRECT_URI`
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
-- `QUOTE_TO_EMAIL`
 - `SERP_API_KEY`
 - `BLOB_READ_WRITE_TOKEN`
 - `PDF_READ_WRITE_TOKEN`
@@ -58,7 +57,7 @@ These values belong in Elastic Beanstalk environment properties and should not b
 - `NEXT_PUBLIC_SITE_URL` and `SITE_URL` should point at the public app domain
 - `BLOB_READ_WRITE_TOKEN` is required for project media uploads and reads
 - `PDF_READ_WRITE_TOKEN` is required for estimate PDF storage/signing flows
-- `QUOTE_TO_EMAIL` controls where quote requests are delivered
+- `OWNER_EMAIL` controls where quote requests are delivered
 
 ## GitHub Actions setup
 
