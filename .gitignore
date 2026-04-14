@@ -20,7 +20,7 @@ data/users.json
 
 # production
 /build
-/deploy/
+
 
 # misc
 .DS_Store
