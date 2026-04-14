@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { SERVICE_CATALOG } from "../lib/services/catalog.js";
 
 // Lets users pick one or more services before booking or requesting a quote.
 export default function QuoteServices() {
@@ -19,28 +20,28 @@ export default function QuoteServices() {
   // Services shown as selectable cards on the page.
   const services = useMemo(() => [
     {
-      slug: "fence",
-      title: "Fence",
-      description: "Professional fence installation using pressure-treated or composite materials.rable, professionally installed fencing to improve privacy, security, and curb appeal with clean lines and solid posts.",
+      slug: SERVICE_CATALOG[0].id,
+      title: SERVICE_CATALOG[0].shortName,
+      description: "Professional fence installation using pressure-treated or composite materials. Durable fencing improves privacy, security, and curb appeal.",
     },
     {
-      slug: "deck-railing",
-      title: "Deck & Railing",
+      slug: SERVICE_CATALOG[1].id,
+      title: SERVICE_CATALOG[1].name,
       description: "Custom decks built for comfort and longevity, paired with sturdy railings that meet code and match your home's style.",
     },
     {
-      slug: "pergola",
-      title: "Pergola",
+      slug: SERVICE_CATALOG[2].id,
+      title: SERVICE_CATALOG[2].name,
       description: "A clean, modern pergola that adds shade, structure, and a standout feature to your backyard or patio space.",
     },
     {
-      slug: "sod",
-      title: "Sod",
+      slug: SERVICE_CATALOG[3].id,
+      title: SERVICE_CATALOG[3].shortName,
       description: "Fresh sod laid and graded properly for a smooth, green lawn with strong root take and a clean finish.",
     },
     {
-      slug: "trees-shrubs",
-      title: "Trees & Shrubs",
+      slug: SERVICE_CATALOG[4].id,
+      title: SERVICE_CATALOG[4].name,
       description: "Thoughtful planting of trees and shrubs for privacy, landscaping design, and low-maintenance greenery that grows well in your yard.",
     },
   ], []);

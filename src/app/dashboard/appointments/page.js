@@ -2,15 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
+import AppointmentCancelModal from "../../components/AppointmentCancelModal.js";
+import { SERVICE_CATALOG, normalizeServiceId, normalizeServiceName } from "../../lib/services/catalog.js";
 
-
-const SERVICES = [
-  { id: "fence", name: "Fence Installation", active: true },
-  { id: "deck-railing", name: "Deck & Railing", active: true },
-  { id: "pergola", name: "Pergola", active: true },
-  { id: "sod", name: "Sod Installation", active: false },
-  { id: "trees-shrubs", name: "Trees and Shrubs", active: true },
-];
+const SERVICES = SERVICE_CATALOG.map(({ id, name, active }) => ({ id, name, active }));
 
 const VISIT_TYPES = ["Estimate", "Design Consultation", "Installation"];
 
@@ -38,10 +33,7 @@ const EDMONTON_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
 
 
 function prettyServiceName(serviceIdOrName) {
-  const hit =
-    SERVICES.find((s) => s.id === serviceIdOrName) ||
-    SERVICES.find((s) => s.name === serviceIdOrName);
-  return hit?.name || String(serviceIdOrName || "Appointment");
+  return normalizeServiceName(serviceIdOrName) || String(serviceIdOrName || "Appointment");
 }
 
 // normalization of visitType. Removes whitespaces and converts to lowercase
@@ -302,7 +294,7 @@ export default function AdminAppointmentsPage() {
         eventId: a.eventId,
         client: a.client || "Unknown",
         service: prettyServiceName(a.service),
-        serviceId: a.service,
+        serviceId: normalizeServiceId(a.service),
         visitType: a.visitType || "Estimate",
         date: a.date, 
         time: a.time, 
@@ -460,7 +452,7 @@ export default function AdminAppointmentsPage() {
         value: `project:${project.id}`,
         label: `${prettyServiceName(project.service)}${project.address ? ` - ${project.address}` : ""}`,
         projectId: project.id,
-        service: project.service,
+        service: normalizeServiceId(project.service),
       }));
     }
 
@@ -1845,62 +1837,22 @@ return (
         </div>
       )}
 {/* confirmation modal for canceling an appointment */}
-      {cancelTarget && (
-        <div className="admin-modal">
-          <button
-            className="admin-modal__backdrop"
-            onClick={() => setCancelTarget(null)}
-            aria-label="Close cancel confirmation"
-            type="button"
-          />
-          <div className="admin-modal__content" role="dialog" aria-modal="true">
-            <div className="admin-modal__header">
-              <div>
-                <h2 className="admin-title">Are you sure?</h2>
-                <p className="admin-subtitle">
-                  This will remove it from Google Calendar and send cancel emails.
-                </p>
-              </div>
-              <button
-                className="admin-btn admin-btn--ghost admin-btn--small"
-                onClick={() => setCancelTarget(null)}
-                type="button"
-                disabled={busy}
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="admin-modal__actions">
-              <button
-                className="admin-btn admin-btn--danger"
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  const ok = await cancelOnServer(cancelTarget.eventId);
-                  setCancelTarget(null);
-                  if (ok && cancelSource === "booked") setShowBookedModal(true);
-                  setCancelSource(null);
-                }}
-              >
-                {busy ? "Canceling…" : "Yes, cancel it"}
-              </button>
-              <button
-                className="admin-btn admin-btn--ghost"
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setCancelTarget(null);
-                  if (cancelSource === "booked") setShowBookedModal(true);
-                  setCancelSource(null);
-                }}
-              >
-                Keep appointment
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppointmentCancelModal
+        open={Boolean(cancelTarget)}
+        busy={busy}
+        onConfirm={async () => {
+          if (!cancelTarget?.eventId) return;
+          const ok = await cancelOnServer(cancelTarget.eventId);
+          setCancelTarget(null);
+          if (ok && cancelSource === "booked") setShowBookedModal(true);
+          setCancelSource(null);
+        }}
+        onClose={() => {
+          setCancelTarget(null);
+          if (cancelSource === "booked") setShowBookedModal(true);
+          setCancelSource(null);
+        }}
+      />
       </div>
     </AdminLayout>
   );

@@ -10,50 +10,17 @@ import {
   formatCurrency,
   todayDateValue,
 } from "../../lib/quotes.js";
+import { SERVICE_CATALOG, normalizeServiceDisplay, normalizeServiceList, normalizeServiceName } from "../../lib/services/catalog.js";
 
 const PAYMENT_STATUSES = ["Unpaid", "Deposit Paid", "Fully Paid"];
-const DEFAULT_SERVICES = [
-  {
-    id: "S-01",
-    name: "Fence Installation",
-    description: "Custom fence design, materials, and full installation.",
-    price: "2800.00",
-    quantity: "1",
-    active: true,
-  },
-  {
-    id: "S-02",
-    name: "Deck & Railing",
-    description: "Deck builds, railing upgrades, and safety repairs.",
-    price: "4500.00",
-    quantity: "1",
-    active: true,
-  },
-  {
-    id: "S-03",
-    name: "Pergola",
-    description: "Backyard pergola installation and finishing.",
-    price: "3200.00",
-    quantity: "1",
-    active: true,
-  },
-  {
-    id: "S-04",
-    name: "Sod Installation",
-    description: "Site prep and fresh sod installation.",
-    price: "1100.00",
-    quantity: "1",
-    active: false,
-  },
-  {
-    id: "S-05",
-    name: "Trees and Shrubs",
-    description: "Planting, pruning, and seasonal care.",
-    price: "1100.00",
-    quantity: "1",
-    active: true,
-  },
-];
+const DEFAULT_SERVICES = SERVICE_CATALOG.map((service, index) => ({
+  id: `S-${String(index + 1).padStart(2, "0")}`,
+  name: service.name,
+  description: service.description,
+  price: service.price,
+  quantity: String(service.quantity),
+  active: service.active,
+}));
 
 const PAYMENT_CLASS = {
   Unpaid: "admin-badge admin-badge--muted",
@@ -148,7 +115,9 @@ export default function AdminProjectsPage() {
           return;
         }
 
-        const nextServices = Array.isArray(data.services) ? data.services : [];
+        const nextServices = Array.isArray(data.services)
+          ? data.services.map((service) => ({ ...service, name: normalizeServiceName(service.name) }))
+          : [];
         setServices(nextServices.length ? nextServices : DEFAULT_SERVICES);
       } catch (loadError) {
         console.error(loadError);
@@ -210,21 +179,29 @@ export default function AdminProjectsPage() {
       const matchesPayment =
         paymentFilter === "All" || project.paymentStatus === paymentFilter;
       const matchesService =
-        serviceFilter === "All" || project.service === serviceFilter;
+        serviceFilter === "All" || normalizeServiceName(project.service) === serviceFilter;
 
       if (!q) return matchesPayment && matchesService;
 
       const matchesQuery =
         project.id.toLowerCase().includes(q) ||
         project.client.toLowerCase().includes(q) ||
-        project.service.toLowerCase().includes(q);
+        normalizeServiceName(project.service).toLowerCase().includes(q);
 
       return matchesPayment && matchesService && matchesQuery;
     });
   }, [paymentFilter, projects, query, serviceFilter]);
 
   const serviceOptions = useMemo(
-    () => ["All", ...Array.from(new Set([...services.map((service) => service.name), ...projects.map((project) => project.service)])).sort()],
+    () => [
+      "All",
+      ...Array.from(
+        new Set([
+          ...services.map((service) => normalizeServiceName(service.name)),
+          ...projects.flatMap((project) => normalizeServiceList(project.service)),
+        ])
+      ).sort(),
+    ],
     [projects, services]
   );
 
@@ -462,7 +439,7 @@ export default function AdminProjectsPage() {
                   <div className="admin-strong">{project.client}</div>
                   <div className="admin-muted">{project.address || "Address not added"}</div>
                 </div>
-                <div>{project.service}</div>
+                  <div>{normalizeServiceDisplay(project.service)}</div>
                 <div>
                   <div>{formatVisitLabel(project)}</div>
                   <div className="admin-muted">
@@ -750,7 +727,7 @@ export default function AdminProjectsPage() {
               <div>
                 <h2 className="admin-title">{selectedProject.client}</h2>
                 <p className="admin-subtitle">
-                  {selectedProject.service}
+                  {normalizeServiceDisplay(selectedProject.service)}
                   {selectedProject.address ? ` - ${selectedProject.address}` : ""}
                 </p>
               </div>
