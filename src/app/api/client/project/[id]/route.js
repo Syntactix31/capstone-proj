@@ -75,7 +75,7 @@ export async function GET(req, { params }) {
       services: JSON.parse(projectRow.servicesincluded || '[]'),
       payments: JSON.parse(projectRow.payments || '[]'),
       totalPaid: JSON.parse(projectRow.payments || '[]').reduce(
-        (sum, p) => sum + Number(p.amount || 0),
+        (sum, p) => sum + (String(p?.status || "Paid").trim() === "Paid" ? Number(p.amount || 0) : 0),
         0
       ),
       ownerNotes: projectRow.ownernotes,

@@ -7,8 +7,6 @@ import ClientLayout from "../../../components/ClientLayout.js";
 
 const STATUS_CLASS = {
   Active: "client-badge client-badge--active",
-  Pending: "client-badge client-badge--pending",
-  Paid: "client-badge client-badge--paid",
   Complete: "client-badge client-badge--complete",
 };
 
@@ -172,16 +170,12 @@ export default function ClientProjectDetailPage() {
             <div className="client-table-row client-table-head">
               <div>Date</div>
               <div>Amount</div>
-              <div>Status</div>
             </div>
             {project.payments && project.payments.length > 0 ? (
               project.payments.map((payment) => (
                 <div className="client-table-row" key={payment.id}>
                   <div>{payment.date}</div>
                   <div>${payment.amount}</div>
-                  <span className={`h-fit ${STATUS_CLASS[payment.status] || "client-badge"}`}>
-                    {payment.status}
-                  </span>
                 </div>
               ))
             ) : (

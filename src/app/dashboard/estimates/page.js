@@ -1,428 +1,245 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
 
-const STATUS_CLASS = {
-  Approved: "admin-badge admin-badge--active mb-4 sm:mb-0",
-  Rejected: "admin-badge admin-badge--danger mb-4 sm:mb-0",
-  Pending: "admin-badge admin-badge--pending mb-4 sm:mb-0",
+const PAYMENT_STATUS_CLASS = {
+  "Fully Paid": "admin-badge admin-badge--active",
+  "Deposit Paid": "admin-badge admin-badge--pending",
+  Unpaid: "admin-badge admin-badge--muted",
 };
 
-export default function AdminEstimatesDashboard() {
-  const [estimates, setEstimates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+function formatCurrency(value) {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+}
 
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-
-  const [formState, setFormState] = useState({
-    client: "",
-    email: "",
-    service: "",
-    price: "",
-    status: "Pending",
-    notes: "",
+function formatDate(value) {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not set";
+  return date.toLocaleDateString("en-CA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
   });
+}
 
-  // =========================
-  // FILE ATTACHMENT STATE
-  // =========================
-  const [pdfFile, setPdfFile] = useState(null);
-  const [pdfName, setPdfName] = useState("");
-
-  // =========================
-  // FETCH ESTIMATES
-  // =========================
-  async function fetchEstimates() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/estimates");
-      const data = await res.json();
-      setEstimates(data.estimates || []);
-    } catch (e) {
-      console.error(e);
-      setEstimates([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+export default function AdminQuotationsDashboard() {
+  const [quotations, setQuotations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("All");
+  const [sortBy, setSortBy] = useState("date-desc");
 
   useEffect(() => {
-    fetchEstimates();
+    let active = true;
+
+    async function loadQuotations() {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch("/api/admin/estimates", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+
+        if (!res.ok) {
+          setQuotations([]);
+          setError(data?.error || "Failed to load quotations.");
+          return;
+        }
+
+        setQuotations(Array.isArray(data.quotations) ? data.quotations : []);
+      } catch (error) {
+        console.error(error);
+        if (!active) return;
+        setQuotations([]);
+        setError("Failed to load quotations.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadQuotations();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  // =========================
-  // ANALYTICS
-  // =========================
-  const stats = useMemo(() => {
-    return {
-      total: estimates.length,
-      approved: estimates.filter((e) => e.status === "Approved").length,
-      rejected: estimates.filter((e) => e.status === "Rejected").length,
-      pending: estimates.filter((e) => e.status === "Pending").length,
-    };
-  }, [estimates]);
+  const filteredQuotations = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
 
-  // =========================
-  // CRUD ACTIONS
-  // =========================
-  async function createOrUpdateEstimate() {
-    setBusy(true);
-    try {
-      const priceRaw = String(formState.price || "").trim();
-      if (!priceRaw) {
-        alert("Please enter a price.");
-        return;
+    const filtered = quotations.filter((quotation) => {
+      const matchesPayment =
+        paymentFilter === "All" || quotation.paymentStatus === paymentFilter;
+
+      if (!normalizedQuery) return matchesPayment;
+
+      const matchesQuery =
+        String(quotation.client || "").toLowerCase().includes(normalizedQuery) ||
+        String(quotation.service || "").toLowerCase().includes(normalizedQuery) ||
+        String(quotation.quoteNumber || "").toLowerCase().includes(normalizedQuery) ||
+        String(quotation.projectId || "").toLowerCase().includes(normalizedQuery);
+
+      return matchesPayment && matchesQuery;
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "date-asc" || sortBy === "date-desc") {
+        const aTime = new Date(a.sentDate || a.updatedAt || a.createdAt || 0).getTime();
+        const bTime = new Date(b.sentDate || b.updatedAt || b.createdAt || 0).getTime();
+        return sortBy === "date-asc" ? aTime - bTime : bTime - aTime;
       }
 
-      const sanitizedPrice = priceRaw.replace(/[^0-9.\-]/g, "");
-      if (!sanitizedPrice || Number.isNaN(Number(sanitizedPrice))) {
-        alert("Please enter a valid numeric price.");
-        return;
-      }
+      const aTotal = Number(a.total || 0);
+      const bTotal = Number(b.total || 0);
+      return sortBy === "total-asc" ? aTotal - bTotal : bTotal - aTotal;
+    });
+  }, [paymentFilter, query, quotations, sortBy]);
 
-      const formData = new FormData();
-      Object.entries(formState).forEach(([key, value]) => {
-        const valueStr = key === "price" ? sanitizedPrice : String(value);
-        formData.append(key, valueStr);
-      });
-
-      if (pdfFile) {
-        formData.append("pdf", pdfFile);
-      }
-
-      let res;
-      if (editingId) {
-        // update
-        res = await fetch(`/api/admin/estimates/${editingId}`, {
-          method: "PUT",
-          body: formData,
-        });
-      } else {
-        // create
-        res = await fetch("/api/admin/estimates/create", {
-          method: "POST",
-          body: formData,
-        });
-      }
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("Estimate save failed:", res.status, text);
-        alert("Failed to save estimate");
-        return;
-      }
-
-      await fetchEstimates();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function deleteEstimate(id) {
-    if (!confirm("Delete this estimate?")) return;
-    setBusy(true);
-    await fetch(`/api/admin/estimates/${id}`, { method: "DELETE" });
-    await fetchEstimates();
-    setBusy(false);
-  }
-
-  // =========================
-  // FORM HANDLING
-  // =========================
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormState((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handlePdfChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("application/pdf")) {
-      alert("Please upload a PDF file.");
-      return;
-    }
-    setPdfFile(file);
-    setPdfName(file.name);
-  };
-
-  const openForm = (estimate = null) => {
-    if (estimate) {
-      setEditingId(estimate.id);
-      setFormState({
-        client: estimate.client,
-        email: estimate.email || "",
-        service: estimate.service,
-        price: String(estimate.price),
-        status: estimate.status,
-        notes: estimate.notes || "",
-      });
-      // If estimate has a PDF, show the attached name but don’t restore the file
-      if (estimate.pdfName) {
-        setPdfName(estimate.pdfName);
-      } else {
-        setPdfName("");
-      }
-      setPdfFile(null);
-    } else {
-      setEditingId(null);
-      setFormState({
-        client: "",
-        email: "",
-        service: "",
-        price: "",
-        status: "Pending",
-        notes: "",
-      });
-      setPdfFile(null);
-      setPdfName("");
-    }
-    setIsFormOpen(true);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    await createOrUpdateEstimate();
-    setIsFormOpen(false);
-  };
-
-  // =========================
-  // UI
-  // =========================
   return (
     <AdminLayout>
       <div className="admin-appointments">
-        {/* HEADER */}
         <section className="admin-hero">
           <div>
-            <h1 className="admin-title">Analytics Dashboard</h1>
+            <h1 className="admin-title">Quotations</h1>
             <p className="admin-subtitle">
-              Manage and track all estimates.
+              View quotations generated from the projects dashboard.
             </p>
+            {error ? <p className="admin-muted">{error}</p> : null}
+          </div>
+        </section>
+
+        <section className="admin-card">
+          <div className="admin-card-header admin-projects-header">
+            <h2 className="admin-card-title">Quotation list</h2>
           </div>
 
-          <button
-            className="admin-btn admin-btn--primary"
-            onClick={() => openForm()}
-          >
-            Add Estimate
-          </button>
-        </section>
+          <div className="admin-actions admin-projects-controls">
+            <div className="admin-projects-control admin-projects-control--search">
+              <input
+                id="quotations-search"
+                className="admin-input"
+                type="search"
+                placeholder="Search quotations..."
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                aria-label="Search quotations"
+              />
+            </div>
 
-        {/* STATS */}
-        <section className="admin-summary-grid">
-          <article className="admin-card admin-card--stat">
-            <div className="admin-stat-title">Total</div>
-            <div className="admin-stat-value">{stats.total}</div>
-          </article>
+            <div className="admin-projects-control">
+              <label className="admin-projects-control-label" htmlFor="quotations-payment-filter">
+                Payment
+              </label>
+              <select
+                id="quotations-payment-filter"
+                className="admin-input"
+                value={paymentFilter}
+                onChange={(event) => setPaymentFilter(event.target.value)}
+                aria-label="Filter quotation payment status"
+              >
+                <option value="All">All</option>
+                <option value="Unpaid">Unpaid</option>
+                <option value="Deposit Paid">Deposit Paid</option>
+                <option value="Fully Paid">Fully Paid</option>
+              </select>
+            </div>
 
-          <article className="admin-card admin-card--stat">
-            <div className="admin-stat-title">Approved</div>
-            <div className="admin-stat-value">{stats.approved}</div>
-          </article>
-
-          <article className="admin-card admin-card--stat">
-            <div className="admin-stat-title">Rejected</div>
-            <div className="admin-stat-value">{stats.rejected}</div>
-          </article>
-
-          <article className="admin-card admin-card--stat">
-            <div className="admin-stat-title">Pending</div>
-            <div className="admin-stat-value">{stats.pending}</div>
-          </article>
-        </section>
-
-        {/* TABLE */}
-        <section className="admin-card">
-          <h2 className="admin-title">All Estimates</h2>
+            <div className="admin-projects-control">
+              <label className="admin-projects-control-label" htmlFor="quotations-sort">
+                Sort by
+              </label>
+              <select
+                id="quotations-sort"
+                className="admin-input"
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+                aria-label="Sort quotations"
+              >
+                <option value="date-desc">Newest first</option>
+                <option value="date-asc">Oldest first</option>
+                <option value="total-desc">High to low</option>
+                <option value="total-asc">Low to high</option>
+              </select>
+            </div>
+          </div>
 
           {loading ? (
-            <p>Loading...</p>
-          ) : estimates.length === 0 ? (
-            <p>No estimates found.</p>
+            <p className="admin-muted" style={{ marginTop: "12px" }}>
+              Loading quotations...
+            </p>
+          ) : !quotations.length ? (
+            <p>No quotations found. Generate a quotation from the projects page first.</p>
           ) : (
             <div className="flex flex-col gap-3">
-              {estimates.map((e) => (
+              {filteredQuotations.map((quotation) => (
                 <div
-                  key={e.id}
-                  className="
-                    grid items-center gap-3 rounded-xl border border-slate-100 bg-white 
-                    p-3 sm:p-4 transition-colors duration-200 hover:bg-slate-50
-                    grid-cols-1 sm:grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr]
-                    sm:gap-4
-                  "
+                  key={quotation.projectId}
+                  className="grid items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:p-4 transition-colors duration-200 hover:bg-slate-50 grid-cols-1 sm:grid-cols-[1.4fr_0.8fr_0.8fr_1.2fr] sm:gap-4"
                 >
-                  {/* First column: client + service */}
                   <div>
-                    <div className="font-semibold text-slate-900">{e.client}</div>
-                    <div className="text-sm text-slate-500">{e.service}</div>
+                    <div className="font-semibold text-slate-900">{quotation.client}</div>
+                    <div className="text-sm text-slate-500">{quotation.service}</div>
+                    <div className="text-xs text-slate-400">
+                      Quote #{quotation.quoteNumber} · Sent {formatDate(quotation.sentDate)}
+                    </div>
                   </div>
 
-                  {/* Second column: price */}
                   <div className="justify-self-start sm:justify-self-end sm:text-right">
-                    <span className="text-slate-900">${e.price}</span>
+                    <div className="text-slate-900 font-semibold">{formatCurrency(quotation.total)}</div>
+                    <div className="text-xs text-slate-500">
+                      Deposit {formatCurrency(quotation.depositAmount)}
+                    </div>
                   </div>
 
-                  {/* Third column: status */}
-                  <span className={`${STATUS_CLASS[e.status]} justify-self-start sm:justify-self-end`}>
-                    {e.status}
-                  </span>
+                  <div className="justify-self-start sm:justify-self-end">
+                    <span className={PAYMENT_STATUS_CLASS[quotation.paymentStatus] || "admin-badge admin-badge--muted"}>
+                      {quotation.paymentStatus}
+                    </span>
+                  </div>
 
-                  {/* Fourth column: actions */}
-                  <div
-                    className="
-                      flex flex-wrap justify-start sm:justify-end items-center 
-                      gap-2 sm:gap-3
-                      sm:col-span-1
-                    "
-                  >
-                    {e.pdfUrl && (
+                  <div className="flex flex-wrap justify-start sm:justify-end items-center gap-2 sm:gap-3">
+                    <Link
+                      className="admin-btn admin-btn--ghost"
+                      href={`/dashboard/projects/${quotation.projectId}`}
+                    >
+                      Open Project
+                    </Link>
+                    <Link
+                      className="admin-btn admin-btn--primary"
+                      href={`/dashboard/projects/${quotation.projectId}/quote`}
+                      target="_blank"
+                    >
+                      Open Quotation
+                    </Link>
+                    {quotation.pdfUrl ? (
                       <a
-                        href={e.pdfUrl}
+                        href={quotation.pdfUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="admin-btn admin-btn--ghost"
                       >
                         View PDF
                       </a>
-                    )}
-
-                    <button
-                      className="admin-btn admin-btn--ghost"
-                      onClick={() => openForm(e)}
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      className="admin-btn admin-btn--danger"
-                      onClick={() => deleteEstimate(e.id)}
-                    >
-                      Delete
-                    </button>
+                    ) : null}
                   </div>
                 </div>
               ))}
             </div>
           )}
+
+          {!loading && quotations.length > 0 && !filteredQuotations.length ? (
+            <p className="admin-muted" style={{ marginTop: "12px" }}>
+              No quotations match current filters.
+            </p>
+          ) : null}
         </section>
-
-        {/* MODAL */}
-        {isFormOpen && (
-          <div className="admin-modal">
-            <button
-              className="admin-modal__backdrop"
-              onClick={() => setIsFormOpen(false)}
-            />
-
-            <form className="admin-modal__content" onSubmit={handleSubmit}>
-              <button
-                type="button"
-                aria-label="Close"
-                className="absolute top-4 right-4 text-slate-500 hover:text-slate-800 hover:cursor-pointer"
-                onClick={() => setIsFormOpen(false)}
-              >
-                ✕
-              </button>
-
-              <h2 className="admin-title">
-                {editingId ? "Edit Estimate" : "New Estimate"}
-              </h2>
-
-              <input
-                name="client"
-                placeholder="Client Name"
-                value={formState.client}
-                onChange={handleChange}
-                required
-                className="admin-input"
-              />
-
-              <input
-                name="email"
-                placeholder="Email"
-                value={formState.email}
-                onChange={handleChange}
-                className="admin-input"
-              />
-
-              <input
-                name="service"
-                placeholder="Service"
-                value={formState.service}
-                onChange={handleChange}
-                className="admin-input"
-              />
-
-              <input
-                name="price"
-                placeholder="Price"
-                value={formState.price}
-                onChange={handleChange}
-                className="admin-input"
-              />
-
-              <select
-                name="status"
-                value={formState.status}
-                onChange={handleChange}
-                className="admin-input"
-              >
-                <option>Pending</option>
-                <option>Approved</option>
-                <option>Rejected</option>
-              </select>
-
-              <textarea
-                name="notes"
-                placeholder="Notes"
-                value={formState.notes}
-                onChange={handleChange}
-                className="admin-input"
-              />
-
-              {/* FILE ATTACHMENT */}
-              <div className="admin-input-group">
-                <label className="admin-label">
-                  Proposal Estimate PDF (optional)
-                </label>
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handlePdfChange}
-                  className="admin-input"
-                />
-                {pdfName && (
-                  <div className="admin-muted">
-                    Attached: {pdfName}{" "}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPdfFile(null);
-                        setPdfName("");
-                      }}
-                      className="admin-link"
-                    >
-                      remove
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <button
-                className="admin-btn admin-btn--primary"
-                type="submit"
-                disabled={busy}
-              >
-                {editingId ? "Update" : "Create"} Estimate
-              </button>
-            </form>
-          </div>
-        )}
       </div>
     </AdminLayout>
   );

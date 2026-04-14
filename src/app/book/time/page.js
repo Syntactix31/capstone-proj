@@ -4,15 +4,10 @@ import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import NavBar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import { SERVICE_CATALOG } from "../../lib/services/catalog.js";
 
 // Services that can be attached to a booking.
-const SERVICE_OPTIONS = [
-  { id: "fence", name: "Fence Installation", duration: "1-2 days" },
-  { id: "deck-railing", name: "Deck & Railing", duration: "3-5 days" },
-  { id: "pergola", name: "Pergola", duration: "1-3 days" },
-  { id: "sod", name: "Sod Installation", duration: "1 day" },
-  { id: "trees-shrubs", name: "Trees & Shrubs", duration: "2-6 hrs" },
-];
+const SERVICE_OPTIONS = SERVICE_CATALOG.map(({ id, name, duration }) => ({ id, name, duration }));
 
 // Half-hour appointment slots shown in the picker.
 const TIME_SLOTS = [
