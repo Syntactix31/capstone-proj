@@ -109,7 +109,17 @@ export async function DELETE(req, { params }) {
     const resolvedParams = await params;
     const deleted = await deleteProject(resolvedParams.id);
 
-    if (!deleted) {
+    if (!deleted?.ok && deleted?.reason === "has_active_bookings") {
+      return NextResponse.json(
+        {
+          error: "This project cannot be deleted while it still has booked appointments. Delete it after all appointments have passed or been cancelled.",
+          blockers: deleted.blockers || [],
+        },
+        { status: 409 }
+      );
+    }
+
+    if (!deleted?.ok) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 

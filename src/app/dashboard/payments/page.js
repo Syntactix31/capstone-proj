@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
 
-const PAYMENT_STATUSES = ["Paid", "Pending", "Failed", "Refunded"];
-
 function formatMoney(value) {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
@@ -22,7 +20,6 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
 
   useEffect(() => {
@@ -70,23 +67,20 @@ export default function PaymentsPage() {
     const normalizedQuery = query.trim().toLowerCase();
 
     return payments.filter((payment) => {
-      const matchesStatus = statusFilter === "All" || payment.status === statusFilter;
       const matchesType = typeFilter === "All" || payment.type === typeFilter;
 
-      if (!normalizedQuery) return matchesStatus && matchesType;
+      if (!normalizedQuery) return matchesType;
 
       const matchesQuery =
-        String(payment.id || "").toLowerCase().includes(normalizedQuery) ||
         String(payment.client || "").toLowerCase().includes(normalizedQuery) ||
         String(payment.project || "").toLowerCase().includes(normalizedQuery) ||
         String(payment.date || "").toLowerCase().includes(normalizedQuery) ||
         String(payment.dueDate || "").toLowerCase().includes(normalizedQuery) ||
-        String(payment.status || "").toLowerCase().includes(normalizedQuery) ||
         String(payment.type || "").toLowerCase().includes(normalizedQuery);
 
-      return matchesStatus && matchesType && matchesQuery;
+      return matchesType && matchesQuery;
     });
-  }, [payments, query, statusFilter, typeFilter]);
+  }, [payments, query, typeFilter]);
 
   return (
     <AdminLayout>
@@ -119,26 +113,6 @@ export default function PaymentsPage() {
           </div>
 
           <div className="admin-projects-control">
-            <label className="admin-projects-control-label" htmlFor="payments-status-filter">
-              Status
-            </label>
-            <select
-              id="payments-status-filter"
-              className="admin-input"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              aria-label="Filter payment status"
-            >
-              <option value="All">All</option>
-              {PAYMENT_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="admin-projects-control">
             <label className="admin-projects-control-label" htmlFor="payments-type-filter">
               Type
             </label>
@@ -166,23 +140,19 @@ export default function PaymentsPage() {
         ) : (
           <div className="admin-table admin-payments-table">
             <div className="admin-table-row admin-table-head admin-payments-table-row">
-              <div>Payment ID</div>
               <div>Client</div>
               <div>Project</div>
               <div>Date</div>
               <div>Amount</div>
-              <div>Status</div>
               <div>Type</div>
             </div>
 
             {filteredPayments.map((payment) => (
               <div className="admin-table-row admin-payments-table-row" key={payment.id}>
-                <div className="admin-strong">{payment.id}</div>
                 <div>{payment.client}</div>
                 <div>{payment.project}</div>
                 <div>{formatPaymentDate(payment)}</div>
                 <div>{formatMoney(payment.amount)}</div>
-                <div>{payment.status}</div>
                 <div>{payment.type || "Payment"}</div>
               </div>
             ))}

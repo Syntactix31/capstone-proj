@@ -14,14 +14,12 @@ import {
 } from "../../../lib/quotes.js";
 
 const PAYMENT_STATUSES = ["Unpaid", "Deposit Paid", "Fully Paid"];
-const PAYMENT_ENTRY_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
 
 function createPaymentItem() {
   return {
     id: globalThis.crypto?.randomUUID?.() || `payment-${Date.now()}-${Math.random()}`,
     date: "",
     amount: "",
-    status: "Pending",
     notes: "",
   };
 }
@@ -148,6 +146,20 @@ export default function AdminProjectDetailPage() {
     [formState.quoteData, formState.serviceItem]
   );
 
+  const totalPaid = useMemo(
+    () =>
+      formState.payments.reduce((sum, payment) => {
+        if (String(payment?.status || "").trim() !== "Paid") return sum;
+        return sum + (Number.parseFloat(payment?.amount || "0") || 0);
+      }, 0),
+    [formState.payments]
+  );
+
+  const remainingBalance = useMemo(() => {
+    const quoteTotal = Number.parseFloat(quoteTotals.total || "0") || 0;
+    return Math.max(quoteTotal - totalPaid, 0);
+  }, [quoteTotals.total, totalPaid]);
+
   const handleFieldChange = (event) => {
     const { name, value } = event.target;
     setSuccess("");
@@ -183,7 +195,6 @@ export default function AdminProjectDetailPage() {
       id: payment.id,
       date: payment.date || "",
       amount: String(payment.amount || ""),
-      status: payment.status || "Pending",
       notes: payment.notes || "",
     });
     setIsPaymentModalOpen(true);
@@ -194,46 +205,8 @@ export default function AdminProjectDetailPage() {
     setPaymentForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handlePaymentSave = (event) => {
-    event.preventDefault();
-
-    setFormState((prev) => {
-      const nextPayment = {
-        ...paymentForm,
-        amount: (Number.parseFloat(paymentForm.amount || "0") || 0).toFixed(2),
-      };
-
-      return {
-        ...prev,
-        payments: editingPaymentId
-          ? prev.payments.map((payment) =>
-              payment.id === editingPaymentId ? nextPayment : payment
-            )
-          : [...prev.payments, nextPayment],
-      };
-    });
-
-    setSuccess("");
-    setIsPaymentModalOpen(false);
-    setEditingPaymentId(null);
-    setPaymentForm(createPaymentItem());
-  };
-
-  const handlePaymentDelete = () => {
-    if (!editingPaymentId) return;
-
-    setFormState((prev) => ({
-      ...prev,
-      payments: prev.payments.filter((payment) => payment.id !== editingPaymentId),
-    }));
-    setSuccess("");
-    setIsPaymentModalOpen(false);
-    setEditingPaymentId(null);
-    setPaymentForm(createPaymentItem());
-  };
-
-  const saveProject = async ({ generateQuote = false } = {}) => {
-    if (!projectId) return;
+  const persistProject = async ({ nextPayments, successMessage = "Project details saved.", generateQuote = false, completionDate } = {}) => {
+    if (!projectId) return false;
 
     setSaving(true);
     setError("");
@@ -248,7 +221,7 @@ export default function AdminProjectDetailPage() {
           paymentStatus: formState.paymentStatus,
           startDate: formState.startDate,
           estimatedCompletionDate: formState.estimatedCompletionDate,
-          completionDate: formState.completionDate,
+          completionDate: completionDate ?? formState.completionDate,
           totalCost: quoteTotals.total,
           servicesIncluded: [
             {
@@ -267,7 +240,7 @@ export default function AdminProjectDetailPage() {
                 },
               }
             : {}),
-          payments: formState.payments,
+          payments: nextPayments ?? formState.payments,
           ownerNotes: formState.ownerNotes,
           estimatePdfUrl: formState.estimatePdfUrl,
           estimatePdfName: formState.estimatePdfName,
@@ -277,18 +250,70 @@ export default function AdminProjectDetailPage() {
 
       if (!res.ok) {
         setError(data?.error || "Failed to save project.");
-        return;
+        return false;
       }
 
       setProject(data.project || null);
       setFormState(mapProjectToForm(data.project || null));
-      setSuccess(generateQuote ? "Quotation generated." : "Project details saved.");
+      setSuccess(successMessage);
+      return true;
     } catch (saveError) {
       console.error(saveError);
       setError("Failed to save project.");
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePaymentSave = async (event) => {
+    event.preventDefault();
+
+    const nextPayment = {
+      ...paymentForm,
+      status: "Paid",
+      amount: (Number.parseFloat(paymentForm.amount || "0") || 0).toFixed(2),
+    };
+
+    const nextPayments = editingPaymentId
+      ? formState.payments.map((payment) =>
+          payment.id === editingPaymentId ? nextPayment : payment
+        )
+      : [...formState.payments, nextPayment];
+
+    const ok = await persistProject({
+      nextPayments,
+      successMessage: editingPaymentId ? "Payment updated." : "Payment recorded.",
+    });
+
+    if (!ok) return;
+
+    setIsPaymentModalOpen(false);
+    setEditingPaymentId(null);
+    setPaymentForm(createPaymentItem());
+  };
+
+  const handlePaymentDelete = async () => {
+    if (!editingPaymentId) return;
+
+    const nextPayments = formState.payments.filter((payment) => payment.id !== editingPaymentId);
+    const ok = await persistProject({
+      nextPayments,
+      successMessage: "Payment deleted.",
+    });
+
+    if (!ok) return;
+
+    setIsPaymentModalOpen(false);
+    setEditingPaymentId(null);
+    setPaymentForm(createPaymentItem());
+  };
+
+  const saveProject = async ({ generateQuote = false } = {}) => {
+    await persistProject({
+      generateQuote,
+      successMessage: generateQuote ? "Quotation generated." : "Project details saved.",
+    });
   };
 
   const handleSubmit = async (event) => {
@@ -306,60 +331,11 @@ export default function AdminProjectDetailPage() {
   };
 
   const handleMarkCompleted = async () => {
-    if (!projectId) return;
-
-    setSaving(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const res = await fetch(`/api/admin/projects/${projectId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: formState.address,
-          paymentStatus: formState.paymentStatus,
-          startDate: formState.startDate,
-          estimatedCompletionDate: formState.estimatedCompletionDate,
-          completionDate: todayDateValue(),
-          totalCost: quoteTotals.total,
-          servicesIncluded: [
-            {
-              ...formState.serviceItem,
-              total: serviceTotal,
-            },
-          ],
-          ...(formState.hasQuote
-            ? {
-                quoteData: {
-                  ...formState.quoteData,
-                  unitPrice: formState.serviceItem.price,
-                  quantity: formState.serviceItem.quantity,
-                  description: formState.serviceItem.description,
-                },
-              }
-            : {}),
-          payments: formState.payments,
-          ownerNotes: formState.ownerNotes,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data?.error || "Failed to mark project as completed.");
-        return;
-      }
-
-      setProject(data.project || null);
-      setFormState(mapProjectToForm(data.project || null));
-      setSuccess("Project marked as completed.");
-      setConfirmAction(null);
-    } catch (actionError) {
-      console.error(actionError);
-      setError("Failed to mark project as completed.");
-    } finally {
-      setSaving(false);
-    }
+    const ok = await persistProject({
+      completionDate: todayDateValue(),
+      successMessage: "Project marked as completed.",
+    });
+    if (ok) setConfirmAction(null);
   };
 
   const handleDeleteProject = async () => {
@@ -443,8 +419,14 @@ export default function AdminProjectDetailPage() {
         <form onSubmit={handleSubmit} className="admin-section">
           <section className="admin-card">
             <div className="admin-card-header">
-              <h2 className="admin-card-title">Overview</h2>
-              <span className="admin-muted">{project.id}</span>
+              <div>
+                <h2 className="admin-card-title">Overview</h2>
+                <div className="admin-muted">{project.id}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div className="admin-muted">Remaining balance</div>
+                <div className="admin-title">{formatCurrency(remainingBalance)}</div>
+              </div>
             </div>
 
             <div className="admin-form">
@@ -494,15 +476,6 @@ export default function AdminProjectDetailPage() {
                   name="estimatedCompletionDate"
                   value={formState.estimatedCompletionDate}
                   onChange={handleFieldChange}
-                />
-              </label>
-              <label className="admin-field">
-                <span className="admin-label">Total cost</span>
-                <input
-                  className="admin-input"
-                  value={formatCurrency(quoteTotals.total)}
-                  disabled
-                  readOnly
                 />
               </label>
             </div>
@@ -591,7 +564,7 @@ export default function AdminProjectDetailPage() {
                           ${Number.parseFloat(payment.amount || "0").toFixed(2)}
                         </div>
                         <div className="admin-muted">
-                          {payment.date || "No date"} - {payment.status}
+                          {payment.date || "No date"}
                         </div>
                       </div>
                       <button
@@ -777,21 +750,6 @@ export default function AdminProjectDetailPage() {
                   value={paymentForm.amount}
                   onChange={handlePaymentFormChange}
                 />
-              </label>
-              <label className="admin-field">
-                <span className="admin-label">Status</span>
-                <select
-                  className="admin-input"
-                  name="status"
-                  value={paymentForm.status}
-                  onChange={handlePaymentFormChange}
-                >
-                  {PAYMENT_ENTRY_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
               </label>
               <label className="admin-field admin-field--full">
                 <span className="admin-label">Notes</span>

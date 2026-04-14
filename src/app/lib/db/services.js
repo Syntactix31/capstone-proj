@@ -1,58 +1,17 @@
 import { ensureDatabaseSchema } from "./schema.js";
 import { getSql } from "./client.js";
+import { SERVICE_CATALOG, normalizeServiceName } from "../services/catalog.js";
 
-const DEFAULT_SERVICES = [
-  {
-    id: "S-01",
-    name: "Fence Installation",
-    description: "Custom fence design, materials, and full installation.",
-    durationValue: 1,
-    durationUnit: "days",
-    price: "2800.00",
-    quantity: 1,
-    active: true,
-  },
-  {
-    id: "S-02",
-    name: "Deck & Railing",
-    description: "Deck builds, railing upgrades, and safety repairs.",
-    durationValue: 5,
-    durationUnit: "days",
-    price: "4500.00",
-    quantity: 1,
-    active: true,
-  },
-  {
-    id: "S-03",
-    name: "Pergola",
-    description: "Backyard pergola installation and finishing.",
-    durationValue: 3,
-    durationUnit: "days",
-    price: "3200.00",
-    quantity: 1,
-    active: true,
-  },
-  {
-    id: "S-04",
-    name: "Sod Installation",
-    description: "Site prep and fresh sod installation.",
-    durationValue: 1,
-    durationUnit: "day",
-    price: "1100.00",
-    quantity: 1,
-    active: false,
-  },
-  {
-    id: "S-05",
-    name: "Trees and Shrubs",
-    description: "Planting, pruning, and seasonal care.",
-    durationValue: 1,
-    durationUnit: "day",
-    price: "1100.00",
-    quantity: 1,
-    active: true,
-  },
-];
+const DEFAULT_SERVICES = SERVICE_CATALOG.map((service, index) => ({
+  id: `S-${String(index + 1).padStart(2, "0")}`,
+  name: service.name,
+  description: service.description,
+  durationValue: service.durationValue,
+  durationUnit: service.durationUnit,
+  price: service.price,
+  quantity: service.quantity,
+  active: service.active,
+}));
 
 function nowIso() {
   return new Date().toISOString();
@@ -79,7 +38,7 @@ function formatDuration(value, unit) {
 function mapServiceRow(row) {
   return {
     id: row.id,
-    name: row.name,
+    name: normalizeServiceName(row.name),
     description: row.description || "",
     durationValue: Number(row.duration_value || 1),
     durationUnit: normalizeDurationUnit(row.duration_unit),
@@ -136,7 +95,7 @@ async function seedDefaultServicesIfNeeded() {
 function sanitizeServicePayload(input = {}) {
   return {
     id: String(input.id || "").trim(),
-    name: String(input.name || "").trim().slice(0, 120),
+    name: normalizeServiceName(String(input.name || "").trim()).slice(0, 120),
     description: String(input.description || "").trim().slice(0, 1000),
     durationValue: Math.max(1, Number.parseInt(input.durationValue || "1", 10) || 1),
     durationUnit: normalizeDurationUnit(input.durationUnit),

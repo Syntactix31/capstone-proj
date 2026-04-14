@@ -535,6 +535,40 @@ export async function deleteProject(id) {
   await ensureDatabaseSchema();
   const sql = getSql();
 
+  const [project] = await sql`
+    SELECT id
+    FROM projects
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+
+  if (!project) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  const activeBookings = await sql`
+    SELECT id, booking_date, booking_time, start_at, end_at
+    FROM bookings
+    WHERE project_id = ${id}
+      AND status <> 'cancelled'
+      AND end_at >= NOW()
+    ORDER BY start_at ASC
+  `;
+
+  if (activeBookings.length > 0) {
+    return {
+      ok: false,
+      reason: "has_active_bookings",
+      blockers: activeBookings.map((booking) => ({
+        id: booking.id,
+        bookingDate: booking.booking_date,
+        bookingTime: booking.booking_time,
+        startAt: booking.start_at,
+        endAt: booking.end_at,
+      })),
+    };
+  }
+
   await sql`
     UPDATE bookings
     SET project_sync_disabled = true
@@ -547,5 +581,8 @@ export async function deleteProject(id) {
     RETURNING id
   `;
 
-  return Boolean(rows[0]?.id);
+  return {
+    ok: Boolean(rows[0]?.id),
+    reason: rows[0]?.id ? null : "not_found",
+  };
 }
