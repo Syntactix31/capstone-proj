@@ -6,13 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint src scripts eslint.config.mjs",
     "db:setup": "node scripts/setup-neon-db.mjs",
     "db:reset-appointments": "node scripts/reset-appointments.mjs",
     "db:reset-appointments-sync": "node scripts/reset-appointments.mjs --google",
     "db:reset-invoices": "node scripts/reset-invoices.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.1030.0",
     "@emailjs/browser": "^4.4.1",
     "@neondatabase/serverless": "^1.0.2",
     "@vercel/blob": "^2.3.1",

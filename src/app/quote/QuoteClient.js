@@ -382,10 +382,15 @@ export default function QuoteClient() {
         }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const errText = await res.text();
-        console.error("Backend response:", errText);
-        throw new Error("Send failed");
+        if (data.blocked) {
+          alert(`Upload blocked for safety:\n${data.details.join("\n")}\nPlease remove problematic files and try again.`);
+        } else {
+          throw new Error("Send failed");
+        }
+        return;
       }
 
       setSummary(`Thanks ${formData.client.name}! Details for ${selectedServices.length} service${selectedServices.length > 1 ? 's' : ''} sent to our team.`);
