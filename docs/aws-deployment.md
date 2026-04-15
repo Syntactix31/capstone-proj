@@ -64,7 +64,7 @@ These values belong in Elastic Beanstalk environment properties and should not b
 The repo now includes two workflows:
 
 - `ci.yml`: install, lint, and build on pushes and pull requests
-- `deploy-beanstalk.yml`: manually package and deploy the current branch to Elastic Beanstalk
+- `deploy-beanstalk.yml`: automatically packages and deploys pushes on `adlin-payments-invoices`, plus still supports manual runs
 
 ### Repository secrets
 
@@ -72,6 +72,7 @@ Add these in GitHub repository settings -> Secrets and variables -> Actions -> S
 
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
+- `AWS_SESSION_TOKEN` if you are using temporary AWS credentials
 
 ### Repository variables
 
@@ -82,9 +83,28 @@ Add these in GitHub repository settings -> Secrets and variables -> Actions -> V
 - `AWS_EB_ENVIRONMENT_NAME`
 - `AWS_EB_S3_BUCKET`
 
+### Runtime AWS moderation envs
+
+These belong in the deployed app runtime (`.env.local` for local, Elastic Beanstalk environment properties in AWS for production):
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_SESSION_TOKEN` if you are using temporary AWS credentials
+- `AWS_REGION`
+- `AWS_REKOGNITION_MIN_CONFIDENCE`
+- `AWS_REKOGNITION_BLOCK_LABELS`
+
+Recommended values:
+
+- `AWS_REGION=us-east-1`
+- `AWS_REKOGNITION_MIN_CONFIDENCE=80`
+- `AWS_REKOGNITION_BLOCK_LABELS=Explicit Nudity,Graphic Violence Or Physical Injury,Drugs,Hate Symbols`
+
+The IAM identity used for moderation only needs `rekognition:DetectModerationLabels`.
+
 ## GitHub deploy workflow process
 
-The deploy workflow does this:
+The deploy workflow does this on every push to `adlin-payments-invoices`:
 
 1. Checks out the repo
 2. Installs dependencies
@@ -96,6 +116,8 @@ The deploy workflow does this:
 8. Updates the target environment to that version
 
 This avoids depending on a local zip artifact and keeps deployment reproducible from GitHub.
+
+If you need to pause auto-deploys during capcon prep, use the manual fallback and avoid pushing deployment changes until after the presentation.
 
 ## Manual deployment fallback
 

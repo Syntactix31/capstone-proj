@@ -1,6 +1,9 @@
 name: Deploy To Elastic Beanstalk
 
 on:
+  push:
+    branches:
+      - adlin-payments-invoices
   workflow_dispatch:
     inputs:
       version_suffix:
@@ -8,13 +11,16 @@ on:
         required: false
         default: manual
 
+concurrency:
+  group: deploy-beanstalk-adlin-payments-invoices
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
       EB_APPLICATION_NAME: ${{ vars.AWS_EB_APPLICATION_NAME }}
       EB_ENVIRONMENT_NAME: ${{ vars.AWS_EB_ENVIRONMENT_NAME }}
       EB_S3_BUCKET: ${{ vars.AWS_EB_S3_BUCKET }}
@@ -33,10 +39,14 @@ jobs:
       GOOGLE_OAUTH_REDIRECT_URI: https://example.com/api/auth/google/callback
       RESEND_API_KEY: placeholder
       RESEND_FROM_EMAIL: noreply@example.com
-      QUOTE_TO_EMAIL: quotes@example.com
       SERP_API_KEY: placeholder
       BLOB_READ_WRITE_TOKEN: placeholder
       PDF_READ_WRITE_TOKEN: placeholder
+      AWS_ACCESS_KEY_ID: placeholder
+      AWS_SECRET_ACCESS_KEY: placeholder
+      AWS_REGION: us-east-1
+      AWS_REKOGNITION_MIN_CONFIDENCE: 80
+      AWS_REKOGNITION_BLOCK_LABELS: Explicit Nudity,Graphic Violence Or Physical Injury,Drugs,Hate Symbols
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -61,7 +71,7 @@ jobs:
         shell: bash
         run: |
           short_sha="${GITHUB_SHA::7}"
-          suffix="${{ github.event.inputs.version_suffix }}"
+          suffix="${{ github.event.inputs.version_suffix || 'push' }}"
           label="gha-${GITHUB_RUN_NUMBER}-${short_sha}-${suffix}"
           echo "label=$label" >> "$GITHUB_OUTPUT"
 
@@ -83,7 +93,8 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Upload deploy bundle to S3
         run: aws s3 cp deploy-bundle.zip "s3://${EB_S3_BUCKET}/${{ steps.version.outputs.label }}.zip"

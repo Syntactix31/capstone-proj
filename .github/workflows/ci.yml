@@ -26,10 +26,14 @@ jobs:
       GOOGLE_OAUTH_REDIRECT_URI: https://example.com/api/auth/google/callback
       RESEND_API_KEY: placeholder
       RESEND_FROM_EMAIL: noreply@example.com
-      QUOTE_TO_EMAIL: quotes@example.com
       SERP_API_KEY: placeholder
       BLOB_READ_WRITE_TOKEN: placeholder
       PDF_READ_WRITE_TOKEN: placeholder
+      AWS_ACCESS_KEY_ID: placeholder
+      AWS_SECRET_ACCESS_KEY: placeholder
+      AWS_REGION: us-east-1
+      AWS_REKOGNITION_MIN_CONFIDENCE: 80
+      AWS_REKOGNITION_BLOCK_LABELS: Explicit Nudity,Graphic Violence Or Physical Injury,Drugs,Hate Symbols
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
