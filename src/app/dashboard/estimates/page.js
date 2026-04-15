@@ -969,7 +969,6 @@ export default function AdminEstimatesPage() {
                       ? `/dashboard/projects/${activeEstimate.convertedProjectId}/quote`
                       : `/dashboard/estimates/${activeEstimate.id}`
                   }
-                  target="_blank"
                   onClick={() => setActiveMenuId("")}
                 >
                   View

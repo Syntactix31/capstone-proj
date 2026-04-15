@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import AdminLayout from "../../components/AdminLayout.js";
+import { downloadInvoicePdf } from "../../lib/invoices/pdf.js";
 
 const STATUS_CLASS = {
   Open: "admin-badge admin-badge--pending",
@@ -42,6 +43,10 @@ export default function InvoicesPage() {
   const [menuPosition, setMenuPosition] = useState({ top: 16, left: 16, width: 184, maxHeight: 180 });
   const menuButtonRefs = useRef({});
   const menuRef = useRef(null);
+
+  const handleDownload = async (invoice) => {
+    await downloadInvoicePdf(invoice);
+  };
 
   useEffect(() => {
     let active = true;
@@ -307,13 +312,21 @@ export default function InvoicesPage() {
                 >
                   View
                 </Link>
-                <a
-                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
-                  href={`/api/admin/invoices/${activeInvoice.id}?download=1`}
-                  onClick={() => setActiveMenuId("")}
+                <button
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                  type="button"
+                  onClick={async () => {
+                    setActiveMenuId("");
+                    try {
+                      await handleDownload(activeInvoice);
+                    } catch (downloadError) {
+                      console.error(downloadError);
+                      alert("Failed to download invoice PDF.");
+                    }
+                  }}
                 >
                   Download
-                </a>
+                </button>
               </div>
             );
           })()

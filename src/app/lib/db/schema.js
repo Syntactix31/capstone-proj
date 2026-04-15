@@ -297,6 +297,24 @@ export async function ensureDatabaseSchema() {
         ALTER TABLE estimates
         ADD COLUMN IF NOT EXISTS converted_project_id text REFERENCES projects(id) ON DELETE SET NULL
       `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS admin_activity_logs (
+          id text PRIMARY KEY,
+          admin_user_id text REFERENCES users(id) ON DELETE SET NULL,
+          admin_name text NOT NULL DEFAULT '',
+          admin_email text NOT NULL DEFAULT '',
+          action text NOT NULL,
+          details text NOT NULL DEFAULT '',
+          metadata text NOT NULL DEFAULT '{}',
+          created_at timestamptz NOT NULL
+        )
+      `;
+
+      await sql`
+        CREATE INDEX IF NOT EXISTS admin_activity_logs_created_at_idx
+        ON admin_activity_logs (created_at DESC)
+      `;
     })().catch((error) => {
       schemaPromise = null;
       throw error;

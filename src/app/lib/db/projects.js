@@ -151,6 +151,9 @@ function buildProjectInvoice(project) {
   const status = project.paymentStatus === "Fully Paid" ? "Paid" : "Open";
   const issuedOn = project.completionDate;
   const dueOn = project.completionDate;
+  const totalPaid = sumPaidPayments(project?.payments);
+  const amount = normalizeMoney(project.totalCost).toFixed(2);
+  const accountBalance = Math.max(Number(amount) - totalPaid, 0).toFixed(2);
 
   return {
     id: createInvoiceId(project.id),
@@ -160,11 +163,14 @@ function buildProjectInvoice(project) {
     issuedOn,
     dueOn,
     completionDate: project.completionDate,
-    amount: normalizeMoney(project.totalCost).toFixed(2),
+    amount,
     status,
     address: String(project.address || "").trim(),
     paymentStatus: String(project.paymentStatus || "Unpaid").trim() || "Unpaid",
     servicesIncluded: Array.isArray(project.servicesIncluded) ? project.servicesIncluded : [],
+    quoteData: project.quoteData || null,
+    totalPaid: totalPaid.toFixed(2),
+    accountBalance,
   };
 }
 
