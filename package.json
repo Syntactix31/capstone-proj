@@ -30,6 +30,7 @@
     "neondatabase": "^0.0.1-security",
     "next": "^16.1.6",
     "nodemailer": "^8.0.1",
+    "pdfkit": "^0.18.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "resend": "^6.9.3",

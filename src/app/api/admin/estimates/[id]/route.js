@@ -8,6 +8,7 @@ import { findEstimateById } from "../../../../lib/db/estimates.js";
 import { findProjectById, updateProject } from "../../../../lib/db/projects.js";
 import { updateClient } from "../../../../lib/db/clients.js";
 import { buildQuoteData } from "../../../../lib/quotes.js";
+import { generateEstimatePdfBuffer, getEstimatePdfFilename } from "../../../../lib/estimates/server-pdf.js";
 import {
   FIELD_LIMITS,
   sanitizeAlphaSpace,
@@ -62,37 +63,32 @@ export async function PUT(req, { params }) {
     const auth = requireAdmin(req);
     if (auth.error) return auth.error;
 
-    const sql = await getSql();
     const { id } = await params;
-    const formData = await req.formData();
+    const body = await req.json();
     const existingEstimate = await findEstimateById(id);
 
     if (!existingEstimate) {
       return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
     }
 
-    if (existingEstimate.status === "Signed") {
-      return NextResponse.json({ error: "Signed quotes can no longer be edited." }, { status: 409 });
-    }
+    const sql = await getSql();
+    const clientInput = body.clientId || body.client;
+    const title = body.title?.toString().trim() || existingEstimate.title || "Proposal";
+    const service = body.service?.toString().trim() || existingEstimate.service;
+    const rawPrice = body.price?.toString().trim() || String(existingEstimate.total || "0.00");
+    const status = body.status?.toString().trim() || existingEstimate.status || "Pending";
+    const notes = body.notes?.toString().trim() || existingEstimate.notes || "";
+    const recipientName = body.recipientName?.toString().trim() || existingEstimate.recipientName;
+    const recipientAddress = body.recipientAddress?.toString().trim() || existingEstimate.recipientAddress;
+    const recipientEmail = body.recipientEmail?.toString().trim() || existingEstimate.recipientEmail;
+    const recipientPhone = body.recipientPhone?.toString().trim() || existingEstimate.recipientPhone;
+    const servicesIncluded = Array.isArray(body.servicesIncluded)
+      ? body.servicesIncluded
+      : existingEstimate.servicesIncluded;
+    const quoteData = body.quoteData || existingEstimate.quoteData;
 
-    const clientInput = formData.get("client_id") || formData.get("client");
-    const titleRaw = formData.get("title");
-    const serviceRaw = formData.get("service");
-    const priceRaw = formData.get("price");
-    const statusRaw = formData.get("status");
-    const notesRaw = formData.get("notes");
-
-    const title = titleRaw?.toString().trim() || "Proposal";
-    const service = serviceRaw?.toString().trim();
-    const rawPrice = priceRaw?.toString().trim();
-    const status = statusRaw?.toString().trim() || "Pending";
-    const notes = notesRaw?.toString().trim() || "";
-
-    if (!clientInput || !service || !rawPrice) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+    if (!service || !rawPrice) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const sanitizedPrice = rawPrice.replace(/[^0-9.\-]/g, "");
@@ -102,88 +98,83 @@ export async function PUT(req, { params }) {
       return NextResponse.json({ error: "Invalid price" }, { status: 400 });
     }
 
-    // resolve client id
-    const clientRes = await sql`
-      SELECT id FROM clients
-      WHERE id = ${clientInput} OR name = ${clientInput}
-      LIMIT 1
-    `;
+    let clientId = existingEstimate.clientId;
+    if (clientInput) {
+      const clientRes = await sql`
+        SELECT id FROM clients
+        WHERE id = ${clientInput} OR name = ${clientInput}
+        LIMIT 1
+      `;
 
-    if (!clientRes.length) {
-      return NextResponse.json(
-        { error: "Client not found" },
-        { status: 404 }
-      );
-    }
-
-    const clientId = clientRes[0].id;
-
-    // handle optional PDF update
-    let pdfUrl = null;
-    let pdfName = null;
-
-    const pdfFile = formData.get("pdf");
-    if (pdfFile && typeof pdfFile === "object" && typeof pdfFile.arrayBuffer === "function") {
-      pdfName = pdfFile.name || "estimate.pdf";
-
-      if (!process.env.PDF_READ_WRITE_TOKEN) {
-        console.warn("PDF_READ_WRITE_TOKEN not set; skipping PDF storage for estimate update", {
-          clientInput,
-          fileName: pdfName,
-        });
-      } else {
-        try {
-          const fileBuffer = Buffer.from(await pdfFile.arrayBuffer());
-          const blob = await put(`estimates/${Date.now()}-${pdfName}`, fileBuffer, {
-            access: "public",
-            contentType: pdfFile.type || "application/pdf",
-            token: process.env.PDF_READ_WRITE_TOKEN,
-          });
-          pdfUrl = blob.url;
-        } catch (uploadErr) {
-          console.error("PDF upload failed on update; continuing without pdf_url:", uploadErr);
-        }
+      if (!clientRes.length) {
+        return NextResponse.json({ error: "Client not found" }, { status: 404 });
       }
+
+      clientId = clientRes[0].id;
     }
 
-    // Fetch old PDF URL before update
     const existingRow = await sql`
       SELECT pdf_url
       FROM estimates
       WHERE id = ${id}
     `;
-
     const oldPdfUrl = existingRow.length > 0 ? existingRow[0].pdf_url : null;
-
     const now = new Date().toISOString();
 
     await sql`
       UPDATE estimates
       SET
         client_id = ${clientId},
-        title     = ${title},
-        service   = ${service},
-        price     = ${numericPrice},
-        status    = ${status},
-        notes     = ${notes},
-        ${pdfUrl ? sql`pdf_url = ${pdfUrl},` : sql``}
-        ${pdfName ? sql`pdf_name = ${pdfName},` : sql``}
+        title = ${title},
+        service = ${service},
+        price = ${numericPrice},
+        status = ${status},
+        notes = ${notes},
+        recipient_name = ${recipientName},
+        recipient_address = ${recipientAddress},
+        recipient_email = ${recipientEmail},
+        recipient_phone = ${recipientPhone},
+        services_included = ${JSON.stringify(servicesIncluded)},
+        quote_data = ${JSON.stringify(quoteData)},
         updated_at = ${now}
       WHERE id = ${id}
     `;
 
-    // Delete old PDF from Blob if it existed and was replaced or removed
+    const updatedEstimate = await findEstimateById(id);
+    let pdfUrl = null;
+    let pdfName = getEstimatePdfFilename(updatedEstimate);
+
+    if (process.env.PDF_READ_WRITE_TOKEN) {
+      try {
+        const pdfBuffer = await generateEstimatePdfBuffer(updatedEstimate);
+        const blob = await put(`estimates/${Date.now()}-${pdfName}`, pdfBuffer, {
+          access: "public",
+          contentType: "application/pdf",
+          token: process.env.PDF_READ_WRITE_TOKEN,
+        });
+        pdfUrl = blob.url;
+
+        await sql`
+          UPDATE estimates
+          SET pdf_url = ${pdfUrl}, pdf_name = ${pdfName}
+          WHERE id = ${id}
+        `;
+      } catch (uploadErr) {
+        console.error("PDF upload failed on update; continuing without pdf_url:", uploadErr);
+      }
+    }
+
     if (oldPdfUrl && oldPdfUrl !== pdfUrl) {
       await deleteBlobPdf(oldPdfUrl);
     }
 
     await recordAdminActivity(req, {
       action: "Updated estimate",
-      details: `Updated estimate "${title}" for client ${clientId}.`,
+      details: `Updated estimate "${title}" for client ${clientId || "custom recipient"}.`,
       metadata: { estimateId: id, clientId, service, status },
     });
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true, pdfUrl }, { status: 200 });
   } catch (err) {
     console.error("Estimate update error:", err);
     return NextResponse.json(
@@ -206,10 +197,6 @@ export async function PATCH(req, { params }) {
     const estimate = await findEstimateById(id);
     if (!estimate) {
       return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
-    }
-
-    if (estimate.status === "Signed") {
-      return NextResponse.json({ error: "Signed quotes can no longer be edited." }, { status: 409 });
     }
 
     const service = sanitizeTextArea(body?.service, FIELD_LIMITS.serviceName).trim();

@@ -2,32 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ClientLayout from "../../components/ClientLayout.js";
-import {
-  downloadEstimatePdf,
-  downloadPdfFromUrl,
-  downloadQuotePdf,
-  getEstimatePdfFilename,
-  getQuotePdfFilename,
-} from "../../lib/estimates/pdf.js";
+import { downloadEstimatePdf, downloadQuotePdf } from "../../lib/estimates/pdf.js";
 
 const STATUS_CLASS = {
   Approved: "client-badge client-badge--active",
-  Signed: "client-badge client-badge--active",
   Pending: "client-badge client-badge--pending",
   Rejected: "client-badge client-badge--rejected",
-  "Signature Required": "client-badge client-badge--pending",
   "Quote requested": "client-badge client-badge--pending",
   "Converted to quote": "client-badge client-badge--active",
 };
 
 function getEstimateStatusLabel(estimate) {
-  if (estimate?.sourceType === "project_quote") {
-    return estimate?.quoteSignedAt ? "Signed" : "Signature Required";
-  }
-  if (estimate?.status === "Signed") return "Signed";
-  if (estimate?.quoteConvertedAt) {
-    return estimate?.quoteSignedAt ? "Signed" : "Signature Required";
-  }
+  if (estimate?.quoteConvertedAt) return "Converted to quote";
   if (estimate?.quoteRequestedAt) return "Quote requested";
   return estimate?.status || "Pending";
 }
@@ -98,10 +84,7 @@ export default function ClientEstimatesPage() {
     return {
       total: estimates.length,
       pending: estimates.filter((e) => getEstimateStatusLabel(e) === "Pending").length,
-      approved: estimates.filter((e) => {
-        const label = getEstimateStatusLabel(e);
-        return label === "Approved" || label === "Signed" || label === "Converted to quote";
-      }).length,
+      approved: estimates.filter((e) => e.status === "Approved").length,
       rejected: estimates.filter((e) => e.status === "Rejected").length,
     };
   }, [estimates]);
@@ -131,12 +114,7 @@ export default function ClientEstimatesPage() {
       formData.append("signatureDate", signatureDate);
       formData.append("signedPdf", signedPdf);
 
-      const signEndpoint =
-        estimateToSign?.projectId
-          ? `/api/client/project/${estimateToSign.projectId}/sign`
-          : `/api/client/estimates/${estimateToSign.id}/sign`;
-
-      const res = await fetch(signEndpoint, {
+      const res = await fetch(`/api/client/estimates/${estimateToSign.id}/sign`, {
         method: "POST",
         body: formData,
       });
@@ -183,37 +161,6 @@ export default function ClientEstimatesPage() {
   };
 
   const handleDownload = async (estimate) => {
-    if ((estimate?.status === "Signed" || estimate?.quoteSignedAt) && estimate?.pdfUrl) {
-      const signedFilename =
-        estimate?.pdfName ||
-        (estimate?.quoteConvertedAt && estimate?.convertedProjectId
-          ? getQuotePdfFilename(
-              { id: estimate.convertedProjectId, service: estimate.service, quoteData: estimate.quoteData },
-              estimate.title
-            )
-          : getEstimatePdfFilename(estimate));
-      await downloadPdfFromUrl(estimate.pdfUrl, signedFilename);
-      return;
-    }
-
-    if (estimate?.sourceType === "project_quote" && estimate?.projectId) {
-      const res = await fetch(`/api/client/project/${estimate.projectId}`, {
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || !data?.project?.quoteData) {
-        throw new Error(data?.error || "Failed to load quotation for download.");
-      }
-
-      await downloadQuotePdf(data.project, {
-        title: estimate?.title,
-        name: data.project.clientName,
-        address: data.project.address,
-      });
-      return;
-    }
-
     if (estimate?.quoteConvertedAt && estimate?.convertedProjectId) {
       const res = await fetch(`/api/client/project/${estimate.convertedProjectId}`, {
         cache: "no-store",
@@ -434,23 +381,11 @@ export default function ClientEstimatesPage() {
         (() => {
           const activeEstimate = estimates.find((estimate) => estimate.id === activeMenuId);
           const canRequestQuote =
-            activeEstimate &&
-            activeEstimate.sourceType !== "project_quote" &&
-            !activeEstimate.quoteRequestedAt &&
-            !activeEstimate.quoteConvertedAt;
+            activeEstimate && !activeEstimate.quoteRequestedAt && !activeEstimate.quoteConvertedAt;
           const canSignEstimate =
             activeEstimate &&
-            (
-              (activeEstimate.sourceType === "project_quote" && !activeEstimate.quoteSignedAt) ||
-              (
-                activeEstimate.sourceType !== "project_quote" &&
-                activeEstimate.quoteConvertedAt &&
-                !activeEstimate.quoteSignedAt
-              )
-            );
-          const isSigned =
-            activeEstimate.status === "Signed" ||
-            Boolean(activeEstimate.quoteSignedAt);
+            activeEstimate.status === "Pending" &&
+            activeEstimate.quoteConvertedAt;
 
           if (!activeEstimate) return null;
 
@@ -465,21 +400,6 @@ export default function ClientEstimatesPage() {
                 maxHeight: `${menuPosition.maxHeight}px`,
               }}
             >
-              <a
-                href={
-                  isSigned && activeEstimate.pdfUrl
-                    ? activeEstimate.pdfUrl
-                    : activeEstimate.projectId
-                    ? `/client/projects/${activeEstimate.projectId}/quote`
-                    : activeEstimate.quoteConvertedAt && activeEstimate.convertedProjectId
-                    ? `/client/projects/${activeEstimate.convertedProjectId}/quote`
-                    : `/client/estimates/${activeEstimate.id}`
-                }
-                className="block rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                onClick={() => setActiveMenuId("")}
-              >
-                View
-              </a>
               <button
                 type="button"
                 className="block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
@@ -536,7 +456,7 @@ export default function ClientEstimatesPage() {
           <div className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Electronically Sign {estimateToSign?.sourceType === "project_quote" ? "Quotation" : "Estimate"}
+                Electronically Sign Estimate
               </h2>
               <button
                 onClick={() => setShowLegalModal(false)}
@@ -547,16 +467,14 @@ export default function ClientEstimatesPage() {
             </div>
 
             <div className="space-y-4 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="font-semibold text-blue-900 text-lg">Legal Notice</h3>
+              <h3 className="font-semibold text-blue-900 text-lg">Electronic Signature Confirmation</h3>
               <p className="text-sm text-blue-900 leading-relaxed">
-                <strong>This is a legally binding electronic signature</strong> under{" "}
-                <strong>PIPEDA</strong> (Canada) and <strong>UECA</strong> (Uniform Electronic 
-                Commerce Act). By signing below, you agree to the terms of this estimate 
-                and authorize work to proceed.
+                This landscaping estimate contract is electronically signed on{" "}
+                <strong>{new Date().toLocaleDateString()}</strong> at{" "}
+                <strong>{new Date().toLocaleTimeString()}</strong> under PIPEDA (Canada) and UECA regulations.
               </p>
               <div className="text-xs text-blue-800 bg-blue-100 p-2 rounded">
-                Your signature is timestamped and stored securely. You will receive a 
-                signed copy via email.
+                Your signature is timestamped and stored securely. You will receive a signed copy via email.
               </div>
             </div>
 
@@ -578,7 +496,6 @@ export default function ClientEstimatesPage() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Upload Signed Estimate PDF
-                  {estimateToSign?.sourceType === "project_quote" ? " / Quotation PDF" : ""}
                 </label>
                 <input
                   type="file"

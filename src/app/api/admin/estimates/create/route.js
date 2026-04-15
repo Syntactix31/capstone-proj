@@ -3,7 +3,10 @@ import { requireAdmin } from "../../../../lib/auth/server";
 import { recordAdminActivity } from "../../../../lib/admin/audit.js";
 import { createEstimate } from "../../../../lib/db/estimates.js";
 import { fetchClientById } from "../../../../lib/db/clients.js";
+import { getSql } from "../../../../lib/db/client.js";
 import { buildQuoteData } from "../../../../lib/quotes.js";
+import { generateEstimatePdfBuffer, getEstimatePdfFilename } from "../../../../lib/estimates/server-pdf.js";
+import { put } from "@vercel/blob";
 import {
   FIELD_LIMITS,
   sanitizeAlphaSpace,
@@ -85,13 +88,41 @@ export async function POST(req) {
       status: "Pending",
     });
 
+    // Generate PDF
+    let pdfUrl = null;
+    let pdfName = getEstimatePdfFilename(estimate);
+
+    if (process.env.PDF_READ_WRITE_TOKEN) {
+      try {
+        const pdfBuffer = await generateEstimatePdfBuffer(estimate);
+        const blob = await put(`estimates/${Date.now()}-${pdfName}`, pdfBuffer, {
+          access: "public",
+          contentType: "application/pdf",
+          token: process.env.PDF_READ_WRITE_TOKEN,
+        });
+        pdfUrl = blob.url;
+
+        // Update estimate with PDF URL
+        const sql = getSql();
+        await sql`
+          UPDATE estimates
+          SET pdf_url = ${pdfUrl}, pdf_name = ${pdfName}
+          WHERE id = ${estimate.id}
+        `;
+      } catch (uploadErr) {
+        console.error("PDF upload failed; continuing without pdf_url:", uploadErr);
+      }
+    } else {
+      console.warn("PDF_READ_WRITE_TOKEN not set; skipping PDF storage for estimate");
+    }
+
     await recordAdminActivity(req, {
       action: "Created estimate",
       details: `Created estimate "${estimate.title}" for ${estimate.recipientName}.`,
       metadata: { estimateId: estimate.id, service: estimate.service, recipientName: estimate.recipientName },
     });
 
-    return NextResponse.json({ estimate }, { status: 201 });
+    return NextResponse.json({ estimate: { ...estimate, pdfUrl, pdfName } }, { status: 201 });
   } catch (error) {
     console.error("ADMIN ESTIMATE CREATE ERROR:", error);
     return NextResponse.json({ error: "Failed to create estimate" }, { status: 500 });
