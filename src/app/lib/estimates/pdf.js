@@ -57,6 +57,23 @@ export function getQuotePdfFilename(project, fallbackTitle = "") {
   return `${base}.pdf`;
 }
 
+export async function downloadPdfFromUrl(url, filename = "document.pdf") {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error("Failed to download PDF.");
+  }
+
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename.toLowerCase().endsWith(".pdf") ? filename : `${filename}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 async function createEstimatePdf(estimate) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "letter" });

@@ -65,6 +65,15 @@ export async function PUT(req, { params }) {
     const sql = await getSql();
     const { id } = await params;
     const formData = await req.formData();
+    const existingEstimate = await findEstimateById(id);
+
+    if (!existingEstimate) {
+      return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
+    }
+
+    if (existingEstimate.status === "Signed") {
+      return NextResponse.json({ error: "Signed quotes can no longer be edited." }, { status: 409 });
+    }
 
     const clientInput = formData.get("client_id") || formData.get("client");
     const titleRaw = formData.get("title");
@@ -197,6 +206,10 @@ export async function PATCH(req, { params }) {
     const estimate = await findEstimateById(id);
     if (!estimate) {
       return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
+    }
+
+    if (estimate.status === "Signed") {
+      return NextResponse.json({ error: "Signed quotes can no longer be edited." }, { status: 409 });
     }
 
     const service = sanitizeTextArea(body?.service, FIELD_LIMITS.serviceName).trim();

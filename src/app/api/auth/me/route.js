@@ -17,6 +17,7 @@
 import { NextResponse } from "next/server";
 import { getRequestUser } from "../../../lib/auth/server";
 import { getSql } from "../../../lib/db/client";
+import { ensureClientForUser } from "../../../lib/db/clients";
 import { normalizeEmail } from "../../../lib/db/users";
 
 export async function GET(req) {
@@ -24,6 +25,14 @@ export async function GET(req) {
     const user = getRequestUser(req);
     if (!user) {
       return NextResponse.json({ user: null }, { status: 200 });
+    }
+
+    if (user.role === "client") {
+      await ensureClientForUser({
+        name: user.name,
+        email: user.email,
+        phone: "",
+      });
     }
 
     // prioritizing clients table (where settings updates go)

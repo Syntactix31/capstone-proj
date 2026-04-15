@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ClientLayout from "../../components/ClientLayout.js";
-import { downloadEstimatePdf, downloadQuotePdf } from "../../lib/estimates/pdf.js";
+import {
+  downloadEstimatePdf,
+  downloadPdfFromUrl,
+  downloadQuotePdf,
+  getEstimatePdfFilename,
+  getQuotePdfFilename,
+} from "../../lib/estimates/pdf.js";
 
 const STATUS_CLASS = {
   Approved: "client-badge client-badge--active",
+  Signed: "client-badge client-badge--active",
   Pending: "client-badge client-badge--pending",
   Rejected: "client-badge client-badge--rejected",
   "Quote requested": "client-badge client-badge--pending",
@@ -13,6 +20,7 @@ const STATUS_CLASS = {
 };
 
 function getEstimateStatusLabel(estimate) {
+  if (estimate?.status === "Signed") return "Signed";
   if (estimate?.quoteConvertedAt) return "Converted to quote";
   if (estimate?.quoteRequestedAt) return "Quote requested";
   return estimate?.status || "Pending";
@@ -84,7 +92,7 @@ export default function ClientEstimatesPage() {
     return {
       total: estimates.length,
       pending: estimates.filter((e) => getEstimateStatusLabel(e) === "Pending").length,
-      approved: estimates.filter((e) => e.status === "Approved").length,
+      approved: estimates.filter((e) => e.status === "Approved" || e.status === "Signed").length,
       rejected: estimates.filter((e) => e.status === "Rejected").length,
     };
   }, [estimates]);
@@ -161,6 +169,19 @@ export default function ClientEstimatesPage() {
   };
 
   const handleDownload = async (estimate) => {
+    if (estimate?.status === "Signed" && estimate?.pdfUrl) {
+      const signedFilename =
+        estimate?.pdfName ||
+        (estimate?.quoteConvertedAt && estimate?.convertedProjectId
+          ? getQuotePdfFilename(
+              { id: estimate.convertedProjectId, service: estimate.service, quoteData: estimate.quoteData },
+              estimate.title
+            )
+          : getEstimatePdfFilename(estimate));
+      await downloadPdfFromUrl(estimate.pdfUrl, signedFilename);
+      return;
+    }
+
     if (estimate?.quoteConvertedAt && estimate?.convertedProjectId) {
       const res = await fetch(`/api/client/project/${estimate.convertedProjectId}`, {
         cache: "no-store",
@@ -386,6 +407,7 @@ export default function ClientEstimatesPage() {
             activeEstimate &&
             activeEstimate.status === "Pending" &&
             activeEstimate.quoteConvertedAt;
+          const isSigned = activeEstimate.status === "Signed";
 
           if (!activeEstimate) return null;
 
@@ -401,7 +423,13 @@ export default function ClientEstimatesPage() {
               }}
             >
               <a
-                href={`/client/estimates/${activeEstimate.id}`}
+                href={
+                  isSigned && activeEstimate.pdfUrl
+                    ? activeEstimate.pdfUrl
+                    : activeEstimate.quoteConvertedAt && activeEstimate.convertedProjectId
+                    ? `/client/projects/${activeEstimate.convertedProjectId}/quote`
+                    : `/client/estimates/${activeEstimate.id}`
+                }
                 className="block rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
                 onClick={() => setActiveMenuId("")}
               >

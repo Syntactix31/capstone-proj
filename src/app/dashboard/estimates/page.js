@@ -22,7 +22,13 @@ import {
   sanitizePercentInput,
   sanitizeTextArea,
 } from "../../lib/validation/fields.js";
-import { downloadEstimatePdf, downloadQuotePdf } from "../../lib/estimates/pdf.js";
+import {
+  downloadEstimatePdf,
+  downloadPdfFromUrl,
+  downloadQuotePdf,
+  getEstimatePdfFilename,
+  getQuotePdfFilename,
+} from "../../lib/estimates/pdf.js";
 
 const DEFAULT_SERVICES = SERVICE_CATALOG.map((service, index) => ({
   id: `S-${String(index + 1).padStart(2, "0")}`,
@@ -36,6 +42,7 @@ const DEFAULT_SERVICES = SERVICE_CATALOG.map((service, index) => ({
 const STATUS_CLASS = {
   Pending: "admin-badge admin-badge--pending",
   Approved: "admin-badge admin-badge--active",
+  Signed: "admin-badge admin-badge--active",
   Rejected: "admin-badge admin-badge--muted",
   "Quote requested": "admin-badge admin-badge--pending",
   "Converted to quote": "admin-badge admin-badge--active",
@@ -87,6 +94,7 @@ function createConvertForm(estimate) {
 }
 
 function getEstimateStatusLabel(estimate) {
+  if (estimate?.status === "Signed") return "Signed";
   if (estimate?.quoteConvertedAt) return "Converted to quote";
   if (estimate?.quoteRequestedAt) return "Quote requested";
   return estimate?.status || "Pending";
@@ -428,6 +436,19 @@ export default function AdminEstimatesPage() {
   };
 
   const handleDownload = async (estimate) => {
+    if (estimate?.status === "Signed" && estimate?.pdfUrl) {
+      const signedFilename =
+        estimate?.pdfName ||
+        (estimate?.quoteConvertedAt && estimate?.convertedProjectId
+          ? getQuotePdfFilename(
+              { id: estimate.convertedProjectId, service: estimate.service, quoteData: estimate.quoteData },
+              estimate.title
+            )
+          : getEstimatePdfFilename(estimate));
+      await downloadPdfFromUrl(estimate.pdfUrl, signedFilename);
+      return;
+    }
+
     if (estimate?.quoteConvertedAt && estimate?.convertedProjectId) {
       const res = await fetch(`/api/admin/projects/${estimate.convertedProjectId}`, {
         cache: "no-store",
@@ -950,6 +971,7 @@ export default function AdminEstimatesPage() {
           (() => {
             const activeEstimate = estimates.find((estimate) => estimate.id === activeMenuId);
             if (!activeEstimate) return null;
+            const isSigned = activeEstimate.status === "Signed";
 
             return (
               <div
@@ -965,7 +987,9 @@ export default function AdminEstimatesPage() {
                 <Link
                   className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
                   href={
-                    activeEstimate.quoteConvertedAt && activeEstimate.convertedProjectId
+                    isSigned && activeEstimate.pdfUrl
+                      ? activeEstimate.pdfUrl
+                      : activeEstimate.quoteConvertedAt && activeEstimate.convertedProjectId
                       ? `/dashboard/projects/${activeEstimate.convertedProjectId}/quote`
                       : `/dashboard/estimates/${activeEstimate.id}`
                   }
@@ -973,13 +997,15 @@ export default function AdminEstimatesPage() {
                 >
                   View
                 </Link>
-                <button
-                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
-                  type="button"
-                  onClick={() => openEditModal(activeEstimate)}
-                >
-                  Edit
-                </button>
+                {!isSigned ? (
+                  <button
+                    className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                    type="button"
+                    onClick={() => openEditModal(activeEstimate)}
+                  >
+                    Edit
+                  </button>
+                ) : null}
                 <button
                   className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
                   type="button"
