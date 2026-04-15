@@ -42,7 +42,7 @@ export async function POST(req) {
 
     if (!isStrongPassword(password)) {
       return badRequest(
-        "Use at least 12 characters with uppercase, lowercase, number, and symbol.",
+        "Use at least 8 characters with uppercase, lowercase, number, and symbol.",
       );
     }
 
