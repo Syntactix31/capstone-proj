@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const PRICING = {
   currency: "CAD",
-  taxRate: 0,
+  taxRate: 0.05,
   fence: { perLfByHeight: { 4: 28, 5: 33, 6: 38 }, gate: 350, postUpgrade: { "4x4": 0, "4x6": 6, "6x6": 10 } },
   deck: {
     perSqft: 55,
