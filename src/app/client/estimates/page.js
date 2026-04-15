@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ClientLayout from "../../components/ClientLayout.js";
-import { downloadEstimatePdf } from "../../lib/estimates/pdf.js";
+import { downloadEstimatePdf, downloadQuotePdf } from "../../lib/estimates/pdf.js";
 
 const STATUS_CLASS = {
   Approved: "client-badge client-badge--active",
@@ -24,8 +24,9 @@ export default function ClientEstimatesPage() {
   const [error, setError] = useState("");
   const [requestingId, setRequestingId] = useState("");
   const [activeMenuId, setActiveMenuId] = useState("");
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [menuPosition, setMenuPosition] = useState({ top: 16, left: 16, width: 184, maxHeight: 240 });
   const menuButtonRefs = useRef({});
+  const menuRef = useRef(null);
 
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [estimateToSign, setEstimateToSign] = useState(null);
@@ -159,16 +160,51 @@ export default function ClientEstimatesPage() {
     }
   };
 
+  const handleDownload = async (estimate) => {
+    if (estimate?.quoteConvertedAt && estimate?.convertedProjectId) {
+      const res = await fetch(`/api/client/project/${estimate.convertedProjectId}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data?.project?.quoteData) {
+        throw new Error(data?.error || "Failed to load quote for download.");
+      }
+
+      await downloadQuotePdf(data.project, {
+        title: estimate?.title,
+        name: estimate?.recipientName || data.project.clientName,
+        address: estimate?.recipientAddress || data.project.address,
+        phone: estimate?.recipientPhone,
+        email: estimate?.recipientEmail,
+      });
+      return;
+    }
+
+    await downloadEstimatePdf(estimate);
+  };
+
+  const updateMenuPosition = useCallback((estimateId) => {
+    const button = menuButtonRefs.current[estimateId];
+    if (!button || typeof window === "undefined") return;
+
+    const rect = button.getBoundingClientRect();
+    const menuWidth = 184;
+    setMenuPosition({
+      top: rect.bottom + 8,
+      left: Math.min(
+        Math.max(16, rect.right - menuWidth),
+        Math.max(16, window.innerWidth - menuWidth - 16)
+      ),
+      width: menuWidth,
+      maxHeight: Math.max(160, window.innerHeight - rect.bottom - 24),
+    });
+  }, []);
+
   useEffect(() => {
     function handleWindowChange() {
       if (!activeMenuId) return;
-      const button = menuButtonRefs.current[activeMenuId];
-      if (!button) return;
-      const rect = button.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + 8,
-        left: Math.max(16, rect.right - 160),
-      });
+      updateMenuPosition(activeMenuId);
     }
 
     handleWindowChange();
@@ -177,6 +213,32 @@ export default function ClientEstimatesPage() {
     return () => {
       window.removeEventListener("resize", handleWindowChange);
       window.removeEventListener("scroll", handleWindowChange, true);
+    };
+  }, [activeMenuId, updateMenuPosition]);
+
+  useEffect(() => {
+    if (!activeMenuId) return undefined;
+
+    function handlePointerDown(event) {
+      const button = menuButtonRefs.current[activeMenuId];
+      if (button?.contains(event.target) || menuRef.current?.contains(event.target)) {
+        return;
+      }
+
+      setActiveMenuId("");
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setActiveMenuId("");
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [activeMenuId]);
 
@@ -265,7 +327,7 @@ export default function ClientEstimatesPage() {
                     {estimate.title || estimate.service}
                   </div>
                   <div className="text-sm text-gray-500 mt-1 line-clamp-2">
-                    {estimate.notes || "-"}
+                    {estimate.notes || ""}
                   </div>
                 </td>
                 <td className="py-5 px-6 text-right font-bold text-xl text-gray-900 hidden table-cell">
@@ -280,22 +342,7 @@ export default function ClientEstimatesPage() {
                   {estimate.createdAt?.split("T")[0] || "-"}
                 </td>
                 <td className="py-5 px-6">
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    {!estimate.quoteRequestedAt && !estimate.quoteConvertedAt ? (
-                      <button
-                        type="button"
-                        onClick={() => handleRequestQuote(estimate.id)}
-                        disabled={requestingId === estimate.id}
-                        className="bg-[#477a40] hover:bg-[#3d652f] text-white text-sm font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {requestingId === estimate.id ? "Requesting..." : "Request quote"}
-                      </button>
-                    ) : estimate.quoteRequestedAt && !estimate.quoteConvertedAt ? (
-                      <span className="inline-flex items-center justify-center rounded-lg border border-[#477a40]/20 bg-[#477a40]/10 px-4 py-2 text-sm font-semibold text-[#477a40]">
-                        Quote requested
-                      </span>
-                    ) : null}
-
+                  <div className="flex justify-center">
                     <div className="shrink-0">
                       <button
                         ref={(node) => {
@@ -311,11 +358,7 @@ export default function ClientEstimatesPage() {
                             setActiveMenuId("");
                             return;
                           }
-                          const rect = menuButtonRefs.current[estimate.id]?.getBoundingClientRect();
-                          setMenuPosition({
-                            top: (rect?.bottom || 0) + 8,
-                            left: Math.max(16, (rect?.right || 160) - 160),
-                          });
+                          updateMenuPosition(estimate.id);
                           setActiveMenuId(estimate.id);
                         }}
                         className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 transition-all duration-200 hover:bg-gray-200"
@@ -323,15 +366,6 @@ export default function ClientEstimatesPage() {
                         Manage
                       </button>
                     </div>
-
-                    {estimate.status === "Pending" && !estimate.quoteRequestedAt && !estimate.quoteConvertedAt ? (
-                      <button
-                        onClick={() => handleSignEstimate(estimate)}
-                        className="bg-[#477a40] hover:bg-[#3d652f] text-white text-sm font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-95 transition-all duration-200 whitespace-nowrap items-center justify-center hover:cursor-pointer"
-                      >
-                        Sign Now
-                      </button>
-                    ) : null}
                   </div>
                 </td>
               </tr>
@@ -344,52 +378,85 @@ export default function ClientEstimatesPage() {
       </section>
 
       {activeMenuId ? (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-20 cursor-default bg-transparent"
-            aria-label="Close manage menu"
-            onClick={() => setActiveMenuId("")}
-          />
-          <div
-            className="fixed z-30 min-w-[160px] rounded-xl border border-gray-200 bg-white p-2 shadow-lg"
-            style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
-          >
-            {(() => {
-              const activeEstimate = estimates.find((estimate) => estimate.id === activeMenuId);
-              if (!activeEstimate) return null;
+        (() => {
+          const activeEstimate = estimates.find((estimate) => estimate.id === activeMenuId);
+          const canRequestQuote =
+            activeEstimate && !activeEstimate.quoteRequestedAt && !activeEstimate.quoteConvertedAt;
+          const canSignEstimate =
+            activeEstimate &&
+            activeEstimate.status === "Pending" &&
+            activeEstimate.quoteConvertedAt;
 
-              return (
-                <>
-                  <a
-                    href={`/client/estimates/${activeEstimate.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                    onClick={() => setActiveMenuId("")}
-                  >
-                    View
-                  </a>
-                  <button
-                    type="button"
-                    className="block rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                    onClick={async () => {
-                      setActiveMenuId("");
-                      try {
-                        await downloadEstimatePdf(activeEstimate);
-                      } catch (downloadError) {
-                        console.error(downloadError);
-                        alert("Failed to download estimate PDF.");
-                      }
-                    }}
-                  >
-                    Download
-                  </button>
-                </>
-              );
-            })()}
-          </div>
-        </>
+          if (!activeEstimate) return null;
+
+          return (
+            <div
+              ref={menuRef}
+              className="fixed z-30 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg"
+              style={{
+                top: `${menuPosition.top}px`,
+                left: `${menuPosition.left}px`,
+                width: `${menuPosition.width}px`,
+                maxHeight: `${menuPosition.maxHeight}px`,
+              }}
+            >
+              <a
+                href={`/client/estimates/${activeEstimate.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                onClick={() => setActiveMenuId("")}
+              >
+                View
+              </a>
+              <button
+                type="button"
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                  onClick={async () => {
+                    setActiveMenuId("");
+                    try {
+                      await handleDownload(activeEstimate);
+                    } catch (downloadError) {
+                      console.error(downloadError);
+                      alert("Failed to download file.");
+                    }
+                  }}
+                >
+                Download
+              </button>
+              {canRequestQuote ? (
+                <button
+                  type="button"
+                  disabled={requestingId === activeEstimate.id}
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={async () => {
+                    setActiveMenuId("");
+                    await handleRequestQuote(activeEstimate.id);
+                  }}
+                >
+                  {requestingId === activeEstimate.id ? "Requesting..." : "Request quote"}
+                </button>
+              ) : null}
+              {activeEstimate.quoteRequestedAt && !activeEstimate.quoteConvertedAt ? (
+                <div className="rounded-lg px-3 py-2 text-sm font-semibold text-[#477a40]">
+                  Quote requested
+                </div>
+              ) : null}
+              {canSignEstimate ? (
+                <button
+                  type="button"
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                  onClick={() => {
+                    setActiveMenuId("");
+                    handleSignEstimate(activeEstimate);
+                  }}
+                >
+                  Sign now
+                </button>
+              ) : null}
+            </div>
+          );
+        })()
       ) : null}
 
       {/* PIPEDA/UECA Legal Modal */}

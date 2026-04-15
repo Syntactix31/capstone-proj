@@ -53,6 +53,10 @@ export async function GET(req, { params }) {
 
     const project = {
       id: projectRecord.id,
+      clientName: projectRecord.client || "",
+      service: projectRecord.service,
+      address: projectRecord.address || "",
+      quoteData: projectRecord.quoteData || null,
       name: projectRecord.service,
       description: projectRecord.address || "",
       startDate: formatDateOnly(projectRecord.startDate),

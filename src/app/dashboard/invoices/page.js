@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import AdminLayout from "../../components/AdminLayout.js";
 
@@ -39,6 +39,9 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeMenuId, setActiveMenuId] = useState("");
+  const [menuPosition, setMenuPosition] = useState({ top: 16, left: 16, width: 184, maxHeight: 180 });
+  const menuButtonRefs = useRef({});
+  const menuRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -74,6 +77,73 @@ export default function InvoicesPage() {
       active = false;
     };
   }, []);
+
+  const updateMenuPosition = useCallback((invoiceId) => {
+    const button = menuButtonRefs.current[invoiceId];
+    if (!button || typeof window === "undefined") return;
+
+    const rect = button.getBoundingClientRect();
+    const isSmallScreen = window.innerWidth < 640;
+    const menuWidth = isSmallScreen ? Math.min(window.innerWidth - 32, 320) : 184;
+    const estimatedHeight = 2 * 44 + 20;
+    const spaceBelow = window.innerHeight - rect.bottom - 16;
+    const spaceAbove = rect.top - 16;
+    const shouldOpenUpward = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+    const top = shouldOpenUpward
+      ? Math.max(16, rect.top - Math.min(estimatedHeight, spaceAbove) - 8)
+      : Math.min(window.innerHeight - estimatedHeight - 16, rect.bottom + 8);
+    const maxHeight = Math.max(
+      120,
+      shouldOpenUpward ? spaceAbove - 8 : spaceBelow - 8
+    );
+
+    setMenuPosition({
+      top,
+      left: isSmallScreen
+        ? Math.max(16, (window.innerWidth - menuWidth) / 2)
+        : Math.min(
+            Math.max(16, rect.right - menuWidth),
+            Math.max(16, window.innerWidth - menuWidth - 16)
+          ),
+      width: menuWidth,
+      maxHeight,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!activeMenuId) return undefined;
+
+    function handleWindowChange() {
+      updateMenuPosition(activeMenuId);
+    }
+
+    function handlePointerDown(event) {
+      const button = menuButtonRefs.current[activeMenuId];
+      if (button?.contains(event.target) || menuRef.current?.contains(event.target)) {
+        return;
+      }
+
+      setActiveMenuId("");
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setActiveMenuId("");
+      }
+    }
+
+    handleWindowChange();
+    window.addEventListener("resize", handleWindowChange);
+    window.addEventListener("scroll", handleWindowChange, true);
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("resize", handleWindowChange);
+      window.removeEventListener("scroll", handleWindowChange, true);
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeMenuId, updateMenuPosition]);
 
   const filteredInvoices = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -187,38 +257,67 @@ export default function InvoicesPage() {
                 <div className="admin-actions justify-self-end">
                   <div className="relative">
                     <button
+                      ref={(node) => {
+                        if (node) {
+                          menuButtonRefs.current[invoice.id] = node;
+                        } else {
+                          delete menuButtonRefs.current[invoice.id];
+                        }
+                      }}
                       className="admin-btn admin-btn--ghost"
                       type="button"
-                      onClick={() =>
-                        setActiveMenuId((current) => (current === invoice.id ? "" : invoice.id))
-                      }
+                      onClick={() => {
+                        if (activeMenuId === invoice.id) {
+                          setActiveMenuId("");
+                          return;
+                        }
+                        updateMenuPosition(invoice.id);
+                        setActiveMenuId(invoice.id);
+                      }}
                     >
                       Manage
                     </button>
-                    {activeMenuId === invoice.id ? (
-                      <div className="absolute right-0 top-full z-20 mt-2 min-w-[160px] rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                        <Link
-                          className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
-                          href={`/dashboard/invoices/${invoice.id}`}
-                          onClick={() => setActiveMenuId("")}
-                        >
-                          View
-                        </Link>
-                        <a
-                          className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
-                          href={`/api/admin/invoices/${invoice.id}?download=1`}
-                          onClick={() => setActiveMenuId("")}
-                        >
-                          Download
-                        </a>
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {activeMenuId ? (
+          (() => {
+            const activeInvoice = filteredInvoices.find((invoice) => invoice.id === activeMenuId);
+            if (!activeInvoice) return null;
+
+            return (
+              <div
+                ref={menuRef}
+                className="fixed z-30 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg"
+                style={{
+                  top: `${menuPosition.top}px`,
+                  left: `${menuPosition.left}px`,
+                  width: `${menuPosition.width}px`,
+                  maxHeight: `${menuPosition.maxHeight}px`,
+                }}
+              >
+                <Link
+                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                  href={`/dashboard/invoices/${activeInvoice.id}`}
+                  onClick={() => setActiveMenuId("")}
+                >
+                  View
+                </Link>
+                <a
+                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                  href={`/api/admin/invoices/${activeInvoice.id}?download=1`}
+                  onClick={() => setActiveMenuId("")}
+                >
+                  Download
+                </a>
+              </div>
+            );
+          })()
+        ) : null}
 
         {!loading && !filteredInvoices.length ? (
           <p className="admin-muted" style={{ marginTop: "12px" }}>

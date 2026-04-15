@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout from "../../components/AdminLayout.js";
 import {
   buildQuoteData,
@@ -22,7 +22,7 @@ import {
   sanitizePercentInput,
   sanitizeTextArea,
 } from "../../lib/validation/fields.js";
-import { downloadEstimatePdf } from "../../lib/estimates/pdf.js";
+import { downloadEstimatePdf, downloadQuotePdf } from "../../lib/estimates/pdf.js";
 
 const DEFAULT_SERVICES = SERVICE_CATALOG.map((service, index) => ({
   id: `S-${String(index + 1).padStart(2, "0")}`,
@@ -112,7 +112,10 @@ export default function AdminEstimatesPage() {
   const [convertForm, setConvertForm] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [activeMenuId, setActiveMenuId] = useState("");
+  const [menuPosition, setMenuPosition] = useState({ top: 16, left: 16, width: 184, maxHeight: 240 });
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const menuButtonRefs = useRef({});
+  const menuRef = useRef(null);
 
   async function refreshEstimates() {
     setLoading(true);
@@ -175,6 +178,73 @@ export default function AdminEstimatesPage() {
       active = false;
     };
   }, []);
+
+  const updateMenuPosition = useCallback((estimateId) => {
+    const button = menuButtonRefs.current[estimateId];
+    if (!button || typeof window === "undefined") return;
+
+    const rect = button.getBoundingClientRect();
+    const isSmallScreen = window.innerWidth < 640;
+    const menuWidth = isSmallScreen ? Math.min(window.innerWidth - 32, 320) : 184;
+    const estimatedHeight = 4 * 44 + 20;
+    const spaceBelow = window.innerHeight - rect.bottom - 16;
+    const spaceAbove = rect.top - 16;
+    const shouldOpenUpward = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+    const top = shouldOpenUpward
+      ? Math.max(16, rect.top - Math.min(estimatedHeight, spaceAbove) - 8)
+      : Math.min(window.innerHeight - estimatedHeight - 16, rect.bottom + 8);
+    const maxHeight = Math.max(
+      120,
+      shouldOpenUpward ? spaceAbove - 8 : spaceBelow - 8
+    );
+
+    setMenuPosition({
+      top,
+      left: isSmallScreen
+        ? Math.max(16, (window.innerWidth - menuWidth) / 2)
+        : Math.min(
+            Math.max(16, rect.right - menuWidth),
+            Math.max(16, window.innerWidth - menuWidth - 16)
+          ),
+      width: menuWidth,
+      maxHeight,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!activeMenuId) return undefined;
+
+    function handleWindowChange() {
+      updateMenuPosition(activeMenuId);
+    }
+
+    function handlePointerDown(event) {
+      const button = menuButtonRefs.current[activeMenuId];
+      if (button?.contains(event.target) || menuRef.current?.contains(event.target)) {
+        return;
+      }
+
+      setActiveMenuId("");
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setActiveMenuId("");
+      }
+    }
+
+    handleWindowChange();
+    window.addEventListener("resize", handleWindowChange);
+    window.addEventListener("scroll", handleWindowChange, true);
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("resize", handleWindowChange);
+      window.removeEventListener("scroll", handleWindowChange, true);
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeMenuId, updateMenuPosition]);
 
   useEffect(() => {
     let active = true;
@@ -355,6 +425,30 @@ export default function AdminEstimatesPage() {
     const defaultService = availableServices[0] || DEFAULT_SERVICES[0];
     setEstimateForm(createEstimateForm(defaultService));
     setIsEstimateModalOpen(true);
+  };
+
+  const handleDownload = async (estimate) => {
+    if (estimate?.quoteConvertedAt && estimate?.convertedProjectId) {
+      const res = await fetch(`/api/admin/projects/${estimate.convertedProjectId}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data?.project?.quoteData) {
+        throw new Error(data?.error || "Failed to load quote for download.");
+      }
+
+      await downloadQuotePdf(data.project, {
+        title: estimate?.title,
+        name: estimate?.recipientName || data.project.client,
+        address: estimate?.recipientAddress || data.project.address,
+        phone: estimate?.recipientPhone,
+        email: estimate?.recipientEmail,
+      });
+      return;
+    }
+
+    await downloadEstimatePdf(estimate);
   };
 
   const openConvertModal = (estimate) => {
@@ -825,68 +919,97 @@ export default function AdminEstimatesPage() {
                   ) : null}
                   <div className="relative">
                     <button
+                      ref={(node) => {
+                        if (node) {
+                          menuButtonRefs.current[estimate.id] = node;
+                        } else {
+                          delete menuButtonRefs.current[estimate.id];
+                        }
+                      }}
                       className="admin-btn admin-btn--ghost"
                       type="button"
-                      onClick={() =>
-                        setActiveMenuId((current) => (current === estimate.id ? "" : estimate.id))
-                      }
+                      onClick={() => {
+                        if (activeMenuId === estimate.id) {
+                          setActiveMenuId("");
+                          return;
+                        }
+                        updateMenuPosition(estimate.id);
+                        setActiveMenuId(estimate.id);
+                      }}
                     >
                       Manage
                     </button>
-                    {activeMenuId === estimate.id ? (
-                      <div className="absolute right-0 top-full z-20 mt-2 min-w-[160px] rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                        <Link
-                          className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
-                          href={
-                            estimate.quoteConvertedAt && estimate.convertedProjectId
-                              ? `/dashboard/projects/${estimate.convertedProjectId}/quote`
-                              : `/dashboard/estimates/${estimate.id}`
-                          }
-                          target="_blank"
-                          onClick={() => setActiveMenuId("")}
-                        >
-                          View
-                        </Link>
-                        <button
-                          className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
-                          type="button"
-                          onClick={() => openEditModal(estimate)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
-                          type="button"
-                          onClick={async () => {
-                            setActiveMenuId("");
-                            try {
-                              await downloadEstimatePdf(estimate);
-                            } catch (downloadError) {
-                              console.error(downloadError);
-                              alert("Failed to download estimate PDF.");
-                            }
-                          }}
-                        >
-                          Download
-                        </button>
-                        <button
-                          className="block w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
-                          type="button"
-                          onClick={() => {
-                            setDeleteTarget(estimate);
-                            setActiveMenuId("");
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {activeMenuId ? (
+          (() => {
+            const activeEstimate = estimates.find((estimate) => estimate.id === activeMenuId);
+            if (!activeEstimate) return null;
+
+            return (
+              <div
+                ref={menuRef}
+                className="fixed z-30 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg"
+                style={{
+                  top: `${menuPosition.top}px`,
+                  left: `${menuPosition.left}px`,
+                  width: `${menuPosition.width}px`,
+                  maxHeight: `${menuPosition.maxHeight}px`,
+                }}
+              >
+                <Link
+                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                  href={
+                    activeEstimate.quoteConvertedAt && activeEstimate.convertedProjectId
+                      ? `/dashboard/projects/${activeEstimate.convertedProjectId}/quote`
+                      : `/dashboard/estimates/${activeEstimate.id}`
+                  }
+                  target="_blank"
+                  onClick={() => setActiveMenuId("")}
+                >
+                  View
+                </Link>
+                <button
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                  type="button"
+                  onClick={() => openEditModal(activeEstimate)}
+                >
+                  Edit
+                </button>
+                <button
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                  type="button"
+                  onClick={async () => {
+                    setActiveMenuId("");
+                    try {
+                      await handleDownload(activeEstimate);
+                    } catch (downloadError) {
+                      console.error(downloadError);
+                      alert("Failed to download file.");
+                    }
+                  }}
+                >
+                  Download
+                </button>
+                <button
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
+                  type="button"
+                  onClick={() => {
+                    setDeleteTarget(activeEstimate);
+                    setActiveMenuId("");
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            );
+          })()
+        ) : null}
 
         {!loading && estimates.length > 0 && !filteredEstimates.length ? (
           <p className="admin-muted" style={{ marginTop: "12px" }}>
