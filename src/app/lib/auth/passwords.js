@@ -32,7 +32,7 @@ export function verifyPassword(password, encodedHash) {
 // Basic password strength check used during signup.
 export function isStrongPassword(password) {
   const value = String(password || "");
-  if (value.length < 12) return false;
+  if (value.length < 8) return false;
   if (!/[A-Z]/.test(value)) return false;
   if (!/[a-z]/.test(value)) return false;
   if (!/\d/.test(value)) return false;
