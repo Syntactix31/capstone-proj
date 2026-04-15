@@ -75,6 +75,9 @@ export async function GET(req, { params }) {
       ownerNotes: projectRecord.ownerNotes || "",
       notesUpdatedAt: formatDateOnly(projectRecord.updatedAt),
       estimatePdfUrl: projectRecord.estimatePdfUrl,
+      estimatePdfName: projectRecord.estimatePdfName,
+      quoteSignedAt: projectRecord.quoteSignedAt,
+      quoteSignerName: projectRecord.quoteSignerName,
     };
 
     return NextResponse.json({ project });

@@ -59,6 +59,14 @@ function createProjectForm(service) {
   };
 }
 
+function getProjectQuoteHref(project) {
+  if (project?.quoteSignedAt && project?.estimatePdfUrl) {
+    return project.estimatePdfUrl;
+  }
+
+  return `/dashboard/projects/${project?.id}/quote`;
+}
+
 export default function AdminProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
@@ -341,7 +349,7 @@ export default function AdminProjectsPage() {
               total: projectQuote.subtotal,
             },
           ],
-          quoteData: projectQuote,
+          generateQuote: false,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -494,7 +502,7 @@ export default function AdminProjectsPage() {
               <div>
                 <h2 className="admin-title">New project</h2>
                 <p className="admin-subtitle">
-                  Build the service line, quote pricing, and recipient details before creating the project.
+                  Create the project first. You can generate the quotation later from the project page.
                 </p>
               </div>
               <button
@@ -718,7 +726,7 @@ export default function AdminProjectsPage() {
                 type="submit"
                 disabled={clientsLoading || !projectForm.clientId}
               >
-                Create project and quotation
+                Create project
               </button>
               <button
                 className="admin-btn admin-btn--ghost"
@@ -797,10 +805,12 @@ export default function AdminProjectsPage() {
               {selectedProject.quoteData ? (
                 <Link
                   className="admin-btn admin-btn--ghost"
-                  href={`/dashboard/projects/${selectedProject.id}/quote`}
+                  href={getProjectQuoteHref(selectedProject)}
                   target="_blank"
                 >
-                  View quotation
+                  {selectedProject.quoteSignedAt && selectedProject.estimatePdfUrl
+                    ? "View signed quotation"
+                    : "View quotation"}
                 </Link>
               ) : null}
               <button

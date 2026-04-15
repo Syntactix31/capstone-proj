@@ -50,7 +50,8 @@ export async function POST(req) {
       ? body.servicesIncluded.map(normalizeServiceItem).filter((item) => item.name)
       : [];
     const totalCost = body?.totalCost;
-    const quoteData = normalizeQuoteData(body?.quoteData || {});
+    const shouldGenerateQuote = body?.generateQuote === true;
+    const quoteData = shouldGenerateQuote ? normalizeQuoteData(body?.quoteData || {}) : {};
 
     if (!clientId || !service) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -63,6 +64,7 @@ export async function POST(req) {
       totalCost,
       servicesIncluded,
       quoteData,
+      generateQuote: shouldGenerateQuote,
     });
 
     await recordAdminActivity(req, {

@@ -208,6 +208,7 @@ function BookTimeInner() {
   const [busyIntervals, setBusyIntervals] = useState([]);
   const [busyIntervalsByDate, setBusyIntervalsByDate] = useState({});
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const calendarCells = useMemo(() => {
     const first = new Date(monthCursor);
@@ -360,6 +361,8 @@ function BookTimeInner() {
 
   // Continue to either the details step or the reschedule route.
   const onConfirm = async () => {
+    if (isSubmitting) return;
+
     if (!selectedDateStr || !selectedTime) {
       alert("Please choose a date and time first.");
       return;
@@ -372,6 +375,7 @@ function BookTimeInner() {
       }
 
       try {
+        setIsSubmitting(true);
         const res = await fetch("/api/booking/reschedule", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -393,7 +397,7 @@ function BookTimeInner() {
           service: serviceParam,
           date: data.date || selectedDateStr,
           time: data.time || selectedTime,
-          eventId: data.newEventId || "",
+          eventId: data.eventId || eventId,
           status: "rescheduled",
         }).toString();
 
@@ -403,6 +407,8 @@ function BookTimeInner() {
       } catch (e) {
         console.error(e);
         alert("Could not reschedule. Try again.");
+      } finally {
+        setIsSubmitting(false);
       }
 
       return;
@@ -609,8 +615,13 @@ function BookTimeInner() {
                   </div>
 
                   <div className="times-footer">
-                    <button className="times-confirm" type="button" onClick={onConfirm}>
-                      {mode === "reschedule" ? "Reschedule" : "Continue"}
+                    <button
+                      className="times-confirm"
+                      type="button"
+                      onClick={onConfirm}
+                      disabled={isSubmitting}
+                    >
+                      {mode === "reschedule" && isSubmitting ? "Rescheduling..." : mode === "reschedule" ? "Reschedule" : "Continue"}
                     </button>
                   </div>
                 </>

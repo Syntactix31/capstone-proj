@@ -133,7 +133,7 @@ Server: ${now}
     await sql`
       UPDATE estimates
       SET
-        status = 'Approved',
+        status = 'Signed',
         notes = notes || ${signatureText},
         pdf_url = ${signedPdfUrl},
         pdf_name = ${signedPdfName},

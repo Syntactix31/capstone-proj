@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyPassword } from "../../../lib/auth/passwords";
 import { findUserByEmail, normalizeEmail } from "../../../lib/auth/users";
 import { setAuthCookie } from "../../../lib/auth/server";
+import { ensureClientForUser } from "../../../lib/db/clients";
 import { isValidEmail, isValidPasswordLength } from "../../../lib/auth/validation";
 
 // Sign in an existing local account and return a session cookie.
@@ -34,6 +35,14 @@ export async function POST(req) {
     const ok = verifyPassword(password, user.passwordHash);
     if (!ok) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
+    }
+
+    if (user.role === "client") {
+      await ensureClientForUser({
+        name: user.name,
+        email: user.email,
+        phone: "",
+      });
     }
 
     const res = NextResponse.json({

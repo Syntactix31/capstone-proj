@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hashPassword, isStrongPassword } from "../../../lib/auth/passwords";
 import { createUser, findUserByEmail, normalizeEmail, resolveRoleForEmail } from "../../../lib/auth/users";
 import { setAuthCookie } from "../../../lib/auth/server";
+import { ensureClientForUser } from "../../../lib/db/clients";
 import { isValidEmail, isValidName, isValidPasswordLength } from "../../../lib/auth/validation";
 
 // Reuse one helper for simple 400 validation responses.
@@ -42,7 +43,7 @@ export async function POST(req) {
 
     if (!isStrongPassword(password)) {
       return badRequest(
-        "Use at least 12 characters with uppercase, lowercase, number, and symbol.",
+        "Use at least 8 characters with uppercase, lowercase, number, and symbol.",
       );
     }
 
@@ -58,6 +59,14 @@ export async function POST(req) {
       provider: "local",
       role: resolveRoleForEmail(email),
     });
+
+    if (user.role === "client") {
+      await ensureClientForUser({
+        name: user.name,
+        email: user.email,
+        phone: "",
+      });
+    }
 
     const res = NextResponse.json({
       success: true,

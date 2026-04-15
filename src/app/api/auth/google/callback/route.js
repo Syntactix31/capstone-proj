@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createUser, findUserByEmail, resolveRoleForEmail, updateUser } from "../../../../lib/auth/users";
 import { setAuthCookie } from "../../../../lib/auth/server";
+import { ensureClientForUser } from "../../../../lib/db/clients";
 import { getGoogleOAuthClientId, getGoogleOAuthClientSecret } from "../../../../lib/auth/googleOAuth";
 
 const OAUTH_STATE_COOKIE = "lc_google_oauth_state";
@@ -100,6 +101,14 @@ export async function GET(req) {
         picture,
         provider: user.provider === "local" ? "local" : "google",
         role: resolveRoleForEmail(user.email),
+      });
+    }
+
+    if (user.role === "client") {
+      await ensureClientForUser({
+        name: user.name,
+        email: user.email,
+        phone: "",
       });
     }
 

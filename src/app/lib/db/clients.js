@@ -173,6 +173,23 @@ export async function upsertClient({
   return fetchClientJoinedByEmail(normalizedEmail);
 }
 
+export async function ensureClientForUser({
+  name,
+  email,
+  phone = "",
+  notes = "",
+}) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return null;
+
+  return upsertClient({
+    name: String(name || normalizedEmail.split("@")[0] || "Client").trim(),
+    email: normalizedEmail,
+    phone: String(phone || ""),
+    notes: String(notes || ""),
+  });
+}
+
 // Insert or update a job-site/property record for a client.
 export async function upsertClientProperty({
   clientId,

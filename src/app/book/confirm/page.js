@@ -82,13 +82,13 @@ function ConfirmInner() {
         return;
       }
 
+      setShowCancelModal(false);
       router.push("/");
     } catch (e) {
       console.error(e);
       setErrorMessage("Could not cancel. Try again.");
     } finally {
       setBusy(false);
-      setShowCancelModal(false);
     }
   };
 
