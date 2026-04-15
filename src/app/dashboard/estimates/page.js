@@ -36,6 +36,8 @@ const STATUS_CLASS = {
   Pending: "admin-badge admin-badge--pending",
   Approved: "admin-badge admin-badge--active",
   Rejected: "admin-badge admin-badge--muted",
+  "Quote requested": "admin-badge admin-badge--pending",
+  "Converted to quote": "admin-badge admin-badge--active",
 };
 
 function createEstimateForm(service) {
@@ -57,6 +59,38 @@ function createEstimateForm(service) {
   };
 }
 
+function createConvertForm(estimate) {
+  const primaryService = Array.isArray(estimate?.servicesIncluded) ? estimate.servicesIncluded[0] : null;
+  const quote = buildQuoteData(estimate?.quoteData || {}, {
+    unitPrice: primaryService?.price || estimate?.total || "0.00",
+    quantity: primaryService?.quantity || "1",
+    description: primaryService?.description || "",
+  });
+
+  return {
+    id: estimate?.id || "",
+    recipientName: estimate?.recipientName || "",
+    recipientAddress: estimate?.recipientAddress || "",
+    recipientEmail: estimate?.recipientEmail || "",
+    recipientPhone: estimate?.recipientPhone || "",
+    service: estimate?.service || DEFAULT_SERVICES[0].name,
+    priceMode: quote.priceMode === "default" ? "default" : "custom",
+    unitPrice: String(quote.unitPrice || primaryService?.price || "0.00"),
+    quantity: String(quote.quantity || primaryService?.quantity || "1"),
+    description: quote.description || primaryService?.description || "",
+    sentDate: quote.sentDate || todayDateValue(),
+    gstRate: String(Number(quote.gstRate || DEFAULT_GST_RATE) * 100),
+    depositRate: String(Number(quote.depositRate || DEFAULT_DEPOSIT_RATE) * 100),
+    notes: estimate?.notes || "",
+  };
+}
+
+function getEstimateStatusLabel(estimate) {
+  if (estimate?.quoteConvertedAt) return "Converted to quote";
+  if (estimate?.quoteRequestedAt) return "Quote requested";
+  return estimate?.status || "Pending";
+}
+
 export default function AdminEstimatesPage() {
   const [estimates, setEstimates] = useState([]);
   const [clients, setClients] = useState([]);
@@ -69,9 +103,11 @@ export default function AdminEstimatesPage() {
   const [sortBy, setSortBy] = useState("date-desc");
   const [isEstimateModalOpen, setIsEstimateModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [estimateForm, setEstimateForm] = useState(() =>
     createEstimateForm(DEFAULT_SERVICES[0])
   );
+  const [convertForm, setConvertForm] = useState(null);
 
   async function refreshEstimates() {
     setLoading(true);
@@ -191,6 +227,14 @@ export default function AdminEstimatesPage() {
     [availableServices, estimateForm.service]
   );
 
+  const selectedConvertService = useMemo(
+    () =>
+      availableServices.find((service) => service.name === convertForm?.service) ||
+      availableServices[0] ||
+      null,
+    [availableServices, convertForm?.service]
+  );
+
   const estimateQuote = useMemo(
     () =>
       buildQuoteData({
@@ -216,6 +260,28 @@ export default function AdminEstimatesPage() {
   const serviceOptions = useMemo(
     () => ["All", ...Array.from(new Set(availableServices.map((service) => service.name))).sort()],
     [availableServices]
+  );
+
+  const convertQuote = useMemo(
+    () =>
+      buildQuoteData({
+        priceMode: convertForm?.priceMode,
+        unitPrice: convertForm?.unitPrice,
+        quantity: convertForm?.quantity,
+        description: convertForm?.description,
+        sentDate: convertForm?.sentDate,
+        gstRate: convertForm?.gstRate,
+        depositRate: convertForm?.depositRate,
+      }),
+    [
+      convertForm?.depositRate,
+      convertForm?.description,
+      convertForm?.gstRate,
+      convertForm?.priceMode,
+      convertForm?.quantity,
+      convertForm?.sentDate,
+      convertForm?.unitPrice,
+    ]
   );
 
   const filteredEstimates = useMemo(() => {
@@ -254,6 +320,10 @@ export default function AdminEstimatesPage() {
     const defaultService = availableServices[0] || DEFAULT_SERVICES[0];
     setEstimateForm(createEstimateForm(defaultService));
     setIsEstimateModalOpen(true);
+  };
+
+  const openConvertModal = (estimate) => {
+    setConvertForm(createConvertForm(estimate));
   };
 
   const handleEstimateFormChange = (event) => {
@@ -329,6 +399,53 @@ export default function AdminEstimatesPage() {
     setEstimateForm((prev) => ({ ...prev, [name]: nextValue }));
   };
 
+  const handleConvertFormChange = (event) => {
+    const { name, value } = event.target;
+    let nextValue = value;
+
+    if (name === "recipientName") nextValue = sanitizeAlphaSpace(value, FIELD_LIMITS.name);
+    if (name === "recipientAddress") nextValue = sanitizeTextArea(value, FIELD_LIMITS.address);
+    if (name === "recipientEmail") nextValue = sanitizeEmail(value);
+    if (name === "recipientPhone") nextValue = sanitizePhone(value);
+    if (name === "quantity") nextValue = sanitizeIntegerInput(value);
+    if (name === "unitPrice") nextValue = sanitizeMoneyInput(value);
+    if (name === "gstRate" || name === "depositRate") nextValue = sanitizePercentInput(value);
+    if (name === "description") nextValue = sanitizeTextArea(value, FIELD_LIMITS.description);
+    if (name === "notes") nextValue = sanitizeTextArea(value, FIELD_LIMITS.notes);
+
+    if (name === "service") {
+      const nextService = availableServices.find((service) => service.name === value) || null;
+      setConvertForm((prev) => ({
+        ...prev,
+        service: value,
+        unitPrice:
+          prev.priceMode === "default"
+            ? String(nextService?.price || "0.00")
+            : prev.unitPrice,
+        quantity: String(nextService?.quantity || prev.quantity || "1"),
+        description:
+          !prev.description || prev.description === selectedConvertService?.description
+            ? nextService?.description || ""
+            : prev.description,
+      }));
+      return;
+    }
+
+    if (name === "priceMode") {
+      setConvertForm((prev) => ({
+        ...prev,
+        priceMode: value,
+        unitPrice:
+          value === "default"
+            ? String(selectedConvertService?.price || "0.00")
+            : prev.unitPrice,
+      }));
+      return;
+    }
+
+    setConvertForm((prev) => ({ ...prev, [name]: nextValue }));
+  };
+
   async function handleEstimateCreate(event) {
     event.preventDefault();
     setSaving(true);
@@ -377,6 +494,58 @@ export default function AdminEstimatesPage() {
       setError("Failed to create estimate.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleEstimateConvert(event) {
+    event.preventDefault();
+    if (!convertForm?.id) return;
+
+    setConverting(true);
+    setError("");
+
+    try {
+      const res = await fetch(`/api/admin/estimates/${convertForm.id}/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientName: convertForm.recipientName,
+          recipientAddress: convertForm.recipientAddress,
+          recipientEmail: convertForm.recipientEmail,
+          recipientPhone: convertForm.recipientPhone,
+          service: convertForm.service,
+          notes: convertForm.notes,
+          servicesIncluded: [
+            {
+              id: selectedConvertService?.id || "service-1",
+              name: convertForm.service,
+              description: convertForm.description,
+              price: convertQuote.unitPrice,
+              quantity: convertQuote.quantity,
+              total: convertQuote.subtotal,
+            },
+          ],
+          quoteData: convertQuote,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || "Failed to convert estimate.");
+        return;
+      }
+
+      const projectId = data?.project?.id;
+      setConvertForm(null);
+      await refreshEstimates();
+      if (projectId && typeof window !== "undefined") {
+        window.open(`/dashboard/projects/${projectId}/quote`, "_blank", "noopener,noreferrer");
+      }
+    } catch (convertError) {
+      console.error(convertError);
+      setError("Failed to convert estimate.");
+    } finally {
+      setConverting(false);
     }
   }
 
@@ -480,12 +649,21 @@ export default function AdminEstimatesPage() {
                 </div>
 
                 <div className="justify-self-start sm:justify-self-end">
-                  <span className={STATUS_CLASS[estimate.status] || "admin-badge admin-badge--muted"}>
-                    {estimate.status}
+                  <span className={STATUS_CLASS[getEstimateStatusLabel(estimate)] || "admin-badge admin-badge--muted"}>
+                    {getEstimateStatusLabel(estimate)}
                   </span>
                 </div>
 
                 <div className="flex flex-wrap justify-start sm:justify-end items-center gap-2 sm:gap-3">
+                  {estimate.quoteRequestedAt && !estimate.quoteConvertedAt ? (
+                    <button
+                      className="admin-btn admin-btn--ghost"
+                      type="button"
+                      onClick={() => openConvertModal(estimate)}
+                    >
+                      Convert to quote
+                    </button>
+                  ) : null}
                   <Link
                     className="admin-btn admin-btn--primary"
                     href={`/dashboard/estimates/${estimate.id}`}
@@ -797,6 +975,284 @@ export default function AdminEstimatesPage() {
                 type="button"
                 onClick={() => setIsEstimateModalOpen(false)}
                 disabled={saving}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {convertForm ? (
+        <div className="admin-modal">
+          <button
+            className="admin-modal__backdrop"
+            type="button"
+            aria-label="Close convert quote modal"
+            onClick={() => setConvertForm(null)}
+          />
+          <form className="admin-modal__content" role="dialog" aria-modal="true" onSubmit={handleEstimateConvert}>
+            <div className="admin-modal__header">
+              <div>
+                <h2 className="admin-title">Convert to quote</h2>
+                <p className="admin-subtitle">
+                  Finalize recipient details and pricing, then create a project quote from this estimate.
+                </p>
+              </div>
+              <button
+                className="admin-btn admin-btn--ghost admin-btn--small"
+                type="button"
+                onClick={() => setConvertForm(null)}
+                disabled={converting}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="admin-modal__grid">
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-recipient-name">
+                  Recipient full name
+                </label>
+                <input
+                  id="convert-recipient-name"
+                  name="recipientName"
+                  {...inputPropsFor("name")}
+                  className="admin-input"
+                  value={convertForm.recipientName}
+                  onChange={handleConvertFormChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="admin-label" htmlFor="convert-recipient-email">
+                  Email
+                </label>
+                <input
+                  id="convert-recipient-email"
+                  name="recipientEmail"
+                  type="email"
+                  {...inputPropsFor("email")}
+                  className="admin-input"
+                  value={convertForm.recipientEmail}
+                  onChange={handleConvertFormChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="admin-label" htmlFor="convert-recipient-phone">
+                  Phone
+                </label>
+                <input
+                  id="convert-recipient-phone"
+                  name="recipientPhone"
+                  {...inputPropsFor("phone")}
+                  className="admin-input"
+                  value={convertForm.recipientPhone}
+                  onChange={handleConvertFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-recipient-address">
+                  Address
+                </label>
+                <input
+                  id="convert-recipient-address"
+                  name="recipientAddress"
+                  {...inputPropsFor("address")}
+                  className="admin-input"
+                  value={convertForm.recipientAddress}
+                  onChange={handleConvertFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-service">
+                  Service
+                </label>
+                <select
+                  id="convert-service"
+                  name="service"
+                  className="admin-input"
+                  value={convertForm.service}
+                  onChange={handleConvertFormChange}
+                  required
+                >
+                  {availableServices.map((service) => (
+                    <option key={service.id || service.name} value={service.name}>
+                      {service.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-quantity">
+                  Quantity
+                </label>
+                <input
+                  id="convert-quantity"
+                  name="quantity"
+                  {...inputPropsFor("quantity")}
+                  className="admin-input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={convertForm.quantity}
+                  onChange={handleConvertFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-price-mode">
+                  Pricing mode
+                </label>
+                <select
+                  id="convert-price-mode"
+                  name="priceMode"
+                  className="admin-input"
+                  value={convertForm.priceMode}
+                  onChange={handleConvertFormChange}
+                >
+                  <option value="default">Use default service price</option>
+                  <option value="custom">Use custom unit price</option>
+                </select>
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-unit-price">
+                  Unit price ($)
+                </label>
+                <input
+                  id="convert-unit-price"
+                  name="unitPrice"
+                  {...inputPropsFor("money")}
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={convertForm.unitPrice}
+                  onChange={handleConvertFormChange}
+                  disabled={convertForm.priceMode === "default"}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-sent-date">
+                  Quote date
+                </label>
+                <input
+                  id="convert-sent-date"
+                  name="sentDate"
+                  className="admin-input"
+                  type="date"
+                  value={convertForm.sentDate}
+                  onChange={handleConvertFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-gst-rate">
+                  GST (%)
+                </label>
+                <input
+                  id="convert-gst-rate"
+                  name="gstRate"
+                  {...inputPropsFor("percent")}
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={convertForm.gstRate}
+                  onChange={handleConvertFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-deposit-rate">
+                  Deposit required (%)
+                </label>
+                <input
+                  id="convert-deposit-rate"
+                  name="depositRate"
+                  {...inputPropsFor("percent")}
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={convertForm.depositRate}
+                  onChange={handleConvertFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-description">
+                  Service description
+                </label>
+                <textarea
+                  id="convert-description"
+                  name="description"
+                  maxLength={FIELD_LIMITS.description}
+                  className="admin-textarea"
+                  rows={5}
+                  value={convertForm.description}
+                  onChange={handleConvertFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="convert-notes">
+                  Notes
+                </label>
+                <textarea
+                  id="convert-notes"
+                  name="notes"
+                  maxLength={FIELD_LIMITS.notes}
+                  className="admin-textarea"
+                  rows={4}
+                  value={convertForm.notes}
+                  onChange={handleConvertFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Quote subtotal</label>
+                <input className="admin-input" value={formatCurrency(convertQuote.subtotal)} disabled readOnly />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">GST amount</label>
+                <input className="admin-input" value={formatCurrency(convertQuote.gstAmount)} disabled readOnly />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Deposit amount</label>
+                <input className="admin-input" value={formatCurrency(convertQuote.depositAmount)} disabled readOnly />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Quote total</label>
+                <input className="admin-input" value={formatCurrency(convertQuote.total)} disabled readOnly />
+              </div>
+            </div>
+
+            <div className="admin-modal__actions">
+              <button className="admin-btn admin-btn--primary" type="submit" disabled={converting}>
+                {converting ? "Converting..." : "Finalize and create quote"}
+              </button>
+              <button
+                className="admin-btn admin-btn--ghost"
+                type="button"
+                onClick={() => setConvertForm(null)}
+                disabled={converting}
               >
                 Cancel
               </button>

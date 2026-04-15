@@ -1,19 +1,27 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
 import ClientLayout from "../../components/ClientLayout.js";
 
 const STATUS_CLASS = {
   Approved: "client-badge client-badge--active",
   Pending: "client-badge client-badge--pending",
   Rejected: "client-badge client-badge--rejected",
+  "Quote requested": "client-badge client-badge--pending",
+  "Converted to quote": "client-badge client-badge--active",
 };
+
+function getEstimateStatusLabel(estimate) {
+  if (estimate?.quoteConvertedAt) return "Converted to quote";
+  if (estimate?.quoteRequestedAt) return "Quote requested";
+  return estimate?.status || "Pending";
+}
 
 export default function ClientEstimatesPage() {
   const [estimates, setEstimates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [requestingId, setRequestingId] = useState("");
 
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [estimateToSign, setEstimateToSign] = useState(null);
@@ -70,7 +78,7 @@ export default function ClientEstimatesPage() {
   const stats = useMemo(() => {
     return {
       total: estimates.length,
-      pending: estimates.filter((e) => e.status === "Pending").length,
+      pending: estimates.filter((e) => getEstimateStatusLabel(e) === "Pending").length,
       approved: estimates.filter((e) => e.status === "Approved").length,
       rejected: estimates.filter((e) => e.status === "Rejected").length,
     };
@@ -119,6 +127,32 @@ export default function ClientEstimatesPage() {
 
     setShowLegalModal(false);
     setEstimateToSign(null);
+  };
+
+  const handleRequestQuote = async (estimateId) => {
+    setRequestingId(estimateId);
+    try {
+      const res = await fetch(`/api/client/estimates/${estimateId}/request-quote`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        alert(data?.error || "Failed to request quote.");
+        return;
+      }
+
+      setEstimates((current) =>
+        current.map((estimate) =>
+          estimate.id === estimateId ? { ...estimate, ...data.estimate } : estimate
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Failed to request quote.");
+    } finally {
+      setRequestingId("");
+    }
   };
 
   return (
@@ -213,8 +247,8 @@ export default function ClientEstimatesPage() {
                   ${estimate.price}
                 </td>
                 <td className="py-5 px-6 text-center">
-                  <span className={`${STATUS_CLASS[estimate.status] || "client-badge"} inline-block px-3 py-1 text-xs font-semibold uppercase tracking-wide`}>
-                    {estimate.status}
+                  <span className={`${STATUS_CLASS[getEstimateStatusLabel(estimate)] || "client-badge"} inline-block px-3 py-1 text-xs font-semibold uppercase tracking-wide`}>
+                    {getEstimateStatusLabel(estimate)}
                   </span>
                 </td>                
                 <td className="py-5 px-2 text-center text-sm text-gray-500 hidden table-cell">
@@ -222,6 +256,21 @@ export default function ClientEstimatesPage() {
                 </td>
                 <td className="py-5 px-6">
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    {!estimate.quoteRequestedAt && !estimate.quoteConvertedAt ? (
+                      <button
+                        type="button"
+                        onClick={() => handleRequestQuote(estimate.id)}
+                        disabled={requestingId === estimate.id}
+                        className="bg-[#477a40] hover:bg-[#3d652f] text-white text-sm font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {requestingId === estimate.id ? "Requesting..." : "Request quote"}
+                      </button>
+                    ) : estimate.quoteRequestedAt && !estimate.quoteConvertedAt ? (
+                      <span className="inline-flex items-center justify-center rounded-lg border border-[#477a40]/20 bg-[#477a40]/10 px-4 py-2 text-sm font-semibold text-[#477a40]">
+                        Quote requested
+                      </span>
+                    ) : null}
+
                     {estimate.pdfUrl && (
                       <>
                         <a
@@ -232,7 +281,7 @@ export default function ClientEstimatesPage() {
                         >
                           View PDF
                         </a>
-                        {estimate.status === "Pending" && (
+                        {estimate.status === "Pending" && !estimate.quoteRequestedAt && !estimate.quoteConvertedAt && (
                           <button
                             onClick={() => handleSignEstimate(estimate)}
                             className="bg-[#477a40] hover:bg-[#3d652f] text-white text-sm font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-95 transition-all duration-200 whitespace-nowrap

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSql } from "../../../lib/db/client";
+import { ensureDatabaseSchema } from "../../../lib/db/schema.js";
 import { getRequestUser } from "../../../lib/auth/server";
 
 export async function GET(req) {
@@ -12,6 +13,7 @@ export async function GET(req) {
 
     console.log("Current user email:", user.email);
 
+    await ensureDatabaseSchema();
     const sql = await getSql();
 
     // Find client's estimates using CURRENT user's email
@@ -19,6 +21,9 @@ export async function GET(req) {
       SELECT 
         e.id, e.title, e.service, e.price, e.status, e.notes,
         e.pdf_url as "pdfUrl", e.pdf_name as "pdfName", e.created_at as "createdAt",
+        e.quote_requested_at as "quoteRequestedAt",
+        e.quote_converted_at as "quoteConvertedAt",
+        e.converted_project_id as "convertedProjectId",
         c.id as clientId, c.name as clientName
       FROM estimates e
       JOIN clients c ON e.client_id = c.id
@@ -38,6 +43,9 @@ export async function GET(req) {
         notes: e.notes,
         pdfUrl: e.pdfUrl,
         pdfName: e.pdfName,
+        quoteRequestedAt: e.quoteRequestedAt,
+        quoteConvertedAt: e.quoteConvertedAt,
+        convertedProjectId: e.convertedProjectId,
         createdAt: e.createdAt,
         clientName: e.clientName,
       }))

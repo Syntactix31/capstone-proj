@@ -3,6 +3,8 @@ import { ensureDatabaseSchema } from "./schema.js";
 import { getSql } from "./client.js";
 import { buildQuoteData } from "../quotes.js";
 import { normalizeServiceName } from "../services/catalog.js";
+import { upsertClient, upsertClientProperty } from "./clients.js";
+import { createProject } from "./projects.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -103,6 +105,9 @@ function mapEstimateRow(row) {
     depositAmount: quoteData.depositAmount,
     pdfUrl: row.pdf_url || "",
     pdfName: row.pdf_name || "",
+    quoteRequestedAt: row.quote_requested_at || null,
+    quoteConvertedAt: row.quote_converted_at || null,
+    convertedProjectId: row.converted_project_id || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -207,4 +212,119 @@ export async function createEstimate({
   `;
 
   return row?.id ? findEstimateById(row.id) : null;
+}
+
+export async function requestEstimateQuote(id) {
+  await ensureDatabaseSchema();
+  const sql = getSql();
+  const timestamp = nowIso();
+
+  const rows = await sql`
+    UPDATE estimates
+    SET
+      quote_requested_at = COALESCE(quote_requested_at, ${timestamp}),
+      updated_at = ${timestamp}
+    WHERE id = ${id}
+      AND quote_converted_at IS NULL
+    RETURNING id
+  `;
+
+  return rows[0]?.id ? findEstimateById(rows[0].id) : null;
+}
+
+export async function convertEstimateToProject(
+  id,
+  {
+    recipientName,
+    recipientAddress,
+    recipientEmail,
+    recipientPhone,
+    service,
+    notes = "",
+    servicesIncluded = [],
+    quoteData = {},
+  }
+) {
+  await ensureDatabaseSchema();
+  const sql = getSql();
+  const timestamp = nowIso();
+  const estimate = await findEstimateById(id);
+
+  if (!estimate) {
+    return { estimate: null, project: null, reason: "not_found" };
+  }
+
+  if (estimate.quoteConvertedAt) {
+    return { estimate, project: null, reason: "already_converted" };
+  }
+
+  const normalizedServicesIncluded = normalizeServiceLineItems(
+    servicesIncluded,
+    service || estimate.service
+  );
+  const primaryServiceLine = normalizedServicesIncluded[0] || null;
+  const normalizedQuoteData = buildQuoteData(quoteData, {
+    unitPrice: primaryServiceLine?.price || estimate.total || "0.00",
+    quantity: primaryServiceLine?.quantity || "1",
+    description: primaryServiceLine?.description || "",
+  });
+  const normalizedService = normalizeServiceName(
+    service || primaryServiceLine?.name || estimate.service || "Service"
+  );
+
+  const client = await upsertClient({
+    name: recipientName,
+    email: recipientEmail,
+    phone: recipientPhone,
+    notes,
+  });
+
+  if (!client?.id) {
+    return { estimate, project: null, reason: "client_upsert_failed" };
+  }
+
+  if (recipientAddress) {
+    await upsertClientProperty({
+      clientId: client.id,
+      address: recipientAddress,
+    });
+  }
+
+  const project = await createProject({
+    clientId: client.id,
+    service: normalizedService,
+    address: recipientAddress,
+    totalCost: normalizedQuoteData.total,
+    servicesIncluded: normalizedServicesIncluded,
+    quoteData: normalizedQuoteData,
+  });
+
+  if (!project?.id) {
+    return { estimate, project: null, reason: "project_create_failed" };
+  }
+
+  await sql`
+    UPDATE estimates
+    SET
+      client_id = ${client.id},
+      service = ${normalizedService},
+      price = ${normalizeMoney(normalizedQuoteData.total)},
+      notes = ${String(notes || "").trim()},
+      recipient_name = ${String(recipientName || "").trim()},
+      recipient_address = ${String(recipientAddress || "").trim()},
+      recipient_email = ${String(recipientEmail || "").trim()},
+      recipient_phone = ${String(recipientPhone || "").trim()},
+      services_included = ${JSON.stringify(normalizedServicesIncluded)},
+      quote_data = ${JSON.stringify(normalizedQuoteData)},
+      quote_converted_at = ${timestamp},
+      converted_project_id = ${project.id},
+      updated_at = ${timestamp}
+    WHERE id = ${id}
+  `;
+
+  return {
+    estimate: await findEstimateById(id),
+    project,
+    reason: null,
+  };
 }

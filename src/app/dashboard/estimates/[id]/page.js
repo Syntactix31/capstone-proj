@@ -45,7 +45,7 @@ export default async function AdminEstimatePage({ params }) {
   if (!estimate) notFound();
 
   const serviceLine = getPrimaryServiceLine(estimate);
-  const quote = buildQuoteData(estimate.quoteData, {
+  const estimateData = buildQuoteData(estimate.quoteData, {
     unitPrice: serviceLine.price,
     quantity: serviceLine.quantity,
     description: serviceLine.description,
@@ -66,7 +66,7 @@ export default async function AdminEstimatePage({ params }) {
           <div>
             <h1 className={styles.companyName}>{COMPANY.name}</h1>
             <p className={styles.companyMeta}>
-              {COMPANY.location} | {COMPANY.location}
+              {COMPANY.location}
             </p>
             <p className={styles.companyMeta}>
               {COMPANY.phone} | {COMPANY.email}
@@ -74,21 +74,23 @@ export default async function AdminEstimatePage({ params }) {
           </div>
 
           <aside className={styles.summary}>
-            <div className={styles.summaryTitle}>Estimate #{quote.quoteNumber || estimate.id.slice(0, 8)}</div>
+            <div className={styles.summaryTitle}>
+              Estimate #{estimateData.quoteNumber || estimate.id.slice(0, 8)}
+            </div>
             <div className={styles.summaryRow}>
-              <span>Sent on</span>
-              <strong>{formatLongDate(quote.sentDate)}</strong>
+              <span>Prepared on</span>
+              <strong>{formatLongDate(estimateData.sentDate)}</strong>
             </div>
             <div className={styles.summaryTotal}>
-              <span>Total</span>
-              <strong>{formatCurrency(quote.total)}</strong>
+              <span>Estimated Total</span>
+              <strong>{formatCurrency(estimateData.total)}</strong>
             </div>
           </aside>
         </header>
 
         <section className={styles.recipient}>
           <div>
-            <div className={styles.label}>Recipient:</div>
+            <div className={styles.label}>Prepared For:</div>
             {recipientLines.map((line) => (
               <div key={line}>{line}</div>
             ))}
@@ -100,49 +102,48 @@ export default async function AdminEstimatePage({ params }) {
             <span>Product/Service</span>
             <span>Description</span>
             <span>Qty.</span>
-            <span>Unit Price</span>
-            <span>Total</span>
+            <span>Est. Unit Price</span>
+            <span>Est. Total</span>
           </div>
 
           <div className={styles.tableRow}>
             <div>{serviceLine.name}</div>
-            <div className={styles.description}>{quote.description || "No description added."}</div>
-            <div>{quote.quantity}</div>
-            <div>{formatCurrency(quote.unitPrice)}</div>
-            <div>{formatCurrency(quote.subtotal)}</div>
+            <div className={styles.description}>
+              {estimateData.description || "No description added."}
+            </div>
+            <div>{estimateData.quantity}</div>
+            <div>{formatCurrency(estimateData.unitPrice)}</div>
+            <div>{formatCurrency(estimateData.subtotal)}</div>
           </div>
         </section>
 
         <div className={styles.divider} />
 
-        <section className={styles.deposit}>
-          A deposit of {formatCurrency(quote.depositAmount)} will be required to begin.
+        <section className={styles.note}>
+          This estimate is provided as an approximate cost based on the current project scope.
+          Final pricing may change depending on site conditions, material costs, and changes
+          requested before work begins.
         </section>
 
         <footer className={styles.footer}>
-          <div className={styles.signature}>
-            <div className={styles.signatureLine} />
-            <div className={styles.signatureMeta}>
-              <span>{formatLongDate(quote.sentDate)}</span>
-              <span>Client Signature</span>
-            </div>
-            <p className={styles.note}>
-              This estimate is valid for the next 30 days, after which values may be subject to change.
-            </p>
+          <div className={styles.note}>
+            This estimate is valid for the next 30 days and is for budgeting purposes only.
+            A formal quotation with approval/signature and any required deposit will be issued
+            before work starts.
           </div>
 
           <div className={styles.totals}>
             <div className={styles.totalsRow}>
-              <span>Subtotal</span>
-              <strong>{formatCurrency(quote.subtotal)}</strong>
+              <span>Estimated Subtotal</span>
+              <strong>{formatCurrency(estimateData.subtotal)}</strong>
             </div>
             <div className={styles.totalsRow}>
-              <span>GST ({formatPercent(quote.gstRate)})</span>
-              <strong>{formatCurrency(quote.gstAmount)}</strong>
+              <span>GST ({formatPercent(estimateData.gstRate)})</span>
+              <strong>{formatCurrency(estimateData.gstAmount)}</strong>
             </div>
             <div className={`${styles.totalsRow} ${styles.totalsRowTotal}`}>
-              <span>Total</span>
-              <strong>{formatCurrency(quote.total)}</strong>
+              <span>Estimated Total</span>
+              <strong>{formatCurrency(estimateData.total)}</strong>
             </div>
           </div>
         </footer>

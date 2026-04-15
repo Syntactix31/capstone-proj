@@ -282,6 +282,21 @@ export async function ensureDatabaseSchema() {
         ALTER TABLE estimates
         ADD COLUMN IF NOT EXISTS pdf_name text
       `;
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS quote_requested_at timestamptz
+      `;
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS quote_converted_at timestamptz
+      `;
+
+      await sql`
+        ALTER TABLE estimates
+        ADD COLUMN IF NOT EXISTS converted_project_id text REFERENCES projects(id) ON DELETE SET NULL
+      `;
     })().catch((error) => {
       schemaPromise = null;
       throw error;
