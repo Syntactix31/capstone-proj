@@ -44,6 +44,39 @@ export default async function AdminEstimatePage({ params }) {
 
   if (!estimate) notFound();
 
+  if (estimate.pdfUrl) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-4">
+            <Link className="admin-btn admin-btn--ghost" href="/dashboard/estimates">
+              Back to estimates
+            </Link>
+          </div>
+          <div className="bg-white rounded-lg shadow-lg p-4">
+            <h1 className="text-2xl font-bold mb-4">Estimate PDF</h1>
+            <iframe
+              src={estimate.pdfUrl}
+              className="w-full h-[600px] border rounded"
+              title="Estimate PDF"
+            />
+            <div className="mt-4">
+              <a
+                href={estimate.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="admin-btn admin-btn--primary"
+              >
+                Open PDF in New Tab
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback to in-page rendering if no PDF
   const serviceLine = getPrimaryServiceLine(estimate);
   const estimateData = buildQuoteData(estimate.quoteData, {
     unitPrice: serviceLine.price,

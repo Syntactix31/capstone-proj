@@ -22,7 +22,6 @@ import {
   sanitizePercentInput,
   sanitizeTextArea,
 } from "../../lib/validation/fields.js";
-import { downloadEstimatePdf, downloadQuotePdf } from "../../lib/estimates/pdf.js";
 
 const DEFAULT_SERVICES = SERVICE_CATALOG.map((service, index) => ({
   id: `S-${String(index + 1).padStart(2, "0")}`,
@@ -39,6 +38,7 @@ const STATUS_CLASS = {
   Rejected: "admin-badge admin-badge--muted",
   "Quote requested": "admin-badge admin-badge--pending",
   "Converted to quote": "admin-badge admin-badge--active",
+  Signed: "inline-block px-3 py-1 text-xs font-semibold text-white bg-teal-500 rounded-full",
 };
 
 function createEstimateForm(service) {
@@ -70,6 +70,8 @@ function createConvertForm(estimate) {
 
   return {
     id: estimate?.id || "",
+    clientId: estimate?.clientId || "",
+    title: estimate?.title || `${estimate?.service || DEFAULT_SERVICES[0].name} Estimate`,
     recipientName: estimate?.recipientName || "",
     recipientAddress: estimate?.recipientAddress || "",
     recipientEmail: estimate?.recipientEmail || "",
@@ -83,10 +85,12 @@ function createConvertForm(estimate) {
     gstRate: String(Number(quote.gstRate || DEFAULT_GST_RATE) * 100),
     depositRate: String(Number(quote.depositRate || DEFAULT_DEPOSIT_RATE) * 100),
     notes: estimate?.notes || "",
+    status: estimate?.status || "Pending",
   };
 }
 
 function getEstimateStatusLabel(estimate) {
+  if (estimate?.quoteConvertedAt && estimate?.notes?.includes("ELECTRONIC SIGNATURE")) return "Signed";
   if (estimate?.quoteConvertedAt) return "Converted to quote";
   if (estimate?.quoteRequestedAt) return "Quote requested";
   return estimate?.status || "Pending";
@@ -427,30 +431,6 @@ export default function AdminEstimatesPage() {
     setIsEstimateModalOpen(true);
   };
 
-  const handleDownload = async (estimate) => {
-    if (estimate?.quoteConvertedAt && estimate?.convertedProjectId) {
-      const res = await fetch(`/api/admin/projects/${estimate.convertedProjectId}`, {
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || !data?.project?.quoteData) {
-        throw new Error(data?.error || "Failed to load quote for download.");
-      }
-
-      await downloadQuotePdf(data.project, {
-        title: estimate?.title,
-        name: estimate?.recipientName || data.project.client,
-        address: estimate?.recipientAddress || data.project.address,
-        phone: estimate?.recipientPhone,
-        email: estimate?.recipientEmail,
-      });
-      return;
-    }
-
-    await downloadEstimatePdf(estimate);
-  };
-
   const openConvertModal = (estimate) => {
     setConvertForm(createConvertForm(estimate));
     setActiveMenuId("");
@@ -668,9 +648,7 @@ export default function AdminEstimatesPage() {
       const nextEstimateId = data?.estimate?.id;
       setIsEstimateModalOpen(false);
       await refreshEstimates();
-      if (nextEstimateId && typeof window !== "undefined") {
-        window.open(`/dashboard/estimates/${nextEstimateId}`, "_blank", "noopener,noreferrer");
-      }
+      // No need to open new window, PDF is available in the list
     } catch (createError) {
       console.error(createError);
       setError("Failed to create estimate.");
@@ -740,14 +718,17 @@ export default function AdminEstimatesPage() {
 
     try {
       const res = await fetch(`/api/admin/estimates/${editForm.id}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          clientId: editForm.clientId,
+          title: editForm.title || `${editForm.service} Estimate`,
+          service: editForm.service,
           recipientName: editForm.recipientName,
           recipientAddress: editForm.recipientAddress,
           recipientEmail: editForm.recipientEmail,
           recipientPhone: editForm.recipientPhone,
-          service: editForm.service,
+          status: editForm.status || "Pending",
           notes: editForm.notes,
           servicesIncluded: [
             {
@@ -962,38 +943,35 @@ export default function AdminEstimatesPage() {
                   maxHeight: `${menuPosition.maxHeight}px`,
                 }}
               >
-                <Link
-                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
-                  href={
-                    activeEstimate.quoteConvertedAt && activeEstimate.convertedProjectId
-                      ? `/dashboard/projects/${activeEstimate.convertedProjectId}/quote`
-                      : `/dashboard/estimates/${activeEstimate.id}`
-                  }
-                  onClick={() => setActiveMenuId("")}
-                >
-                  View
-                </Link>
+                {activeEstimate.pdfUrl ? (
+                  <a
+                    className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                    href={activeEstimate.pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setActiveMenuId("")}
+                  >
+                    View PDF
+                  </a>
+                ) : (
+                  <Link
+                    className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                    href={
+                      activeEstimate.quoteConvertedAt && activeEstimate.convertedProjectId
+                        ? `/dashboard/projects/${activeEstimate.convertedProjectId}/quote`
+                        : `/dashboard/estimates/${activeEstimate.id}`
+                    }
+                    onClick={() => setActiveMenuId("")}
+                  >
+                    View
+                  </Link>
+                )}
                 <button
                   className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
                   type="button"
                   onClick={() => openEditModal(activeEstimate)}
                 >
                   Edit
-                </button>
-                <button
-                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
-                  type="button"
-                  onClick={async () => {
-                    setActiveMenuId("");
-                    try {
-                      await handleDownload(activeEstimate);
-                    } catch (downloadError) {
-                      console.error(downloadError);
-                      alert("Failed to download file.");
-                    }
-                  }}
-                >
-                  Download
                 </button>
                 <button
                   className="block w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"

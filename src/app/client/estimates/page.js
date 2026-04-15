@@ -400,13 +400,6 @@ export default function ClientEstimatesPage() {
                 maxHeight: `${menuPosition.maxHeight}px`,
               }}
             >
-              <a
-                href={`/client/estimates/${activeEstimate.id}`}
-                className="block rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                onClick={() => setActiveMenuId("")}
-              >
-                View
-              </a>
               <button
                 type="button"
                 className="block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
@@ -474,16 +467,14 @@ export default function ClientEstimatesPage() {
             </div>
 
             <div className="space-y-4 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="font-semibold text-blue-900 text-lg">Legal Notice</h3>
+              <h3 className="font-semibold text-blue-900 text-lg">Electronic Signature Confirmation</h3>
               <p className="text-sm text-blue-900 leading-relaxed">
-                <strong>This is a legally binding electronic signature</strong> under{" "}
-                <strong>PIPEDA</strong> (Canada) and <strong>UECA</strong> (Uniform Electronic 
-                Commerce Act). By signing below, you agree to the terms of this estimate 
-                and authorize work to proceed.
+                This landscaping estimate contract is electronically signed on{" "}
+                <strong>{new Date().toLocaleDateString()}</strong> at{" "}
+                <strong>{new Date().toLocaleTimeString()}</strong> under PIPEDA (Canada) and UECA regulations.
               </p>
               <div className="text-xs text-blue-800 bg-blue-100 p-2 rounded">
-                Your signature is timestamped and stored securely. You will receive a 
-                signed copy via email.
+                Your signature is timestamped and stored securely. You will receive a signed copy via email.
               </div>
             </div>
 
