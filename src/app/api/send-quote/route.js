@@ -18,7 +18,7 @@ export async function POST(req) {
   try {
     const { to_email, subject, message_html, attachments = [] } = await req.json();
     const from = process.env.RESEND_FROM_EMAIL || "LandscapeCraftsmen@resend.dev";
-    const destination = process.env.OWNER_EMAIL;
+    const destination = process.env.QUOTE_TO_EMAIL;
 
     if (!process.env.RESEND_API_KEY) {
       return NextResponse.json({ error: "Missing RESEND_API_KEY" }, { status: 500 });
