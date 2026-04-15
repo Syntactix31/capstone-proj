@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/auth/server";
+import { recordAdminActivity } from "../../../../lib/admin/audit.js";
 import { deleteProject, findProjectById, updateProject } from "../../../../lib/db/projects";
 import { buildQuoteData } from "../../../../lib/quotes.js";
 import { FIELD_LIMITS, sanitizeTextArea } from "../../../../lib/validation/fields.js";
@@ -68,11 +69,17 @@ export async function PATCH(req, { params }) {
   try {
     const resolvedParams = await params;
     const body = await req.json();
+    const existingProject = await findProjectById(resolvedParams.id);
+    if (!existingProject) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
     const servicesIncluded = normalizeServiceItems(body?.servicesIncluded);
     const primaryServiceName =
       String(body?.service || "").trim() || servicesIncluded[0]?.name || "";
     const shouldUpdateQuoteData =
       body?.generateQuote === true || body?.quoteData !== undefined;
+
+    const normalizedPayments = normalizePayments(body?.payments);
 
     const project = await updateProject(resolvedParams.id, {
       service: primaryServiceName,
@@ -85,15 +92,30 @@ export async function PATCH(req, { params }) {
       ...(shouldUpdateQuoteData
         ? { quoteData: normalizeQuoteData(body?.quoteData || {}) }
         : {}),
-      payments: normalizePayments(body?.payments),
+      payments: normalizedPayments,
       ownerNotes: sanitizeTextArea(body?.ownerNotes, FIELD_LIMITS.notes),
       estimatePdfUrl: String(body?.estimatePdfUrl || "").trim(),
       estimatePdfName: String(body?.estimatePdfName || "").trim(),
     });
 
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
+    const previousPaymentCount = Array.isArray(existingProject.payments) ? existingProject.payments.length : 0;
+    const nextPaymentCount = Array.isArray(project.payments) ? project.payments.length : 0;
+    const paymentCountChanged = normalizedPayments.length > 0 && nextPaymentCount !== previousPaymentCount;
+    const action = paymentCountChanged ? "Recorded payment" : "Updated project";
+    const details = paymentCountChanged
+      ? `Recorded payment activity on project "${project.service}". Payment entries changed from ${previousPaymentCount} to ${nextPaymentCount}.`
+      : `Updated project "${project.service}" details, scheduling, or quote settings.`;
+
+    await recordAdminActivity(req, {
+      action,
+      details,
+      metadata: {
+        projectId: project.id,
+        service: project.service,
+        previousPaymentCount,
+        nextPaymentCount,
+      },
+    });
 
     return NextResponse.json({ project });
   } catch (error) {
@@ -108,6 +130,7 @@ export async function DELETE(req, { params }) {
 
   try {
     const resolvedParams = await params;
+    const existingProject = await findProjectById(resolvedParams.id);
     const deleted = await deleteProject(resolvedParams.id);
 
     if (!deleted?.ok && deleted?.reason === "has_active_bookings") {
@@ -123,6 +146,12 @@ export async function DELETE(req, { params }) {
     if (!deleted?.ok) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
+
+    await recordAdminActivity(req, {
+      action: "Deleted project",
+      details: `Deleted project "${existingProject?.service || resolvedParams.id}".`,
+      metadata: { projectId: resolvedParams.id, service: existingProject?.service || "" },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCalendarClient } from "../../../lib/googleCalendar";
 import { getGmailTransporter } from "../../../lib/gmail";
+import { recordAdminActivity } from "../../../lib/admin/audit.js";
 import { findBookingByGoogleEventId, updateBookingByGoogleEventId } from "../../../lib/db/bookings";
 import { upsertClientProperty } from "../../../lib/db/clients";
 
@@ -392,6 +393,19 @@ export async function POST(req) {
       notes,
       googleEventId: updatedEvent.data.id || eventId,
       status: "confirmed",
+    });
+
+    await recordAdminActivity(req, {
+      action: "Edited appointment",
+      details: `Rescheduled appointment "${service}" for ${firstName} ${lastName}`.trim() + ` to ${newDate} at ${newTime}.`,
+      metadata: {
+        bookingEventId: updatedEvent.data.id || eventId,
+        clientId: storedBooking?.clientId || null,
+        projectId: storedBooking?.projectId || null,
+        service,
+        date: newDate,
+        time: newTime,
+      },
     });
 
     const transporter = getGmailTransporter();

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { recordAdminActivity } from "../../../lib/admin/audit.js";
 import { cancelBookingWorkflow } from "../../../lib/bookings/cancelBooking.js";
 
 // Cancel the booking in Google Calendar, update Postgres, and send emails.
@@ -11,6 +12,11 @@ export async function POST(req) {
     }
 
     await cancelBookingWorkflow(eventId);
+    await recordAdminActivity(req, {
+      action: "Deleted appointment",
+      details: `Cancelled appointment with calendar event ${eventId}.`,
+      metadata: { bookingEventId: eventId },
+    });
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("CANCEL ERROR:", err);

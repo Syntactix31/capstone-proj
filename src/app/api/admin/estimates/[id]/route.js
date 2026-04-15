@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSql } from "../../../../lib/db/client";
 import { put, del } from "@vercel/blob";
 import { requireAdmin } from "../../../../lib/auth/server";
+import { recordAdminActivity } from "../../../../lib/admin/audit.js";
 import { ensureDatabaseSchema } from "../../../../lib/db/schema.js";
 import { findEstimateById } from "../../../../lib/db/estimates.js";
 import { findProjectById, updateProject } from "../../../../lib/db/projects.js";
@@ -167,6 +168,12 @@ export async function PUT(req, { params }) {
       await deleteBlobPdf(oldPdfUrl);
     }
 
+    await recordAdminActivity(req, {
+      action: "Updated estimate",
+      details: `Updated estimate "${title}" for client ${clientId}.`,
+      metadata: { estimateId: id, clientId, service, status },
+    });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     console.error("Estimate update error:", err);
@@ -257,7 +264,21 @@ export async function PATCH(req, { params }) {
       WHERE id = ${id}
     `;
 
-    return NextResponse.json({ estimate: await findEstimateById(id) });
+    const updatedEstimate = await findEstimateById(id);
+    await recordAdminActivity(req, {
+      action: estimate.quoteConvertedAt ? "Updated quote" : "Updated estimate",
+      details: estimate.quoteConvertedAt
+        ? `Updated converted quote "${service}" for ${recipientName}.`
+        : `Updated estimate "${service}" for ${recipientName}.`,
+      metadata: {
+        estimateId: id,
+        convertedProjectId: estimate.convertedProjectId || null,
+        service,
+        recipientName,
+      },
+    });
+
+    return NextResponse.json({ estimate: updatedEstimate });
   } catch (err) {
     console.error("Estimate patch error:", err);
     return NextResponse.json(
@@ -275,6 +296,7 @@ export async function DELETE(req, { params }) {
     await ensureDatabaseSchema();
     const sql = await getSql();
     const { id } = await params;
+    const estimate = await findEstimateById(id);
     // Fetch current PDF URL from DB
     const row = await sql`
       SELECT pdf_url
@@ -291,6 +313,12 @@ export async function DELETE(req, { params }) {
 
     // Then delete the DB row
     await sql`DELETE FROM estimates WHERE id = ${id}`;
+
+    await recordAdminActivity(req, {
+      action: "Deleted estimate",
+      details: `Deleted estimate "${estimate?.title || estimate?.service || id}".`,
+      metadata: { estimateId: id, service: estimate?.service || "" },
+    });
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {

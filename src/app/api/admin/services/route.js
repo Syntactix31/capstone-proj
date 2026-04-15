@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../lib/auth/server";
+import { recordAdminActivity } from "../../../lib/admin/audit.js";
 import {
   createService,
   deleteService,
@@ -51,6 +52,11 @@ export async function POST(req) {
     }
 
     const service = await createService(validation.value);
+    await recordAdminActivity(req, {
+      action: "Created service",
+      details: `Created service "${service.name}" with ${service.durationValue} ${service.durationUnit} at $${service.price}.`,
+      metadata: { serviceId: service.id, serviceName: service.name },
+    });
     return NextResponse.json({ service }, { status: 201 });
   } catch (error) {
     console.error("ADMIN SERVICES POST ERROR:", error);
@@ -79,6 +85,12 @@ export async function PATCH(req) {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
     }
 
+    await recordAdminActivity(req, {
+      action: "Updated service",
+      details: `Updated service "${service.name}" and refreshed its pricing/duration settings.`,
+      metadata: { serviceId: service.id, serviceName: service.name },
+    });
+
     return NextResponse.json({ service });
   } catch (error) {
     console.error("ADMIN SERVICES PATCH ERROR:", error);
@@ -102,6 +114,12 @@ export async function DELETE(req) {
     if (!service) {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
     }
+
+    await recordAdminActivity(req, {
+      action: "Deleted service",
+      details: `Deleted service "${service.name}".`,
+      metadata: { serviceId: service.id, serviceName: service.name },
+    });
 
     return NextResponse.json({ ok: true, service });
   } catch (error) {

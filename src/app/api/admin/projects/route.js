@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../lib/auth/server";
+import { recordAdminActivity } from "../../../lib/admin/audit.js";
 import { createProject, listProjects } from "../../../lib/db/projects";
 import { buildQuoteData } from "../../../lib/quotes.js";
 import { FIELD_LIMITS, sanitizeTextArea } from "../../../lib/validation/fields.js";
@@ -62,6 +63,12 @@ export async function POST(req) {
       totalCost,
       servicesIncluded,
       quoteData,
+    });
+
+    await recordAdminActivity(req, {
+      action: "Created project",
+      details: `Created project "${project.service}" for client ${project.client || clientId}.`,
+      metadata: { projectId: project.id, service: project.service, clientId },
     });
 
     return NextResponse.json({ project });

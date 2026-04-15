@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../../lib/auth/server";
+import { recordAdminActivity } from "../../../../../lib/admin/audit.js";
 import { convertEstimateToProject } from "../../../../../lib/db/estimates.js";
 import { buildQuoteData } from "../../../../../lib/quotes.js";
 import {
@@ -80,10 +81,19 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Failed to convert estimate to quote." }, { status: 500 });
     }
 
+    await recordAdminActivity(req, {
+      action: "Converted estimate to quote",
+      details: `Converted estimate "${result.estimate.title}" into quote/project "${result.project.service}".`,
+      metadata: {
+        estimateId: result.estimate.id,
+        projectId: result.project.id,
+        service: result.project.service,
+      },
+    });
+
     return NextResponse.json({ estimate: result.estimate, project: result.project });
   } catch (error) {
     console.error("ADMIN ESTIMATE CONVERT ERROR:", error);
     return NextResponse.json({ error: "Failed to convert estimate" }, { status: 500 });
   }
 }
-

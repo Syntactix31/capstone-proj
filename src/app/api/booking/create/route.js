@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCalendarClient } from "../../../lib/googleCalendar";
 import { getGmailTransporter } from "../../../lib/gmail";
+import { recordAdminActivity } from "../../../lib/admin/audit.js";
 import { createBooking } from "../../../lib/db/bookings";
 import { fetchClientById, upsertClient, upsertClientProperty } from "../../../lib/db/clients";
 import { createProject, findProjectById, listProjects } from "../../../lib/db/projects";
@@ -464,6 +465,19 @@ export async function POST(req) {
       endAt: end.toISOString(),
       notes: normalizedNotes,
       googleEventId: event.data.id,
+    });
+
+    await recordAdminActivity(req, {
+      action: "Created appointment",
+      details: `Created ${normalizedVisitType.toLowerCase()} appointment for ${normalizedFirstName} ${normalizedLastName}`.trim() + ` on ${date} at ${time}.`,
+      metadata: {
+        bookingEventId: event.data.id,
+        clientId: client.id,
+        projectId: linkedProject?.id || null,
+        service: normalizedService,
+        date,
+        time,
+      },
     });
 
     const transporter = getGmailTransporter();

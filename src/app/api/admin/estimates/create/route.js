@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/auth/server";
+import { recordAdminActivity } from "../../../../lib/admin/audit.js";
 import { createEstimate } from "../../../../lib/db/estimates.js";
 import { fetchClientById } from "../../../../lib/db/clients.js";
 import { buildQuoteData } from "../../../../lib/quotes.js";
@@ -82,6 +83,12 @@ export async function POST(req) {
       servicesIncluded,
       quoteData,
       status: "Pending",
+    });
+
+    await recordAdminActivity(req, {
+      action: "Created estimate",
+      details: `Created estimate "${estimate.title}" for ${estimate.recipientName}.`,
+      metadata: { estimateId: estimate.id, service: estimate.service, recipientName: estimate.recipientName },
     });
 
     return NextResponse.json({ estimate }, { status: 201 });

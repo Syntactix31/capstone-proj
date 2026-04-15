@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../lib/auth/server";
+import { recordAdminActivity } from "../../../lib/admin/audit.js";
 import { deleteClient, listClients, updateClient, upsertClient } from "../../../lib/db/clients";
 
 const CLIENT_FIELD_LIMITS = {
@@ -77,8 +78,15 @@ export async function POST(req) {
     }
 
     const updatedClient = await updateClient(baseClient.id, body);
+    const client = updatedClient || baseClient;
 
-    return NextResponse.json({ client: updatedClient || baseClient });
+    await recordAdminActivity(req, {
+      action: "Created client",
+      details: `Created client "${client.name}" (${client.email}).`,
+      metadata: { clientId: client.id, clientName: client.name, clientEmail: client.email },
+    });
+
+    return NextResponse.json({ client });
   } catch (error) {
     console.error("ADMIN CLIENTS POST ERROR:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
@@ -100,6 +108,12 @@ export async function PATCH(req) {
     if (!client) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
+
+    await recordAdminActivity(req, {
+      action: "Updated client",
+      details: `Updated client "${client.name}".`,
+      metadata: { clientId: client.id, clientName: client.name, clientEmail: client.email },
+    });
 
     return NextResponse.json({ client });
   } catch (error) {
@@ -147,6 +161,16 @@ export async function DELETE(req) {
 
       return NextResponse.json({ error: "Failed to delete client" }, { status: 500 });
     }
+
+    await recordAdminActivity(req, {
+      action: "Deleted client",
+      details: `Deleted client "${result.client?.name || clientId}".`,
+      metadata: {
+        clientId,
+        clientName: result.client?.name || "",
+        clientEmail: result.client?.email || "",
+      },
+    });
 
     return NextResponse.json({ ok: true, client: result.client });
   } catch (error) {
