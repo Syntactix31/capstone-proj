@@ -287,6 +287,8 @@ function mapProjectRow(row) {
     ownerNotes: row.owner_notes || "",
     estimatePdfUrl: row.estimate_pdf_url || "",
     estimatePdfName: row.estimate_pdf_name || "",
+    quoteSignedAt: row.quote_signed_at || null,
+    quoteSignerName: row.quote_signer_name || "",
     nextVisitDate: row.next_visit_date || null,
     nextVisitTime: row.next_visit_time || null,
     nextVisitTs: row.next_visit_ts ? new Date(row.next_visit_ts).getTime() : Number.POSITIVE_INFINITY,
@@ -548,13 +550,15 @@ export async function updateProject(
     ownerNotes,
     estimatePdfUrl,
     estimatePdfName,
+    quoteSignedAt,
+    quoteSignerName,
   }
 ) {
   await ensureDatabaseSchema();
   const sql = getSql();
   const timestamp = nowIso();
   const existingRows = await sql`
-    SELECT service, quote_data
+    SELECT service, quote_data, quote_signed_at, quote_signer_name
     FROM projects
     WHERE id = ${id}
     LIMIT 1
@@ -609,6 +613,12 @@ export async function updateProject(
       owner_notes = ${String(ownerNotes || "")},
       estimate_pdf_url = ${estimatePdfUrl ? String(estimatePdfUrl) : null},
       estimate_pdf_name = ${estimatePdfName ? String(estimatePdfName) : null},
+      quote_signed_at = ${quoteSignedAt !== undefined
+        ? (quoteSignedAt ? String(quoteSignedAt) : null)
+        : existingProject.quote_signed_at},
+      quote_signer_name = ${quoteSignerName !== undefined
+        ? String(quoteSignerName || "")
+        : existingProject.quote_signer_name},
       updated_at = ${timestamp}
     WHERE id = ${id}
     RETURNING id

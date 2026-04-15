@@ -97,6 +97,14 @@ function derivePaymentStatus({ total, depositAmount, totalPaid }) {
   return "Unpaid";
 }
 
+function getProjectQuoteHref(project) {
+  if (project?.quoteSignedAt && project?.estimatePdfUrl) {
+    return project.estimatePdfUrl;
+  }
+
+  return `/dashboard/projects/${project?.id}/quote`;
+}
+
 export default function AdminProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -717,10 +725,12 @@ export default function AdminProjectDetailPage() {
               ) : (
                 <Link
                   className="admin-btn admin-btn--primary"
-                  href={`/dashboard/projects/${projectId}/quote`}
+                  href={getProjectQuoteHref(project)}
                   target="_blank"
                 >
-                  Open quotation
+                  {project?.quoteSignedAt && project?.estimatePdfUrl
+                    ? "Open signed quotation"
+                    : "Open quotation"}
                 </Link>
               )}
             </div>

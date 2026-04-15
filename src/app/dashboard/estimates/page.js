@@ -95,6 +95,7 @@ function createConvertForm(estimate) {
 
 function getEstimateStatusLabel(estimate) {
   if (estimate?.status === "Signed") return "Signed";
+  if (estimate?.quoteSignedAt) return "Signed";
   if (estimate?.quoteConvertedAt) return "Converted to quote";
   if (estimate?.quoteRequestedAt) return "Quote requested";
   return estimate?.status || "Pending";
@@ -436,7 +437,7 @@ export default function AdminEstimatesPage() {
   };
 
   const handleDownload = async (estimate) => {
-    if (estimate?.status === "Signed" && estimate?.pdfUrl) {
+    if ((estimate?.status === "Signed" || estimate?.quoteSignedAt) && estimate?.pdfUrl) {
       const signedFilename =
         estimate?.pdfName ||
         (estimate?.quoteConvertedAt && estimate?.convertedProjectId
@@ -971,7 +972,7 @@ export default function AdminEstimatesPage() {
           (() => {
             const activeEstimate = estimates.find((estimate) => estimate.id === activeMenuId);
             if (!activeEstimate) return null;
-            const isSigned = activeEstimate.status === "Signed";
+            const isSigned = activeEstimate.status === "Signed" || Boolean(activeEstimate.quoteSignedAt);
 
             return (
               <div

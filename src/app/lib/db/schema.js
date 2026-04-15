@@ -172,6 +172,16 @@ export async function ensureDatabaseSchema() {
       `;
 
       await sql`
+        ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS quote_signed_at timestamptz
+      `;
+
+      await sql`
+        ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS quote_signer_name text NOT NULL DEFAULT ''
+      `;
+
+      await sql`
         CREATE UNIQUE INDEX IF NOT EXISTS projects_client_service_address_idx
         ON projects (client_id, service, address)
       `;

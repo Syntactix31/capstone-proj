@@ -103,11 +103,13 @@ function mapEstimateRow(row) {
     subtotal: quoteData.subtotal,
     gstAmount: quoteData.gstAmount,
     depositAmount: quoteData.depositAmount,
-    pdfUrl: row.pdf_url || "",
-    pdfName: row.pdf_name || "",
+    pdfUrl: row.project_estimate_pdf_url || row.pdf_url || "",
+    pdfName: row.project_estimate_pdf_name || row.pdf_name || "",
     quoteRequestedAt: row.quote_requested_at || null,
     quoteConvertedAt: row.quote_converted_at || null,
     convertedProjectId: row.converted_project_id || null,
+    quoteSignedAt: row.project_quote_signed_at || null,
+    quoteSignerName: row.project_quote_signer_name || "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -121,9 +123,14 @@ export async function listAdminEstimates() {
       e.*,
       c.name AS client_name,
       c.email AS client_email,
-      c.phone AS client_phone
+      c.phone AS client_phone,
+      pr.estimate_pdf_url AS project_estimate_pdf_url,
+      pr.estimate_pdf_name AS project_estimate_pdf_name,
+      pr.quote_signed_at AS project_quote_signed_at,
+      pr.quote_signer_name AS project_quote_signer_name
     FROM estimates e
     LEFT JOIN clients c ON c.id = e.client_id
+    LEFT JOIN projects pr ON pr.id = e.converted_project_id
     ORDER BY e.updated_at DESC, e.created_at DESC
   `;
 
@@ -138,9 +145,14 @@ export async function findEstimateById(id) {
       e.*,
       c.name AS client_name,
       c.email AS client_email,
-      c.phone AS client_phone
+      c.phone AS client_phone,
+      pr.estimate_pdf_url AS project_estimate_pdf_url,
+      pr.estimate_pdf_name AS project_estimate_pdf_name,
+      pr.quote_signed_at AS project_quote_signed_at,
+      pr.quote_signer_name AS project_quote_signer_name
     FROM estimates e
     LEFT JOIN clients c ON c.id = e.client_id
+    LEFT JOIN projects pr ON pr.id = e.converted_project_id
     WHERE e.id = ${id}
     LIMIT 1
   `;

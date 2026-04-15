@@ -15,13 +15,19 @@ const STATUS_CLASS = {
   Signed: "client-badge client-badge--active",
   Pending: "client-badge client-badge--pending",
   Rejected: "client-badge client-badge--rejected",
+  "Signature Required": "client-badge client-badge--pending",
   "Quote requested": "client-badge client-badge--pending",
   "Converted to quote": "client-badge client-badge--active",
 };
 
 function getEstimateStatusLabel(estimate) {
+  if (estimate?.sourceType === "project_quote") {
+    return estimate?.quoteSignedAt ? "Signed" : "Signature Required";
+  }
   if (estimate?.status === "Signed") return "Signed";
-  if (estimate?.quoteConvertedAt) return "Converted to quote";
+  if (estimate?.quoteConvertedAt) {
+    return estimate?.quoteSignedAt ? "Signed" : "Signature Required";
+  }
   if (estimate?.quoteRequestedAt) return "Quote requested";
   return estimate?.status || "Pending";
 }
@@ -92,7 +98,10 @@ export default function ClientEstimatesPage() {
     return {
       total: estimates.length,
       pending: estimates.filter((e) => getEstimateStatusLabel(e) === "Pending").length,
-      approved: estimates.filter((e) => e.status === "Approved" || e.status === "Signed").length,
+      approved: estimates.filter((e) => {
+        const label = getEstimateStatusLabel(e);
+        return label === "Approved" || label === "Signed" || label === "Converted to quote";
+      }).length,
       rejected: estimates.filter((e) => e.status === "Rejected").length,
     };
   }, [estimates]);
@@ -122,7 +131,12 @@ export default function ClientEstimatesPage() {
       formData.append("signatureDate", signatureDate);
       formData.append("signedPdf", signedPdf);
 
-      const res = await fetch(`/api/client/estimates/${estimateToSign.id}/sign`, {
+      const signEndpoint =
+        estimateToSign?.projectId
+          ? `/api/client/project/${estimateToSign.projectId}/sign`
+          : `/api/client/estimates/${estimateToSign.id}/sign`;
+
+      const res = await fetch(signEndpoint, {
         method: "POST",
         body: formData,
       });
@@ -169,7 +183,7 @@ export default function ClientEstimatesPage() {
   };
 
   const handleDownload = async (estimate) => {
-    if (estimate?.status === "Signed" && estimate?.pdfUrl) {
+    if ((estimate?.status === "Signed" || estimate?.quoteSignedAt) && estimate?.pdfUrl) {
       const signedFilename =
         estimate?.pdfName ||
         (estimate?.quoteConvertedAt && estimate?.convertedProjectId
@@ -179,6 +193,24 @@ export default function ClientEstimatesPage() {
             )
           : getEstimatePdfFilename(estimate));
       await downloadPdfFromUrl(estimate.pdfUrl, signedFilename);
+      return;
+    }
+
+    if (estimate?.sourceType === "project_quote" && estimate?.projectId) {
+      const res = await fetch(`/api/client/project/${estimate.projectId}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data?.project?.quoteData) {
+        throw new Error(data?.error || "Failed to load quotation for download.");
+      }
+
+      await downloadQuotePdf(data.project, {
+        title: estimate?.title,
+        name: data.project.clientName,
+        address: data.project.address,
+      });
       return;
     }
 
@@ -402,12 +434,23 @@ export default function ClientEstimatesPage() {
         (() => {
           const activeEstimate = estimates.find((estimate) => estimate.id === activeMenuId);
           const canRequestQuote =
-            activeEstimate && !activeEstimate.quoteRequestedAt && !activeEstimate.quoteConvertedAt;
+            activeEstimate &&
+            activeEstimate.sourceType !== "project_quote" &&
+            !activeEstimate.quoteRequestedAt &&
+            !activeEstimate.quoteConvertedAt;
           const canSignEstimate =
             activeEstimate &&
-            activeEstimate.status === "Pending" &&
-            activeEstimate.quoteConvertedAt;
-          const isSigned = activeEstimate.status === "Signed";
+            (
+              (activeEstimate.sourceType === "project_quote" && !activeEstimate.quoteSignedAt) ||
+              (
+                activeEstimate.sourceType !== "project_quote" &&
+                activeEstimate.quoteConvertedAt &&
+                !activeEstimate.quoteSignedAt
+              )
+            );
+          const isSigned =
+            activeEstimate.status === "Signed" ||
+            Boolean(activeEstimate.quoteSignedAt);
 
           if (!activeEstimate) return null;
 
@@ -426,6 +469,8 @@ export default function ClientEstimatesPage() {
                 href={
                   isSigned && activeEstimate.pdfUrl
                     ? activeEstimate.pdfUrl
+                    : activeEstimate.projectId
+                    ? `/client/projects/${activeEstimate.projectId}/quote`
                     : activeEstimate.quoteConvertedAt && activeEstimate.convertedProjectId
                     ? `/client/projects/${activeEstimate.convertedProjectId}/quote`
                     : `/client/estimates/${activeEstimate.id}`
@@ -491,7 +536,7 @@ export default function ClientEstimatesPage() {
           <div className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Electronically Sign Estimate
+                Electronically Sign {estimateToSign?.sourceType === "project_quote" ? "Quotation" : "Estimate"}
               </h2>
               <button
                 onClick={() => setShowLegalModal(false)}
@@ -533,6 +578,7 @@ export default function ClientEstimatesPage() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Upload Signed Estimate PDF
+                  {estimateToSign?.sourceType === "project_quote" ? " / Quotation PDF" : ""}
                 </label>
                 <input
                   type="file"
