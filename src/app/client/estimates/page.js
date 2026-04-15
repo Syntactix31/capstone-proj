@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ClientLayout from "../../components/ClientLayout.js";
+import { downloadEstimatePdf } from "../../lib/estimates/pdf.js";
 
 const STATUS_CLASS = {
   Approved: "client-badge client-badge--active",
@@ -22,6 +23,9 @@ export default function ClientEstimatesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [requestingId, setRequestingId] = useState("");
+  const [activeMenuId, setActiveMenuId] = useState("");
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const menuButtonRefs = useRef({});
 
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [estimateToSign, setEstimateToSign] = useState(null);
@@ -155,6 +159,27 @@ export default function ClientEstimatesPage() {
     }
   };
 
+  useEffect(() => {
+    function handleWindowChange() {
+      if (!activeMenuId) return;
+      const button = menuButtonRefs.current[activeMenuId];
+      if (!button) return;
+      const rect = button.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 8,
+        left: Math.max(16, rect.right - 160),
+      });
+    }
+
+    handleWindowChange();
+    window.addEventListener("resize", handleWindowChange);
+    window.addEventListener("scroll", handleWindowChange, true);
+    return () => {
+      window.removeEventListener("resize", handleWindowChange);
+      window.removeEventListener("scroll", handleWindowChange, true);
+    };
+  }, [activeMenuId]);
+
   return (
     <ClientLayout>
       <section className="client-hero">
@@ -271,28 +296,42 @@ export default function ClientEstimatesPage() {
                       </span>
                     ) : null}
 
-                    {estimate.pdfUrl && (
-                      <>
-                        <a
-                          href={estimate.pdfUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#477a40] hover:text-[#3d652f] text-sm font-medium px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 whitespace-nowrap inline-flex items-center justify-center"
-                        >
-                          View PDF
-                        </a>
-                        {estimate.status === "Pending" && !estimate.quoteRequestedAt && !estimate.quoteConvertedAt && (
-                          <button
-                            onClick={() => handleSignEstimate(estimate)}
-                            className="bg-[#477a40] hover:bg-[#3d652f] text-white text-sm font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-95 transition-all duration-200 whitespace-nowrap
-                            items-center
-                            justify-center hover:cursor-pointer"
-                          >
-                            Sign Now
-                          </button>
-                        )}
-                      </>
-                    )}
+                    <div className="shrink-0">
+                      <button
+                        ref={(node) => {
+                          if (node) {
+                            menuButtonRefs.current[estimate.id] = node;
+                          } else {
+                            delete menuButtonRefs.current[estimate.id];
+                          }
+                        }}
+                        type="button"
+                        onClick={() => {
+                          if (activeMenuId === estimate.id) {
+                            setActiveMenuId("");
+                            return;
+                          }
+                          const rect = menuButtonRefs.current[estimate.id]?.getBoundingClientRect();
+                          setMenuPosition({
+                            top: (rect?.bottom || 0) + 8,
+                            left: Math.max(16, (rect?.right || 160) - 160),
+                          });
+                          setActiveMenuId(estimate.id);
+                        }}
+                        className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 transition-all duration-200 hover:bg-gray-200"
+                      >
+                        Manage
+                      </button>
+                    </div>
+
+                    {estimate.status === "Pending" && !estimate.quoteRequestedAt && !estimate.quoteConvertedAt ? (
+                      <button
+                        onClick={() => handleSignEstimate(estimate)}
+                        className="bg-[#477a40] hover:bg-[#3d652f] text-white text-sm font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-95 transition-all duration-200 whitespace-nowrap items-center justify-center hover:cursor-pointer"
+                      >
+                        Sign Now
+                      </button>
+                    ) : null}
                   </div>
                 </td>
               </tr>
@@ -302,7 +341,56 @@ export default function ClientEstimatesPage() {
       </div>
     )}
   </article>
-</section>
+      </section>
+
+      {activeMenuId ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-20 cursor-default bg-transparent"
+            aria-label="Close manage menu"
+            onClick={() => setActiveMenuId("")}
+          />
+          <div
+            className="fixed z-30 min-w-[160px] rounded-xl border border-gray-200 bg-white p-2 shadow-lg"
+            style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
+          >
+            {(() => {
+              const activeEstimate = estimates.find((estimate) => estimate.id === activeMenuId);
+              if (!activeEstimate) return null;
+
+              return (
+                <>
+                  <a
+                    href={`/client/estimates/${activeEstimate.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                    onClick={() => setActiveMenuId("")}
+                  >
+                    View
+                  </a>
+                  <button
+                    type="button"
+                    className="block rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                    onClick={async () => {
+                      setActiveMenuId("");
+                      try {
+                        await downloadEstimatePdf(activeEstimate);
+                      } catch (downloadError) {
+                        console.error(downloadError);
+                        alert("Failed to download estimate PDF.");
+                      }
+                    }}
+                  >
+                    Download
+                  </button>
+                </>
+              );
+            })()}
+          </div>
+        </>
+      ) : null}
 
       {/* PIPEDA/UECA Legal Modal */}
       {showLegalModal && estimateToSign && (

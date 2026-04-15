@@ -17,12 +17,28 @@ function formatMoney(value) {
   }).format(Number(value) || 0);
 }
 
+function formatIssuedDate(value) {
+  if (!value) return "-";
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value).split("T")[0] || "-";
+  }
+
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(parsed);
+}
+
 export default function InvoicesPage() {
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [sortBy, setSortBy] = useState("date-desc");
   const [query, setQuery] = useState("");
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeMenuId, setActiveMenuId] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -62,19 +78,29 @@ export default function InvoicesPage() {
   const filteredInvoices = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return invoices.filter((invoice) => {
-      const matchesStatus = statusFilter === "All" || invoice.status === statusFilter;
-
-      if (!normalizedQuery) return matchesStatus;
+    const filtered = invoices.filter((invoice) => {
+      if (!normalizedQuery) return true;
 
       const matchesQuery =
         String(invoice.client || "").toLowerCase().includes(normalizedQuery) ||
         String(invoice.id || "").toLowerCase().includes(normalizedQuery) ||
         String(invoice.project || "").toLowerCase().includes(normalizedQuery);
 
-      return matchesStatus && matchesQuery;
+      return matchesQuery;
     });
-  }, [invoices, query, statusFilter]);
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "date-asc" || sortBy === "date-desc") {
+        const aTime = new Date(a.issuedOn || 0).getTime();
+        const bTime = new Date(b.issuedOn || 0).getTime();
+        return sortBy === "date-asc" ? aTime - bTime : bTime - aTime;
+      }
+
+      const aAmount = Number(a.amount || 0);
+      const bAmount = Number(b.amount || 0);
+      return sortBy === "total-asc" ? aAmount - bAmount : bAmount - aAmount;
+    });
+  }, [invoices, query, sortBy]);
 
   return (
     <AdminLayout>
@@ -107,19 +133,20 @@ export default function InvoicesPage() {
           </div>
 
           <div className="admin-projects-control">
-            <label className="admin-projects-control-label" htmlFor="invoices-status-filter">
-              Status
+            <label className="admin-projects-control-label" htmlFor="invoices-sort">
+              Sort by
             </label>
             <select
-              id="invoices-status-filter"
+              id="invoices-sort"
               className="admin-input"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              aria-label="Filter invoice status"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value)}
+              aria-label="Sort invoices"
             >
-              <option value="All">All</option>
-              <option value="Open">Open</option>
-              <option value="Paid">Paid</option>
+              <option value="date-desc">Newest first</option>
+              <option value="date-asc">Oldest first</option>
+              <option value="total-desc">High to low</option>
+              <option value="total-asc">Low to high</option>
             </select>
           </div>
         </div>
@@ -130,38 +157,63 @@ export default function InvoicesPage() {
           </p>
         ) : (
           <div className="admin-table admin-invoices-table">
-            <div className="admin-table-row admin-table-head admin-invoices-table-row">
+            <div
+              className="admin-table-row admin-table-head admin-invoices-table-row"
+              style={{ gridTemplateColumns: "1.3fr 1.2fr 1fr 1fr 0.9fr 1.1fr" }}
+            >
               <div>Client</div>
-              <div>Invoice ID</div>
               <div>Project</div>
               <div>Issued</div>
               <div>Amount</div>
               <div>Status</div>
-              <div>Actions</div>
+              <div className="text-right">Actions</div>
             </div>
 
             {filteredInvoices.map((invoice) => (
-              <div className="admin-table-row admin-invoices-table-row" key={invoice.id}>
+              <div
+                className="admin-table-row admin-invoices-table-row"
+                key={invoice.id}
+                style={{ gridTemplateColumns: "1.3fr 1.2fr 1fr 1fr 0.9fr 1.1fr" }}
+              >
                 <div>{invoice.client}</div>
-                <div className="admin-strong">{invoice.id}</div>
                 <div>{invoice.project}</div>
-                <div>{invoice.issuedOn || "-"}</div>
+                <div>{formatIssuedDate(invoice.issuedOn)}</div>
                 <div>{formatMoney(invoice.amount)}</div>
                 <div>
                   <span className={STATUS_CLASS[invoice.status] || "admin-badge"}>
                     {invoice.status}
                   </span>
                 </div>
-                <div className="admin-actions">
-                  <Link className="admin-btn admin-btn--ghost admin-btn--small" href={`/dashboard/invoices/${invoice.id}`}>
-                    Open
-                  </Link>
-                  <a
-                    className="admin-btn admin-btn--ghost admin-btn--small"
-                    href={`/api/admin/invoices/${invoice.id}?download=1`}
-                  >
-                    Download
-                  </a>
+                <div className="admin-actions justify-self-end">
+                  <div className="relative">
+                    <button
+                      className="admin-btn admin-btn--ghost"
+                      type="button"
+                      onClick={() =>
+                        setActiveMenuId((current) => (current === invoice.id ? "" : invoice.id))
+                      }
+                    >
+                      Manage
+                    </button>
+                    {activeMenuId === invoice.id ? (
+                      <div className="absolute right-0 top-full z-20 mt-2 min-w-[160px] rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                        <Link
+                          className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                          href={`/dashboard/invoices/${invoice.id}`}
+                          onClick={() => setActiveMenuId("")}
+                        >
+                          View
+                        </Link>
+                        <a
+                          className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                          href={`/api/admin/invoices/${invoice.id}?download=1`}
+                          onClick={() => setActiveMenuId("")}
+                        >
+                          Download
+                        </a>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             ))}

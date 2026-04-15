@@ -2,6 +2,41 @@ import { NextResponse } from "next/server";
 import { getSql } from "../../../../lib/db/client";
 import { put, del } from "@vercel/blob";
 import { requireAdmin } from "../../../../lib/auth/server";
+import { ensureDatabaseSchema } from "../../../../lib/db/schema.js";
+import { findEstimateById } from "../../../../lib/db/estimates.js";
+import { findProjectById, updateProject } from "../../../../lib/db/projects.js";
+import { updateClient } from "../../../../lib/db/clients.js";
+import { buildQuoteData } from "../../../../lib/quotes.js";
+import {
+  FIELD_LIMITS,
+  sanitizeAlphaSpace,
+  sanitizeEmail,
+  sanitizePhone,
+  sanitizeTextArea,
+} from "../../../../lib/validation/fields.js";
+
+function normalizeServiceItems(value) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item, index) => ({
+      id: String(item?.id || `service-${index + 1}`),
+      name: String(item?.name || "").trim(),
+      description: String(item?.description || "").trim(),
+      price: String(item?.price || "").trim(),
+      quantity: String(item?.quantity || "1").trim(),
+      total: String(item?.total || "").trim(),
+    }))
+    .filter((item) => item.name);
+}
+
+function normalizeQuoteData(value) {
+  return buildQuoteData(value, {
+    unitPrice: value?.unitPrice ?? value?.price,
+    quantity: value?.quantity,
+    description: value?.description,
+  });
+}
 
 // Delete a Blob URL safely
 async function deleteBlobPdf(pdfUrl) {
@@ -142,11 +177,102 @@ export async function PUT(req, { params }) {
   }
 }
 
+export async function PATCH(req, { params }) {
+  const auth = requireAdmin(req);
+  if (auth.error) return auth.error;
+
+  try {
+    const { id } = await params;
+    await ensureDatabaseSchema();
+    const sql = await getSql();
+    const body = await req.json();
+
+    const estimate = await findEstimateById(id);
+    if (!estimate) {
+      return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
+    }
+
+    const service = sanitizeTextArea(body?.service, FIELD_LIMITS.serviceName).trim();
+    const recipientName = sanitizeAlphaSpace(body?.recipientName, FIELD_LIMITS.name).trim();
+    const recipientAddress = sanitizeTextArea(body?.recipientAddress, FIELD_LIMITS.address).trim();
+    const recipientEmail = sanitizeEmail(body?.recipientEmail).trim();
+    const recipientPhone = sanitizePhone(body?.recipientPhone).trim();
+    const notes = sanitizeTextArea(body?.notes, FIELD_LIMITS.notes).trim();
+    const servicesIncluded = normalizeServiceItems(body?.servicesIncluded);
+    const quoteData = normalizeQuoteData(body?.quoteData || {});
+
+    if (!service || !recipientName || !recipientAddress || !recipientEmail || !recipientPhone) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (!/^\d{10}$/.test(recipientPhone)) {
+      return NextResponse.json({ error: "Phone number must be 10 digits." }, { status: 400 });
+    }
+
+    const timestamp = new Date().toISOString();
+
+    if (estimate.quoteConvertedAt && estimate.convertedProjectId) {
+      if (estimate.clientId) {
+        await updateClient(estimate.clientId, {
+          name: recipientName,
+          email: recipientEmail,
+          phone: recipientPhone,
+          address: recipientAddress,
+        });
+      }
+
+      const linkedProject = await findProjectById(estimate.convertedProjectId);
+      if (linkedProject) {
+        await updateProject(linkedProject.id, {
+          service,
+          address: recipientAddress,
+          startDate: linkedProject.startDate,
+          estimatedCompletionDate: linkedProject.estimatedCompletionDate,
+          completionDate: linkedProject.completionDate,
+          totalCost: quoteData.total,
+          servicesIncluded,
+          quoteData,
+          payments: linkedProject.payments,
+          ownerNotes: linkedProject.ownerNotes,
+          estimatePdfUrl: linkedProject.estimatePdfUrl,
+          estimatePdfName: linkedProject.estimatePdfName,
+        });
+      }
+    }
+
+    await sql`
+      UPDATE estimates
+      SET
+        title = ${`${service} Estimate`},
+        service = ${service},
+        price = ${Number.parseFloat(String(quoteData.total || 0)) || 0},
+        notes = ${notes},
+        recipient_name = ${recipientName},
+        recipient_address = ${recipientAddress},
+        recipient_email = ${recipientEmail},
+        recipient_phone = ${recipientPhone},
+        services_included = ${JSON.stringify(servicesIncluded)},
+        quote_data = ${JSON.stringify(quoteData)},
+        updated_at = ${timestamp}
+      WHERE id = ${id}
+    `;
+
+    return NextResponse.json({ estimate: await findEstimateById(id) });
+  } catch (err) {
+    console.error("Estimate patch error:", err);
+    return NextResponse.json(
+      { error: "Failed to update estimate", detail: err?.message || "unknown" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(req, { params }) {
   try {
     const auth = requireAdmin(req);
     if (auth.error) return auth.error;
 
+    await ensureDatabaseSchema();
     const sql = await getSql();
     const { id } = await params;
     // Fetch current PDF URL from DB

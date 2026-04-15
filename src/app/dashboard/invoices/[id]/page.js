@@ -13,6 +13,21 @@ function formatMoney(value) {
   }).format(Number(value) || 0);
 }
 
+function formatIssuedDate(value) {
+  if (!value) return "-";
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value).split("T")[0] || "-";
+  }
+
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(parsed);
+}
+
 export default function InvoiceDetailPage() {
   const params = useParams();
   const invoiceId = params?.id;
@@ -66,7 +81,7 @@ export default function InvoiceDetailPage() {
               Back to invoices
             </Link>
           </p>
-          <h1 className="admin-title">{invoice?.id || "Invoice"}</h1>
+          <h1 className="admin-title">Invoice</h1>
           <p className="admin-subtitle">Open invoice details and download a copy when needed.</p>
           {error ? <p className="admin-error">{error}</p> : null}
         </div>
@@ -101,7 +116,6 @@ export default function InvoiceDetailPage() {
             <div className="admin-table admin-invoices-table">
               <div className="admin-table-row admin-table-head admin-invoices-table-row">
                 <div>Client</div>
-                <div>Invoice ID</div>
                 <div>Project</div>
                 <div>Issued</div>
                 <div>Amount</div>
@@ -110,9 +124,8 @@ export default function InvoiceDetailPage() {
               </div>
               <div className="admin-table-row admin-invoices-table-row">
                 <div>{invoice.client}</div>
-                <div className="admin-strong">{invoice.id}</div>
                 <div>{invoice.project}</div>
-                <div>{invoice.issuedOn || "-"}</div>
+                <div>{formatIssuedDate(invoice.issuedOn)}</div>
                 <div>{formatMoney(invoice.amount)}</div>
                 <div>{invoice.status}</div>
                 <div className="admin-actions">

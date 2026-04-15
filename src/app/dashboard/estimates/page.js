@@ -22,6 +22,7 @@ import {
   sanitizePercentInput,
   sanitizeTextArea,
 } from "../../lib/validation/fields.js";
+import { downloadEstimatePdf } from "../../lib/estimates/pdf.js";
 
 const DEFAULT_SERVICES = SERVICE_CATALOG.map((service, index) => ({
   id: `S-${String(index + 1).padStart(2, "0")}`,
@@ -104,10 +105,14 @@ export default function AdminEstimatesPage() {
   const [isEstimateModalOpen, setIsEstimateModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [estimateForm, setEstimateForm] = useState(() =>
     createEstimateForm(DEFAULT_SERVICES[0])
   );
   const [convertForm, setConvertForm] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [activeMenuId, setActiveMenuId] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   async function refreshEstimates() {
     setLoading(true);
@@ -235,6 +240,14 @@ export default function AdminEstimatesPage() {
     [availableServices, convertForm?.service]
   );
 
+  const selectedEditService = useMemo(
+    () =>
+      availableServices.find((service) => service.name === editForm?.service) ||
+      availableServices[0] ||
+      null,
+    [availableServices, editForm?.service]
+  );
+
   const estimateQuote = useMemo(
     () =>
       buildQuoteData({
@@ -284,6 +297,28 @@ export default function AdminEstimatesPage() {
     ]
   );
 
+  const editQuote = useMemo(
+    () =>
+      buildQuoteData({
+        priceMode: editForm?.priceMode,
+        unitPrice: editForm?.unitPrice,
+        quantity: editForm?.quantity,
+        description: editForm?.description,
+        sentDate: editForm?.sentDate,
+        gstRate: editForm?.gstRate,
+        depositRate: editForm?.depositRate,
+      }),
+    [
+      editForm?.depositRate,
+      editForm?.description,
+      editForm?.gstRate,
+      editForm?.priceMode,
+      editForm?.quantity,
+      editForm?.sentDate,
+      editForm?.unitPrice,
+    ]
+  );
+
   const filteredEstimates = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
@@ -324,6 +359,12 @@ export default function AdminEstimatesPage() {
 
   const openConvertModal = (estimate) => {
     setConvertForm(createConvertForm(estimate));
+    setActiveMenuId("");
+  };
+
+  const openEditModal = (estimate) => {
+    setEditForm(createConvertForm(estimate));
+    setActiveMenuId("");
   };
 
   const handleEstimateFormChange = (event) => {
@@ -446,6 +487,53 @@ export default function AdminEstimatesPage() {
     setConvertForm((prev) => ({ ...prev, [name]: nextValue }));
   };
 
+  const handleEditFormChange = (event) => {
+    const { name, value } = event.target;
+    let nextValue = value;
+
+    if (name === "recipientName") nextValue = sanitizeAlphaSpace(value, FIELD_LIMITS.name);
+    if (name === "recipientAddress") nextValue = sanitizeTextArea(value, FIELD_LIMITS.address);
+    if (name === "recipientEmail") nextValue = sanitizeEmail(value);
+    if (name === "recipientPhone") nextValue = sanitizePhone(value);
+    if (name === "quantity") nextValue = sanitizeIntegerInput(value);
+    if (name === "unitPrice") nextValue = sanitizeMoneyInput(value);
+    if (name === "gstRate" || name === "depositRate") nextValue = sanitizePercentInput(value);
+    if (name === "description") nextValue = sanitizeTextArea(value, FIELD_LIMITS.description);
+    if (name === "notes") nextValue = sanitizeTextArea(value, FIELD_LIMITS.notes);
+
+    if (name === "service") {
+      const nextService = availableServices.find((service) => service.name === value) || null;
+      setEditForm((prev) => ({
+        ...prev,
+        service: value,
+        unitPrice:
+          prev.priceMode === "default"
+            ? String(nextService?.price || "0.00")
+            : prev.unitPrice,
+        quantity: String(nextService?.quantity || prev.quantity || "1"),
+        description:
+          !prev.description || prev.description === selectedEditService?.description
+            ? nextService?.description || ""
+            : prev.description,
+      }));
+      return;
+    }
+
+    if (name === "priceMode") {
+      setEditForm((prev) => ({
+        ...prev,
+        priceMode: value,
+        unitPrice:
+          value === "default"
+            ? String(selectedEditService?.price || "0.00")
+            : prev.unitPrice,
+      }));
+      return;
+    }
+
+    setEditForm((prev) => ({ ...prev, [name]: nextValue }));
+  };
+
   async function handleEstimateCreate(event) {
     event.preventDefault();
     setSaving(true);
@@ -546,6 +634,77 @@ export default function AdminEstimatesPage() {
       setError("Failed to convert estimate.");
     } finally {
       setConverting(false);
+    }
+  }
+
+  async function handleEstimateUpdate(event) {
+    event.preventDefault();
+    if (!editForm?.id) return;
+
+    setEditing(true);
+    setError("");
+
+    try {
+      const res = await fetch(`/api/admin/estimates/${editForm.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientName: editForm.recipientName,
+          recipientAddress: editForm.recipientAddress,
+          recipientEmail: editForm.recipientEmail,
+          recipientPhone: editForm.recipientPhone,
+          service: editForm.service,
+          notes: editForm.notes,
+          servicesIncluded: [
+            {
+              id: selectedEditService?.id || "service-1",
+              name: editForm.service,
+              description: editForm.description,
+              price: editQuote.unitPrice,
+              quantity: editQuote.quantity,
+              total: editQuote.subtotal,
+            },
+          ],
+          quoteData: editQuote,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || "Failed to update estimate.");
+        return;
+      }
+
+      setEditForm(null);
+      await refreshEstimates();
+    } catch (updateError) {
+      console.error(updateError);
+      setError("Failed to update estimate.");
+    } finally {
+      setEditing(false);
+    }
+  }
+
+  async function handleEstimateDelete() {
+    if (!deleteTarget?.id) return;
+
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/estimates/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || "Failed to delete estimate.");
+        return;
+      }
+
+      setDeleteTarget(null);
+      await refreshEstimates();
+    } catch (deleteError) {
+      console.error(deleteError);
+      setError("Failed to delete estimate.");
     }
   }
 
@@ -664,13 +823,65 @@ export default function AdminEstimatesPage() {
                       Convert to quote
                     </button>
                   ) : null}
-                  <Link
-                    className="admin-btn admin-btn--primary"
-                    href={`/dashboard/estimates/${estimate.id}`}
-                    target="_blank"
-                  >
-                    Open Estimate
-                  </Link>
+                  <div className="relative">
+                    <button
+                      className="admin-btn admin-btn--ghost"
+                      type="button"
+                      onClick={() =>
+                        setActiveMenuId((current) => (current === estimate.id ? "" : estimate.id))
+                      }
+                    >
+                      Manage
+                    </button>
+                    {activeMenuId === estimate.id ? (
+                      <div className="absolute right-0 top-full z-20 mt-2 min-w-[160px] rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                        <Link
+                          className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                          href={
+                            estimate.quoteConvertedAt && estimate.convertedProjectId
+                              ? `/dashboard/projects/${estimate.convertedProjectId}/quote`
+                              : `/dashboard/estimates/${estimate.id}`
+                          }
+                          target="_blank"
+                          onClick={() => setActiveMenuId("")}
+                        >
+                          View
+                        </Link>
+                        <button
+                          className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                          type="button"
+                          onClick={() => openEditModal(estimate)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
+                          type="button"
+                          onClick={async () => {
+                            setActiveMenuId("");
+                            try {
+                              await downloadEstimatePdf(estimate);
+                            } catch (downloadError) {
+                              console.error(downloadError);
+                              alert("Failed to download estimate PDF.");
+                            }
+                          }}
+                        >
+                          Download
+                        </button>
+                        <button
+                          className="block w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
+                          type="button"
+                          onClick={() => {
+                            setDeleteTarget(estimate);
+                            setActiveMenuId("");
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             ))}
@@ -1258,6 +1469,333 @@ export default function AdminEstimatesPage() {
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {editForm ? (
+        <div className="admin-modal">
+          <button
+            className="admin-modal__backdrop"
+            type="button"
+            aria-label="Close edit estimate modal"
+            onClick={() => setEditForm(null)}
+          />
+          <form className="admin-modal__content" role="dialog" aria-modal="true" onSubmit={handleEstimateUpdate}>
+            <div className="admin-modal__header">
+              <div>
+                <h2 className="admin-title">
+                  {editForm.id && estimates.find((estimate) => estimate.id === editForm.id)?.quoteConvertedAt
+                    ? "Edit quote"
+                    : "Edit estimate"}
+                </h2>
+                <p className="admin-subtitle">
+                  Update recipient details and pricing from the estimates dashboard.
+                </p>
+              </div>
+              <button
+                className="admin-btn admin-btn--ghost admin-btn--small"
+                type="button"
+                onClick={() => setEditForm(null)}
+                disabled={editing}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="admin-modal__grid">
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-recipient-name">
+                  Recipient full name
+                </label>
+                <input
+                  id="edit-recipient-name"
+                  name="recipientName"
+                  {...inputPropsFor("name")}
+                  className="admin-input"
+                  value={editForm.recipientName}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="admin-label" htmlFor="edit-recipient-email">
+                  Email
+                </label>
+                <input
+                  id="edit-recipient-email"
+                  name="recipientEmail"
+                  type="email"
+                  {...inputPropsFor("email")}
+                  className="admin-input"
+                  value={editForm.recipientEmail}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="admin-label" htmlFor="edit-recipient-phone">
+                  Phone
+                </label>
+                <input
+                  id="edit-recipient-phone"
+                  name="recipientPhone"
+                  {...inputPropsFor("phone")}
+                  className="admin-input"
+                  value={editForm.recipientPhone}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-recipient-address">
+                  Address
+                </label>
+                <input
+                  id="edit-recipient-address"
+                  name="recipientAddress"
+                  {...inputPropsFor("address")}
+                  className="admin-input"
+                  value={editForm.recipientAddress}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-service">
+                  Service
+                </label>
+                <select
+                  id="edit-service"
+                  name="service"
+                  className="admin-input"
+                  value={editForm.service}
+                  onChange={handleEditFormChange}
+                  required
+                >
+                  {availableServices.map((service) => (
+                    <option key={service.id || service.name} value={service.name}>
+                      {service.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-quantity">
+                  Quantity
+                </label>
+                <input
+                  id="edit-quantity"
+                  name="quantity"
+                  {...inputPropsFor("quantity")}
+                  className="admin-input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={editForm.quantity}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-price-mode">
+                  Pricing mode
+                </label>
+                <select
+                  id="edit-price-mode"
+                  name="priceMode"
+                  className="admin-input"
+                  value={editForm.priceMode}
+                  onChange={handleEditFormChange}
+                >
+                  <option value="default">Use default service price</option>
+                  <option value="custom">Use custom unit price</option>
+                </select>
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-unit-price">
+                  Unit price ($)
+                </label>
+                <input
+                  id="edit-unit-price"
+                  name="unitPrice"
+                  {...inputPropsFor("money")}
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editForm.unitPrice}
+                  onChange={handleEditFormChange}
+                  disabled={editForm.priceMode === "default"}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-sent-date">
+                  Quote date
+                </label>
+                <input
+                  id="edit-sent-date"
+                  name="sentDate"
+                  className="admin-input"
+                  type="date"
+                  value={editForm.sentDate}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-gst-rate">
+                  GST (%)
+                </label>
+                <input
+                  id="edit-gst-rate"
+                  name="gstRate"
+                  {...inputPropsFor("percent")}
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={editForm.gstRate}
+                  onChange={handleEditFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-deposit-rate">
+                  Deposit required (%)
+                </label>
+                <input
+                  id="edit-deposit-rate"
+                  name="depositRate"
+                  {...inputPropsFor("percent")}
+                  className="admin-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={editForm.depositRate}
+                  onChange={handleEditFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-description">
+                  Service description
+                </label>
+                <textarea
+                  id="edit-description"
+                  name="description"
+                  maxLength={FIELD_LIMITS.description}
+                  className="admin-textarea"
+                  rows={5}
+                  value={editForm.description}
+                  onChange={handleEditFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="edit-notes">
+                  Notes
+                </label>
+                <textarea
+                  id="edit-notes"
+                  name="notes"
+                  maxLength={FIELD_LIMITS.notes}
+                  className="admin-textarea"
+                  rows={4}
+                  value={editForm.notes}
+                  onChange={handleEditFormChange}
+                />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Subtotal</label>
+                <input className="admin-input" value={formatCurrency(editQuote.subtotal)} disabled readOnly />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">GST amount</label>
+                <input className="admin-input" value={formatCurrency(editQuote.gstAmount)} disabled readOnly />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Deposit amount</label>
+                <input className="admin-input" value={formatCurrency(editQuote.depositAmount)} disabled readOnly />
+              </div>
+
+              <div className="admin-modal__full">
+                <label className="admin-label">Total</label>
+                <input className="admin-input" value={formatCurrency(editQuote.total)} disabled readOnly />
+              </div>
+            </div>
+
+            <div className="admin-modal__actions">
+              <button className="admin-btn admin-btn--primary" type="submit" disabled={editing}>
+                {editing ? "Saving..." : "Save changes"}
+              </button>
+              <button
+                className="admin-btn admin-btn--ghost"
+                type="button"
+                onClick={() => setEditForm(null)}
+                disabled={editing}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div className="admin-modal">
+          <button
+            className="admin-modal__backdrop"
+            type="button"
+            aria-label="Close delete estimate confirmation"
+            onClick={() => setDeleteTarget(null)}
+          />
+          <div className="admin-modal__content" role="alertdialog" aria-modal="true">
+            <div className="admin-modal__header">
+              <div>
+                <h2 className="admin-title">Delete estimate</h2>
+                <p className="admin-subtitle">
+                  This will permanently remove this estimate record. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="admin-form">
+              <div className="admin-field">
+                <span className="admin-label">Recipient</span>
+                <div className="admin-muted">{deleteTarget.recipientName || "Unknown recipient"}</div>
+              </div>
+              <div className="admin-field">
+                <span className="admin-label">Service</span>
+                <div className="admin-muted">{deleteTarget.service || "No service"}</div>
+              </div>
+            </div>
+
+            <div className="admin-modal__actions">
+              <button className="admin-btn admin-btn--danger" type="button" onClick={handleEstimateDelete}>
+                Delete estimate
+              </button>
+              <button
+                className="admin-btn admin-btn--ghost"
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </AdminLayout>
