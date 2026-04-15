@@ -144,6 +144,7 @@ export async function findEstimateById(id) {
 }
 
 export async function createEstimate({
+  clientId = null,
   title,
   service,
   recipientName,
@@ -187,7 +188,7 @@ export async function createEstimate({
     )
     VALUES (
       ${randomUUID()},
-      ${null},
+      ${clientId ? String(clientId).trim() : null},
       ${String(title || `${normalizedService} Estimate`).trim()},
       ${normalizedService},
       ${normalizeMoney(normalizedQuoteData.total)},

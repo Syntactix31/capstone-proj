@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/auth/server";
 import { createEstimate } from "../../../../lib/db/estimates.js";
+import { fetchClientById } from "../../../../lib/db/clients.js";
 import { buildQuoteData } from "../../../../lib/quotes.js";
 import {
   FIELD_LIMITS,
@@ -39,11 +40,24 @@ export async function POST(req) {
 
   try {
     const body = await req.json();
+    const clientId = String(body?.clientId || "").trim();
+    const selectedClient = clientId ? await fetchClientById(clientId) : null;
+
+    if (clientId && !selectedClient) {
+      return NextResponse.json({ error: "Selected client not found" }, { status: 404 });
+    }
+
     const service = sanitizeTextArea(body?.service, FIELD_LIMITS.serviceName).trim();
-    const recipientName = sanitizeAlphaSpace(body?.recipientName, FIELD_LIMITS.name).trim();
-    const recipientAddress = sanitizeTextArea(body?.recipientAddress, FIELD_LIMITS.address).trim();
-    const recipientEmail = sanitizeEmail(body?.recipientEmail).trim();
-    const recipientPhone = sanitizePhone(body?.recipientPhone).trim();
+    const recipientName = sanitizeAlphaSpace(
+      body?.recipientName || selectedClient?.name,
+      FIELD_LIMITS.name
+    ).trim();
+    const recipientAddress = sanitizeTextArea(
+      body?.recipientAddress || selectedClient?.address,
+      FIELD_LIMITS.address
+    ).trim();
+    const recipientEmail = sanitizeEmail(body?.recipientEmail || selectedClient?.email).trim();
+    const recipientPhone = sanitizePhone(body?.recipientPhone || selectedClient?.phone).trim();
     const notes = sanitizeTextArea(body?.notes, FIELD_LIMITS.notes).trim();
     const servicesIncluded = normalizeServiceItems(body?.servicesIncluded);
     const quoteData = normalizeQuoteData(body?.quoteData || {});
@@ -57,6 +71,7 @@ export async function POST(req) {
     }
 
     const estimate = await createEstimate({
+      clientId: selectedClient?.id || null,
       title: `${service} Estimate`,
       service,
       recipientName,

@@ -40,6 +40,7 @@ const STATUS_CLASS = {
 
 function createEstimateForm(service) {
   return {
+    clientId: "custom",
     recipientName: "",
     recipientAddress: "",
     recipientEmail: "",
@@ -58,8 +59,10 @@ function createEstimateForm(service) {
 
 export default function AdminEstimatesPage() {
   const [estimates, setEstimates] = useState([]);
+  const [clients, setClients] = useState([]);
   const [services, setServices] = useState(DEFAULT_SERVICES);
   const [loading, setLoading] = useState(true);
+  const [clientsLoading, setClientsLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [serviceFilter, setServiceFilter] = useState("All");
@@ -132,9 +135,52 @@ export default function AdminEstimatesPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadClients() {
+      setClientsLoading(true);
+      try {
+        const res = await fetch("/api/admin/clients", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+
+        if (!res.ok) {
+          setClients([]);
+          setError((current) => current || data?.error || "Failed to load clients.");
+          return;
+        }
+
+        setClients(Array.isArray(data.clients) ? data.clients : []);
+      } catch (loadError) {
+        console.error(loadError);
+        if (!active) return;
+        setClients([]);
+        setError((current) => current || "Failed to load clients.");
+      } finally {
+        if (active) setClientsLoading(false);
+      }
+    }
+
+    loadClients();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const availableServices = useMemo(
     () => services.filter((service) => service.active !== false),
     [services]
+  );
+
+  const sortedClients = useMemo(
+    () =>
+      [...clients].sort((a, b) =>
+        String(a?.name || "").localeCompare(String(b?.name || ""), undefined, {
+          sensitivity: "base",
+        })
+      ),
+    [clients]
   );
 
   const selectedService = useMemo(
@@ -243,6 +289,31 @@ export default function AdminEstimatesPage() {
       return;
     }
 
+    if (name === "clientId") {
+      if (value === "custom") {
+        setEstimateForm((prev) => ({
+          ...prev,
+          clientId: "custom",
+          recipientName: "",
+          recipientAddress: "",
+          recipientEmail: "",
+          recipientPhone: "",
+        }));
+        return;
+      }
+
+      const nextClient = sortedClients.find((client) => client.id === value) || null;
+      setEstimateForm((prev) => ({
+        ...prev,
+        clientId: value,
+        recipientName: nextClient?.name || "",
+        recipientAddress: nextClient?.address || "",
+        recipientEmail: nextClient?.email || "",
+        recipientPhone: nextClient?.phone || "",
+      }));
+      return;
+    }
+
     if (name === "priceMode") {
       setEstimateForm((prev) => ({
         ...prev,
@@ -268,6 +339,7 @@ export default function AdminEstimatesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          clientId: estimateForm.clientId === "custom" ? "" : estimateForm.clientId,
           recipientName: estimateForm.recipientName,
           recipientAddress: estimateForm.recipientAddress,
           recipientEmail: estimateForm.recipientEmail,
@@ -461,6 +533,27 @@ export default function AdminEstimatesPage() {
             </div>
 
             <div className="admin-modal__grid">
+              <div className="admin-modal__full">
+                <label className="admin-label" htmlFor="estimate-client-id">
+                  Recipient source
+                </label>
+                <select
+                  id="estimate-client-id"
+                  name="clientId"
+                  className="admin-input"
+                  value={estimateForm.clientId}
+                  onChange={handleEstimateFormChange}
+                  disabled={clientsLoading}
+                >
+                  <option value="custom">Custom recipient</option>
+                  {sortedClients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.name} {client.email ? `(${client.email})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="admin-modal__full">
                 <label className="admin-label" htmlFor="estimate-recipient-name">
                   Recipient full name
