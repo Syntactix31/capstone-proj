@@ -176,7 +176,7 @@ export default function Home() {
 
 
       <div className="w-screen left-1/2 pt-1 -ml-[50vw] bg-[url('/backgrounds/wood-background.jpg')] bg-cover bg-no-repeat bg-center pb-10 relative z-0">
-        <div className="max-w-5xl mx-auto relative z-10">
+        <div className="max-w-5xl lg:scale-100 scale-100 sm:scale-110 mx-auto relative z-10">
           <CommentCarousel />
         </div>
       </div>
