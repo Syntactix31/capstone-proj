@@ -11,12 +11,12 @@
   },
   {
     id: 2,
-    image: "/team/member5.jpg",
+    image: "/team/none.png",
     description: "Specialist in custom decks and railings, focused on precision, durability, and clean finishes."
   },
   {
     id: 3,
-    image: "/team/member5.jpg",
+    image: "/team/member4.png",
     description: "Landscape expert dedicated to transforming yards with thoughtful design and plant selection."
   },
   {
@@ -35,11 +35,12 @@
           {/* Top Image Placeholder*/}
 <section className="relative h-48 w-full overflow-hidden border-b-8 border-[#477A40] bg-[#D3D3D3] sm:h-64 md:h-96">
   <Image
-    src="/team/background3.jpg"
+    src="/team/background7.jpg"
     alt="Main Team Image"
     fill
     priority
-    className="object-cover object-[65%_25%]"
+    className="object-cover object-[65%_30%]"
+    // object-[65%_25%]
     sizes="100vw"
   />
 </section>
