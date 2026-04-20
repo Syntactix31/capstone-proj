@@ -1,6 +1,30 @@
   import Link from "next/link";
   import NavBar from "../components/Navbar.js";
   import Footer from "../components/Footer.js";
+  import Image from "next/image";
+
+  const teamMembers = [
+  {
+    id: 1,
+    image: "/team/member1.png",
+    description: "Founder & lead contractor with years of hands-on experience delivering high-quality outdoor builds."
+  },
+  {
+    id: 2,
+    image: "/team/member5.jpg",
+    description: "Specialist in custom decks and railings, focused on precision, durability, and clean finishes."
+  },
+  {
+    id: 3,
+    image: "/team/member5.jpg",
+    description: "Landscape expert dedicated to transforming yards with thoughtful design and plant selection."
+  },
+  {
+    id: 4,
+    image: "/team/member5.jpg",
+    description: "Project coordinator ensuring smooth timelines, clear communication, and satisfied clients."
+  }
+];
 
   export default function About() {
     return (
@@ -9,11 +33,16 @@
 
         <div className="grow">
           {/* Top Image Placeholder*/}
-          <section className="flex h-48 w-full items-center justify-center bg-[#D3D3D3] border-b-8 border-[#477A40] sm:h-64 md:h-96">
-            <p className="text-lg font-bold text-gray-500">
-              Main Team Image
-            </p>
-          </section>
+<section className="relative h-48 w-full overflow-hidden border-b-8 border-[#477A40] bg-[#D3D3D3] sm:h-64 md:h-96">
+  <Image
+    src="/team/background3.jpg"
+    alt="Main Team Image"
+    fill
+    priority
+    className="object-cover object-[65%_25%]"
+    sizes="100vw"
+  />
+</section>
 
           {/* Mission Section */}
           <section className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
@@ -36,16 +65,12 @@
                 </h2>
 
                 <p className="mt-4 max-w-3xl text-base leading-relaxed text-gray-600 sm:text-lg">
-                  Lorem Ipsum is simply dummy text of the printing and typesetting
-                  industry. Lorem Ipsum has been the industry&apos;s standard dummy text
-                  ever since the 1500s, when an unknown printer took a galley of
-                  type and scrambled it to make a type specimen book.
+                  Built from the ground up with a passion for quality craftsmanship, our company has grown from small local projects into a trusted name in landscaping and outdoor construction. What started as a commitment to doing honest, detail-driven work has evolved into a reputation for delivering clean designs, durable builds, and dependable service. From custom fences and decks to full yard transformations, we take pride in every project and every client relationship. Years of hands-on experience, consistent results, and word-of-mouth referrals have shaped who we are today—a team dedicated to bringing outdoor visions to life with precision and care.
                   <br /><br />
-                  It has survived not only five centuries, but also the leap into
-                  electronic typesetting, remaining essentially unchanged.
+                    We believe your outdoor space should be more than just functional—it should feel like an extension of your home. That’s why we take the time to understand your vision, offer expert guidance, and execute every detail with intention. Our process is transparent from start to finish, with clear communication, accurate timelines, and no shortcuts. Clients choose us not just for the final result, but for the confidence and peace of mind that comes with working with professionals who genuinely care.
                   <br /><br />
-                  Lorem Ipsum is simply dummy text of the printing and typesetting
-                  industry.
+                    Today, our success is built on more than just completed projects—it’s built on trust, long-term relationships, and a standard of work that speaks for itself. Whether you’re upgrading a single feature or transforming your entire property, we’re here to deliver results that last, add value, and make your space something you’re proud of every day.
+          
                 </p>
               </div>
             </div>
@@ -58,27 +83,30 @@
               Meet the Team
             </h2>
 
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 md:gap-12">
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 md:gap-12">
+                {teamMembers.map((member) => (
+                  <div key={member.id} className="flex flex-col items-center">
+                    
+                    {/* Photo Frame */}
+                    <div className="flex aspect-3/4 w-full items-center justify-center overflow-hidden rounded-3xl border-4 border-[#477A40] bg-white shadow-xl transition-transform duration-300 md:hover:scale-105">
+                      <Image
+                        src={member.image}
+                        alt="Team member"
+                        width={300}
+                        height={500}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
 
-              {[1, 2, 3, 4].map((member) => (
-                <div key={member} className="flex flex-col items-center">
-                  {/* Photo Frame*/}
-                  <div className="flex aspect-3/4 w-full items-center justify-center rounded-3xl border-4 border-[#477A40] bg-white shadow-xl transition-transform duration-300 md:hover:scale-105">
-                    <span className="text-sm font-bold italic text-gray-400">
-                      Team Member Photo
-                    </span>
+                    {/* Bio Box */}
+                    <div className="mt-6 rounded-2xl border-2 border-[#477A40] bg-white p-5 text-center shadow-sm">
+                      <p className="text-sm leading-snug text-black sm:text-base">
+                        {member.description}
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Bio Box*/}
-                  <div className="mt-6 rounded-2xl border-2 border-[#477A40] bg-white p-5 text-center shadow-sm">
-                    <p className="text-sm leading-snug text-black sm:text-base">
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-                      sed do eiusmod tempor incididunt ut labore.
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
           </section>
 
           {/* Final Tagline */}
