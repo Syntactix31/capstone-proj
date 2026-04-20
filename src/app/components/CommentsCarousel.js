@@ -54,18 +54,24 @@ if (!comments.length && shimmerKey === 0) {
   //  heelo
   return (
       //                                                                    mt-16
-    <div className="relative flex flex-wrap justify-center w-full max-w-5xl mt-10 mx-auto px-4 bg-transparent">
+    <div className="relative flex flex-col sm:flex-wrap justify-center w-full max-w-5xl mt-10 mx-auto px-4 bg-transparent">
       {/* <h2 className="text-3xl font-extrabold text-center border-b-2 p-2 border-[#477a40] inline-block mx-auto mb-7">
         What Our Clients Say
       </h2> */}
 
 
       {/* Added large gap between comment boxes so only in focus one is shown on mobile screens test different gaps (10 is good for all viewports*/}
-      <div className="relative flex items-center justify-center gap-10 h-63">
-        <Bubble data={getItem(-1)} faded />
-        <Bubble data={getItem(0)} key={`focused-${shimmerKey}`} focused />
-        <Bubble data={getItem(1)} faded />
-      </div>
+<div className="relative flex items-center justify-center gap-10 h-63">
+  <div className="hidden lg:block">
+    <Bubble data={getItem(-1)} faded />
+  </div>
+
+  <Bubble data={getItem(0)} key={`focused-${shimmerKey}`} focused />
+
+  <div className="hidden lg:block">
+    <Bubble data={getItem(1)} faded />
+  </div>
+</div>
 
       <div className="flex justify-center gap-6 mt-5">
         <button
