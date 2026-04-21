@@ -140,8 +140,7 @@ export default function AdminSettingsPage() {
       </section>
 
       <section
-        className="admin-grid"
-        style={{ alignItems: "start", gridTemplateColumns: "minmax(0, 1.3fr) minmax(320px, 0.9fr)" }}
+        className="admin-grid admin-settings-grid"
       >
         <div className="admin-stack">
           <section className="admin-card">
@@ -181,33 +180,6 @@ export default function AdminSettingsPage() {
                       disabled={saving}
                     />
                   </label>
-                </div>
-
-                <div className="admin-summary-grid" style={{ marginTop: "6px" }}>
-                  <article className="admin-summary-card">
-                    <div className="admin-summary-label">Role</div>
-                    <div className="admin-summary-value" style={{ fontSize: "18px" }}>
-                      {user?.role === "admin" ? "Administrator" : "User"}
-                    </div>
-                  </article>
-                  <article className="admin-summary-card">
-                    <div className="admin-summary-label">Sign-in provider</div>
-                    <div className="admin-summary-value" style={{ fontSize: "18px" }}>
-                      {user?.provider === "google" ? "Google OAuth" : "Local account"}
-                    </div>
-                  </article>
-                  <article className="admin-summary-card">
-                    <div className="admin-summary-label">Member since</div>
-                    <div className="admin-summary-value" style={{ fontSize: "18px" }}>
-                      {formatDate(user?.createdAt)}
-                    </div>
-                  </article>
-                  <article className="admin-summary-card">
-                    <div className="admin-summary-label">Last updated</div>
-                    <div className="admin-summary-value" style={{ fontSize: "18px" }}>
-                      {formatDate(user?.updatedAt)}
-                    </div>
-                  </article>
                 </div>
 
                 <div className="admin-modal__actions admin-field--full" style={{ marginTop: "10px" }}>
@@ -252,20 +224,12 @@ export default function AdminSettingsPage() {
               </article>
             </div>
 
-            <div className="admin-stack" style={{ marginTop: "16px" }}>
+            <div className="admin-stack admin-settings-team-list">
               {(summary.admins || []).map((admin) => (
-                <article
-                  key={admin.id}
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "14px",
-                    padding: "14px 16px",
-                    background: "#f8fafc",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: "#0f172a" }}>{admin.name}</div>
+                <article key={admin.id} className="admin-settings-entry admin-settings-entry--muted">
+                  <div className="admin-settings-entry__header">
+                    <div className="admin-settings-entry__meta">
+                      <div className="admin-settings-entry__title">{admin.name}</div>
                       <div className="admin-muted">{admin.email}</div>
                     </div>
                     <span className="admin-badge admin-badge--active">
@@ -278,7 +242,7 @@ export default function AdminSettingsPage() {
           </section>
         </div>
 
-        <section className="admin-card" style={{ position: "sticky", top: "24px" }}>
+        <section className="admin-card admin-settings-history-card">
           <div className="admin-card-header">
             <div>
               <h2 className="admin-card-title">Admin History</h2>
@@ -288,50 +252,37 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          {loading ? (
-            <p className="admin-muted">Loading history...</p>
-          ) : history.length ? (
-            <div className="admin-stack">
-              {history.map((entry) => (
-                <article
-                  key={entry.id}
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "14px",
-                    padding: "14px 16px",
-                    background: "#ffffff",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                        {entry.adminName || entry.adminEmail || "Unknown admin"}
+          <div className="admin-settings-history-scroll">
+            {loading ? (
+              <p className="admin-muted">Loading history...</p>
+            ) : history.length ? (
+              <div className="admin-stack">
+                {history.map((entry) => (
+                  <article key={entry.id} className="admin-settings-entry">
+                    <div className="admin-settings-entry__header">
+                      <div className="admin-settings-entry__meta">
+                        <div className="admin-settings-entry__title">
+                          {entry.adminName || entry.adminEmail || "Unknown admin"}
+                        </div>
+                        <div className="admin-muted">{entry.adminEmail || "No email recorded"}</div>
                       </div>
-                      <div className="admin-muted">{entry.adminEmail || "No email recorded"}</div>
+                      <span className="admin-badge admin-badge--active">{entry.action}</span>
                     </div>
-                    <span className="admin-badge admin-badge--active">{entry.action}</span>
-                  </div>
-                  <p style={{ margin: "12px 0 6px", color: "#111827", lineHeight: 1.55 }}>
-                    {entry.details || "No additional details recorded."}
-                  </p>
-                  <div className="admin-muted">{formatDateTime(entry.createdAt)}</div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div
-              style={{
-                border: "1px dashed #d1d5db",
-                borderRadius: "14px",
-                padding: "18px",
-                background: "#f8fafc",
-              }}
-            >
-              <p className="admin-muted" style={{ margin: 0 }}>
-                No admin activity has been recorded yet. The first action will appear here once an administrator updates settings.
-              </p>
-            </div>
-          )}
+                    <p className="admin-settings-entry__details">
+                      {entry.details || "No additional details recorded."}
+                    </p>
+                    <div className="admin-muted">{formatDateTime(entry.createdAt)}</div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="admin-settings-empty">
+                <p className="admin-muted admin-settings-empty__text">
+                  No admin activity has been recorded yet. The first action will appear here once an administrator updates settings.
+                </p>
+              </div>
+            )}
+          </div>
         </section>
       </section>
     </AdminLayout>

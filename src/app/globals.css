@@ -1647,6 +1647,7 @@ body {
   background: #ffffff;
   padding: 18px 20px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+  min-width: 0;
 }
 
 .admin-card--full {
@@ -2117,6 +2118,79 @@ body {
 .admin-badge--button:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.admin-settings-grid {
+  align-items: start;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+}
+
+.admin-settings-team-list {
+  margin-top: 16px;
+}
+
+.admin-settings-history-card {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+  min-height: 0;
+}
+
+.admin-settings-history-scroll {
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 6px;
+  margin-right: -6px;
+  scrollbar-gutter: stable;
+}
+
+.admin-settings-entry {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: #ffffff;
+  min-width: 0;
+}
+
+.admin-settings-entry--muted {
+  background: #f8fafc;
+}
+
+.admin-settings-entry__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.admin-settings-entry__meta {
+  min-width: 0;
+}
+
+.admin-settings-entry__title {
+  font-weight: 700;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.admin-settings-entry__details {
+  margin: 12px 0 6px;
+  color: #111827;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.admin-settings-empty {
+  border: 1px dashed #d1d5db;
+  border-radius: 14px;
+  padding: 18px;
+  background: #f8fafc;
+}
+
+.admin-settings-empty__text {
+  margin: 0;
 }
 
 .admin-pending-list {
@@ -3077,6 +3151,10 @@ body {
     display: inline-flex;
   }
 
+  .admin-main {
+    padding-top: 76px;
+  }
+
   .admin-menu {
     width: 100%;
     display: flex;
@@ -3097,6 +3175,16 @@ body {
 
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-settings-history-card {
+    position: static;
+    top: auto;
+    max-height: none;
   }
 
   .admin-card--full {
@@ -3731,6 +3819,29 @@ body {
 }
 
 @media (max-width: 720px) {
+  .admin-main {
+    padding: 72px 16px 28px;
+  }
+
+  .admin-sidebar-toggle {
+    top: 16px;
+    left: 14px;
+  }
+
+  .admin-hero,
+  .admin-card {
+    padding: 16px;
+  }
+
+  .admin-title {
+    font-size: 22px;
+  }
+
+  .admin-subtitle {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
   .admin-form {
     grid-template-columns: 1fr;
   }
@@ -3741,6 +3852,23 @@ body {
 
   .admin-form__row {
     grid-template-columns: 1fr;
+  }
+
+  .admin-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .admin-settings-entry__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-settings-entry .admin-badge {
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
   }
 
   .admin-form__row--price {
