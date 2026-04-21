@@ -72,7 +72,7 @@ export default function NavBar () {
               alt="Company Logo" 
               height={28}
               width={75}  
-              className="h-13 w-auto object-contain sm:h-15 scale-95 sm:scale-110" 
+              className="h-13 w-auto object-contain sm:h-15 sm:scale-105" 
               priority 
             />
           </Link>
