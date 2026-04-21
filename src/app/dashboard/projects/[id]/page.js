@@ -835,7 +835,7 @@ useEffect(() => {
                   </button>
                 )}
               </div>
-              <div className="admin-modal__actions-right">
+              <div className="admin-modal__actions-right mt-10 sm:mt-0">
                 <button className="admin-btn admin-btn--primary" type="submit" disabled={saving}>
                   {saving ? "Saving..." : "Save project"}
                 </button>
