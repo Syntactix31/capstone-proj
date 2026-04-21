@@ -246,7 +246,7 @@ export default function ClientAppointmentsPage() {
                           </td>
                           <td className="py-5 px-6 text-center">
                             <div className="font-semibold text-gray-900">{appointment.date}</div>
-                            <div className="text-sm text-gray-500">{appointment.time}</div>
+                            <div className="text-sm text-gray-500 truncate">{appointment.time}</div>
                           </td>
                           <td className="py-5 px-6 text-center">
                             <span className={`${STATUS_CLASSES[appointment.status]} inline-block px-3 py-1 text-xs font-semibold uppercase tracking-wide`}>

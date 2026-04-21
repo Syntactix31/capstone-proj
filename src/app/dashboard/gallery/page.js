@@ -102,12 +102,12 @@ export default function AdminUploadPage() {
           multiple
           accept="image/*,video/*"
           onChange={handleUpload}
-          className="p-4 rounded-2xl text-white bg-[#477a40] active:scale-95 hover:scale-105 hover:cursor-pointer hover:border-2 hover:shadow-lg items-center text-center"
+          className="p-4 rounded-2xl text-white bg-[#477a40] active:scale-95 hover:scale-105 hover:cursor-pointer hover:border-2 w-full max-w-xs hover:shadow-lg items-center text-center"
         />
 
         <div className="upload-preview">
           {files.map((file, i) => (
-            <p key={i}>{file.name}</p>
+            <p key={i} className="text-ellipsis">{file.name}</p>
           ))}
         </div>
       </section>
