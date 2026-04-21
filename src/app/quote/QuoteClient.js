@@ -43,6 +43,13 @@ export default function QuoteClient() {
     files: [],
   });
 
+  // Check if client info is complete
+  const isClientComplete = 
+    formData.client.name.trim() && 
+    formData.client.address.trim() && 
+    formData.client.email.includes('@') && 
+    formData.client.phone.replace(/\D/g, '').length === 10;
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -176,8 +183,9 @@ export default function QuoteClient() {
             const data = await res.json();
             if (res.ok) {
               newEstimates[service.key] = data;
+              delete newErrors[service.key];
             } else {
-              newErrors[service.key] = data?.error || "Estimate unavailable";
+              newErrors[service.key] = data.details ? data.details.join(', ') : (data.error || "Estimate unavailable");
             }
           }
         } catch (err) {
@@ -429,9 +437,9 @@ export default function QuoteClient() {
           [serviceKey]: undefined,
         }));
       } else {
-        setEstimateErrors((prev) => ({
-          ...prev,
-          [serviceKey]: data?.error || "Estimate unavailable",
+        setEstimateErrors(prev => ({
+          ...prev, 
+          [serviceKey]: data.details ? data.details.join(', ') : (data.error || "Estimate unavailable")
         }));
       }
     } catch (err) {
@@ -753,9 +761,10 @@ export default function QuoteClient() {
                   <button
                     type="button"
                     onClick={() => fetchSingleEstimate(service.key)}
-                    className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white hover:bg-[#3a6634] hover:cursor-pointer active:scale-95"
+                    disabled={!isClientComplete || isCalculating}
+                    className={`rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white hover:bg-[#3a6634] active:scale-95 disabled:opacity-60 ${isCalculating || !isClientComplete ? 'cursor-not-allowed' : 'hover:cursor-pointer'}`}
                   >
-                    Calculate
+                    {isCalculating ? 'Calculating...' : 'Calculate'}
                   </button>
                 </div>
 
@@ -764,6 +773,14 @@ export default function QuoteClient() {
                     {estimateErrors[service.key]}
                   </p>
                 )}
+{/* 
+                {estimateErrors[service.key] && (
+                  <div className="mt-3 space-y-1">
+                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 font-medium">
+                      {estimateErrors[service.key]}
+                    </p>
+                  </div>
+                )} */}
 
                 {instantEstimates[service.key] && (
                   <div className="mt-4 space-y-3">
@@ -824,12 +841,12 @@ export default function QuoteClient() {
       <button
         type="button"
         onClick={() => fetchSingleEstimate(selectedServices[0].key)}
-        disabled={isCalculating}
-        className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white hover:bg-[#3a6634] hover:cursor-pointer active:scale-95 disabled:opacity-60"
+        disabled={!isClientComplete || isCalculating}
+        className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white hover:bg-[#3a6634] hover:cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         Calculate Estimate
       </button>
-    </div>
+    </div> 
 
     {estimateErrors[selectedServices[0].key] && (
       <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -903,8 +920,8 @@ export default function QuoteClient() {
                 <button
                   type="button"
                   onClick={handleEstimatePreview}
-                  disabled={isCalculating}
-                  className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white active:scale-95 hover:bg-[#3a6634] disabled:opacity-60 hover:cursor-pointer"
+                  disabled={!isClientComplete || isCalculating}
+                  className="rounded-xl bg-[#477a40] px-4 py-2 text-sm font-bold text-white active:scale-95 hover:bg-[#3a6634] disabled:opacity-60 hover:cursor-pointer disabled:cursor-not-allowed"
                 >
                   {isCalculating ? "Calculating..." : `Calculate All (${selectedServices.filter(s => ESTIMATE_SERVICE_KEYS.has(s.key)).length})`}
                 </button>
@@ -975,8 +992,8 @@ export default function QuoteClient() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full flex items-center justify-center text-center max-h-17 rounded-2xl bg-[#477a40] px-8 py-10 sm:py-6 text-xl font-bold text-white hover:cursor-pointer hover:bg-white hover:border-[#477A40] hover:text-[#477A40] hover:scale-105 hover:border-2 active:scale-95 shadow-xl transition-all disabled:opacity-50"
+            disabled={isSubmitting || isCalculating || !isClientComplete}
+            className="w-full flex items-center justify-center text-center max-h-17 rounded-2xl bg-[#477a40] px-8 py-10 sm:py-6 text-xl font-bold text-white hover:cursor-pointer hover:bg-white hover:border-[#477A40] hover:text-[#477A40] hover:scale-105 hover:border-2 active:scale-95 shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Sending..." : `${selectedServices.length > 1 ? `Send Estimate Request for ${selectedServices.length} Services` : 'Send Estimate Request'}`}
           </button>
