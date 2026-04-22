@@ -167,7 +167,7 @@ export default function ClientProjectDetailPage() {
             </div>
           </div>
         <div className="w-full overflow-x-auto sm:overflow-x-none">
-          <div className="w-full min-w-[400px] sm:min-w-auto table-auto ">
+          <div className="w-full min-w-[400px] sm:min-w-auto table-auto pl-1 ">
             <div className="client-table-row client-table-head">
               <div>Date</div>
               <div>Amount</div>

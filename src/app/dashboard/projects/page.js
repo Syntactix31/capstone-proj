@@ -777,16 +777,21 @@ export default function AdminProjectsPage() {
                   {selectedProject.paymentStatus}
                 </span>
               </div>
+
               <div className="admin-field">
                 <span className="admin-label">Start date</span>
-                <div className="admin-muted">{selectedProject.startDate || "Not set"}</div>
+                <div className="admin-muted">
+                  {selectedProject.startDate ? selectedProject.startDate.slice(0, 10) : "Not set"}
+                </div>
               </div>
               <div className="admin-field">
                 <span className="admin-label">Estimated completion</span>
                 <div className="admin-muted">
-                  {selectedProject.estimatedCompletionDate || "Not set"}
+                  {selectedProject.estimatedCompletionDate ? 
+                    selectedProject.estimatedCompletionDate.slice(0, 10) : "Not set"}
                 </div>
               </div>
+              
               <div className="admin-field">
                 <span className="admin-label">Total cost</span>
                 <div className="admin-muted">

@@ -30,30 +30,30 @@ export async function POST(req) {
       );
     }
 
+    // **FIX: Check ALL attachments, block if ANY image fails moderation**
     for (const attachment of attachments) {
       const contentType = inferAttachmentContentType(attachment);
 
-      if (!isImageMimeType(contentType)) {
-        continue;
-      }
+      // **FIX: Only moderate if it's an image (skip PDFs/docs)**
+      if (isImageMimeType(contentType)) {
+        const moderation = await moderateImageBytes({
+          bytes: Buffer.from(attachment.content || "", "base64"),
+          mimeType: contentType,
+          source: `quote-attachment:${attachment.filename || "unnamed-file"}`,
+        });
 
-      const moderation = await moderateImageBytes({
-        bytes: Buffer.from(attachment.content || "", "base64"),
-        mimeType: contentType,
-        source: `quote-attachment:${attachment.filename || "unnamed-file"}`,
-      });
-
-      if (!moderation.allowed) {
-        return NextResponse.json(
-          {
-            error: "Media safety check failed",
-            details: moderation.blockedLabels.map(
-              (label) => `${attachment.filename}: ${label.name} (${Math.round(label.confidence)}%)`,
-            ),
-            blocked: true,
-          },
-          { status: 422 },
-        );
+        if (!moderation.allowed) {
+          return NextResponse.json(
+            {
+              error: "Media safety check failed",
+              details: moderation.blockedLabels.map(
+                (label) => `${attachment.filename}: ${label.name} (${Math.round(label.confidence)}%)`,
+              ),
+              blocked: true,
+            },
+            { status: 422 },
+          );
+        }
       }
     }
 
@@ -81,3 +81,4 @@ export async function POST(req) {
     );
   }
 }
+
