@@ -19,7 +19,7 @@ export default function QuotePage() {
   );
 }
 
-// Resolve server side static rendering issue
+// Resolve server side static rendering issue again lol
 
 
 
