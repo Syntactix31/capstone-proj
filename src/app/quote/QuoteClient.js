@@ -36,6 +36,95 @@ function numberInputProps({ integer = false, allowZero = false } = {}) {
   };
 }
 
+function renameFileExtension(filename, nextExtension) {
+  const normalizedName = String(filename || "upload");
+  const withoutExtension = normalizedName.replace(/\.[^./\\]+$/, "");
+  return `${withoutExtension}${nextExtension}`;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function readFileAsBase64(file) {
+  const dataUrl = await readFileAsDataUrl(file);
+  return dataUrl.split(",")[1] || "";
+}
+
+function loadImageFromDataUrl(dataUrl, fileName) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onerror = () => reject(new Error(`Could not prepare ${fileName} for moderation. Please use a standard JPG or PNG image.`));
+    image.onload = () => resolve(image);
+    image.src = dataUrl;
+  });
+}
+
+async function normalizeImageAttachment(file) {
+  const dataUrl = await readFileAsDataUrl(file);
+  const image = await loadImageFromDataUrl(dataUrl, file.name);
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth || image.width || 1;
+  canvas.height = image.naturalHeight || image.height || 1;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Your browser could not prepare the image for upload.");
+  }
+
+  context.drawImage(image, 0, 0);
+
+  const outputType = String(file.type || "").toLowerCase() === "image/png" ? "image/png" : "image/jpeg";
+  const nextExtension = outputType === "image/png" ? ".png" : ".jpg";
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (value) => {
+        if (value) {
+          resolve(value);
+          return;
+        }
+        reject(new Error(`Could not convert ${file.name} to a supported format.`));
+      },
+      outputType,
+      outputType === "image/jpeg" ? 0.92 : undefined,
+    );
+  });
+
+  return new File([blob], renameFileExtension(file.name, nextExtension), { type: outputType });
+}
+
+async function buildQuoteAttachment(file) {
+  const normalizedFile = file.type?.startsWith("image/")
+    ? await normalizeImageAttachment(file)
+    : file;
+
+  return {
+    filename: normalizedFile.name,
+    content: await readFileAsBase64(normalizedFile),
+    contentType: normalizedFile.type,
+  };
+}
+
+async function readApiResponse(res) {
+  const contentType = res.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return res.json();
+  }
+
+  const text = await res.text();
+  return {
+    error: text.trim().startsWith("<")
+      ? "The server returned an unexpected error page while processing your files. Please retry with a standard JPG or PNG image."
+      : text || `Request failed with status ${res.status}.`,
+  };
+}
+
 export default function QuoteClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -391,20 +480,7 @@ export default function QuoteClient() {
       // Handle file attachments
       const attachments = formData.files.length > 0
         ? await Promise.all(
-            Array.from(formData.files).map(async (file) => {
-              const reader = new FileReader();
-              reader.readAsDataURL(file);
-              return new Promise((resolve) => {
-                reader.onload = () => {
-                  const base64 = reader.result.split(",")[1];
-                  resolve({
-                    filename: file.name,
-                    content: base64,
-                    contentType: file.type,
-                  });
-                };
-              });
-            })
+            Array.from(formData.files).map((file) => buildQuoteAttachment(file))
           )
         : [];
 
@@ -419,7 +495,7 @@ export default function QuoteClient() {
         }),
       });
 
-      const data = await res.json();
+      const data = await readApiResponse(res);
 
       if (!res.ok) {
         console.error("Backend response:", data);

@@ -17,6 +17,13 @@ const DEFAULT_BLOCK_LABELS = [
   "hate symbols",
   "self harm",
 ];
+const MIME_TYPE_ALIASES = new Map([
+  ["image/jpg", "image/jpeg"],
+  ["image/pjpeg", "image/jpeg"],
+  ["image/jfif", "image/jpeg"],
+  ["image/x-png", "image/png"],
+]);
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 let rekognitionClient;
 
@@ -34,6 +41,45 @@ function readEnv(name) {
 
 function normalizeLabel(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+export function normalizeImageMimeType(mimeType = "") {
+  const normalized = normalizeLabel(mimeType);
+  return MIME_TYPE_ALIASES.get(normalized) || normalized;
+}
+
+function bytesMatchSignature(bytes, signature) {
+  return (
+    Buffer.isBuffer(bytes) &&
+    bytes.length >= signature.length &&
+    signature.every((value, index) => bytes[index] === value)
+  );
+}
+
+function looksLikeJpeg(bytes) {
+  return Buffer.isBuffer(bytes) && bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+}
+
+function validateSupportedImageBytes(bytes, mimeType) {
+  const normalizedMimeType = normalizeImageMimeType(mimeType);
+
+  if (normalizedMimeType === "image/jpeg" && !looksLikeJpeg(bytes)) {
+    throw createModerationError(
+      "Only standard JPEG and PNG images are supported for AI content moderation right now. Please convert the image and try again.",
+      "UNSUPPORTED_IMAGE_TYPE",
+      400,
+    );
+  }
+
+  if (normalizedMimeType === "image/png" && !bytesMatchSignature(bytes, PNG_SIGNATURE)) {
+    throw createModerationError(
+      "Only standard JPEG and PNG images are supported for AI content moderation right now. Please convert the image and try again.",
+      "UNSUPPORTED_IMAGE_TYPE",
+      400,
+    );
+  }
+
+  return normalizedMimeType;
 }
 
 function parseBlockLabels(value) {
@@ -92,15 +138,17 @@ function getClient() {
 }
 
 export function isImageMimeType(mimeType = "") {
-  return String(mimeType).toLowerCase().startsWith("image/");
+  return normalizeImageMimeType(mimeType).startsWith("image/");
 }
 
 export function isModeratedImageType(mimeType = "") {
-  return SUPPORTED_IMAGE_TYPES.has(String(mimeType).toLowerCase());
+  return SUPPORTED_IMAGE_TYPES.has(normalizeImageMimeType(mimeType));
 }
 
 export async function moderateImageBytes({ bytes, mimeType, source = "upload" }) {
-  if (!isImageMimeType(mimeType)) {
+  const normalizedMimeType = normalizeImageMimeType(mimeType);
+
+  if (!isImageMimeType(normalizedMimeType)) {
     return {
       allowed: true,
       blocked: false,
@@ -110,7 +158,7 @@ export async function moderateImageBytes({ bytes, mimeType, source = "upload" })
     };
   }
 
-  if (!isModeratedImageType(mimeType)) {
+  if (!isModeratedImageType(normalizedMimeType)) {
     throw createModerationError(
       "Only JPEG and PNG images are supported for AI content moderation right now. Please convert the image or upload a PDF.",
       "UNSUPPORTED_IMAGE_TYPE",
@@ -118,15 +166,44 @@ export async function moderateImageBytes({ bytes, mimeType, source = "upload" })
     );
   }
 
+  validateSupportedImageBytes(bytes, normalizedMimeType);
   const minConfidence = getMinConfidence();
   const blockedLabelSet = parseBlockLabels(readEnv("AWS_REKOGNITION_BLOCK_LABELS"));
+  let response;
 
-  const response = await getClient().send(
-    new DetectModerationLabelsCommand({
-      Image: { Bytes: bytes },
-      MinConfidence: minConfidence,
-    }),
-  );
+  try {
+    response = await getClient().send(
+      new DetectModerationLabelsCommand({
+        Image: { Bytes: bytes },
+        MinConfidence: minConfidence,
+      }),
+    );
+  } catch (error) {
+    const errorMessage = String(error?.message || "").toLowerCase();
+
+    if (error?.name === "InvalidImageFormatException" || errorMessage.includes("invalid image format")) {
+      throw createModerationError(
+        "Only standard JPEG and PNG images are supported for AI content moderation right now. Please convert the image and try again.",
+        "UNSUPPORTED_IMAGE_TYPE",
+        400,
+      );
+    }
+
+    if (
+      ["AccessDeniedException", "UnrecognizedClientException", "InvalidSignatureException"].includes(error?.name) ||
+      errorMessage.includes("security token") ||
+      errorMessage.includes("credential") ||
+      errorMessage.includes("signature")
+    ) {
+      throw createModerationError(
+        "Content moderation is unavailable because AWS Rekognition credentials could not be used.",
+        "MODERATION_AUTH_FAILED",
+        503,
+      );
+    }
+
+    throw error;
+  }
 
   const moderationLabels = (response.ModerationLabels || []).map((label) => ({
     name: label.Name || "",

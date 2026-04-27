@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { isImageMimeType, moderateImageBytes } from "../../lib/rekognitionModeration.js";
+import { isImageMimeType, moderateImageBytes, normalizeImageMimeType } from "../../lib/rekognitionModeration.js";
 
 function inferAttachmentContentType(attachment = {}) {
-  if (attachment.contentType) return attachment.contentType;
+  if (attachment.contentType) return normalizeImageMimeType(attachment.contentType);
 
   const filename = String(attachment.filename || "").toLowerCase();
-  if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return "image/jpeg";
+  if (filename.endsWith(".jpg") || filename.endsWith(".jpeg") || filename.endsWith(".jfif") || filename.endsWith(".jpe")) {
+    return "image/jpeg";
+  }
   if (filename.endsWith(".png")) return "image/png";
   if (filename.endsWith(".pdf")) return "application/pdf";
 
