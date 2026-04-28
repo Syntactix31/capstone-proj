@@ -98,8 +98,9 @@ npm run db:setup
 
 
 Accreditation:
-Levi Moreau
-Adlin Firdaus
-Theo Sanchez
-Jiro Roales
-Mrinal Jha
+
+Levi Moreau (Project Manager)
+Adlin Firdaus (CI/CD)
+Theo Sanchez (Frontend Dev)
+Jiro Roales (Backend Dev)
+Mrinal Jha (QA)
